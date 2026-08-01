@@ -1,0 +1,13 @@
+package testhtml
+
+templ Render(p Person) {
+	<div>
+		<h1>{ p.Name }</h1>
+		<div style="font-family: 'sans-serif'" id="test" data-contents={ `something with "quotes" and a <tag>` }>
+			<div>email:<a href={ ghtmx.URL("mailto: " + p.Email) }>{ p.Email }</a></div>
+		</div>
+	</div>
+	<hr noshade?={ true }/>
+	<hr optionA optionB?={ true } optionC="other" optionD?={ false }/>
+	<hr noshade/>
+}

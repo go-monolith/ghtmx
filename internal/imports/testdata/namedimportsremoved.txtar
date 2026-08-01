@@ -1,0 +1,16 @@
+-- fmt_templ.ghtmx --
+package test
+
+import (
+  sconv "strconv"
+)
+
+// Comment on variable or function.
+var x = fmt.Sprintf("Hello")
+-- fmt_templ.ghtmx --
+package test
+
+import "fmt"
+
+// Comment on variable or function.
+var x = fmt.Sprintf("Hello")

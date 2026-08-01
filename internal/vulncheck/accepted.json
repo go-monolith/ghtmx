@@ -1,0 +1,4 @@
+{
+  "_doc": "NFR-008 acceptance record. A known vulnerability that fails the vulncheck gate may only be waived by adding an entry here — in an explicit, reviewed commit — with the OSV id, the affected module, and a non-empty rationale. The gate fails on accepted entries that no longer match any finding, so stale waivers must be pruned. Prefer fixing (bumping the dependency) over accepting: this file should normally be empty.",
+  "accepted": []
+}

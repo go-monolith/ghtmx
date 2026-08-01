@@ -1,0 +1,8 @@
+package main
+
+event ItemSaved(id string)
+
+templ HtmxPage() {
+	<div hx-on:item-saved="refresh()">ok</div>
+	<button hx-post={ CreateItem }>Create</button>
+}

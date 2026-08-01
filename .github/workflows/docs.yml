@@ -1,0 +1,42 @@
+name: Docs
+
+# The documentation site publishes on release (and on demand). Every CI
+# build already verifies the site builds and that the getting-started
+# guide compiles and renders — see the lint job in ci.yml.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Build the site
+        run: go run ./internal/docsite/cmd -out dist/docs
+      # enablement configures the repository's Pages source to GitHub
+      # Actions on first deploy, so release day needs no manual setup.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

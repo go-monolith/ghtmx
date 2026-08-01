@@ -1,0 +1,103 @@
+name: Release
+
+# A tag push produces checksummed binaries for every supported platform
+# (NFR-010), after the full gate set passes — including govulncheck
+# (NFR-008) and the WASM matrix (NFR-014). Compiler, runtime, LSP, and
+# dev tooling ship from the single module under the tag's version; the
+# nested adapter modules are tagged in lockstep.
+#
+# The workflow VERIFIES the version rather than stamping it: the
+# release-prep commit (see RELEASING.md) sets .version and the adapter
+# requires to the tag's version, so the tagged tree is self-consistent
+# for `go install` and `go get` consumers too.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Verify the release-prep commit
+        run: |
+          test "v$(cat .version)" = "$GITHUB_REF_NAME" || {
+            echo ".version is $(cat .version) but the tag is $GITHUB_REF_NAME — make the release-prep commit first (RELEASING.md)"; exit 1; }
+          for mod in adapters/*/go.mod; do
+            grep -q "github.com/go-monolith/ghtmx $GITHUB_REF_NAME" "$mod" || {
+              echo "$mod does not require ghtmx $GITHUB_REF_NAME — adapters must version in lockstep (RELEASING.md)"; exit 1; }
+          done
+      - name: Install gopls (required by LSP tests)
+        run: go install golang.org/x/tools/gopls@v0.23.0
+      - name: gofmt and vet
+        run: |
+          unformatted=$(gofmt -l .)
+          test -z "$unformatted" || { echo "unformatted: $unformatted"; exit 1; }
+          go vet ./...
+      - name: Full test suite (includes the WASM matrix and every coverage gate)
+        run: go test ./... -timeout 20m
+      - name: Generated code is current
+        run: |
+          go run ./cmd/ghtmx generate -include-version=false -cache=false -log-level error
+          git diff --exit-code
+      - name: Adapter module tests
+        run: |
+          for mod in adapters/*/go.mod; do
+            dir=$(dirname "$mod")
+            echo "== $dir"
+            (cd "$dir" && go build ./... && go vet ./... && go test ./...)
+          done
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck release gate (NFR-008)
+        run: GHTMX_VULN_GATE=1 go test ./internal/vulncheck/ -count=1 -v -timeout 20m
+      - name: Performance gates (NFR-001, NFR-002, NFR-003)
+        run: |
+          GHTMX_PERF_GATE=1 go test ./cmd/ghtmx/generatecmd/ -run TestRegenerationBudget -count=1 -v
+          GHTMX_PERF_GATE=1 go test ./benchmarks/corpus/ -run TestRenderRegressionGate -count=1 -v -timeout 20m
+          GHTMX_PERF_GATE=1 go test ./cmd/ghtmx/lspcmd/ -run TestLSPLatencyGate -count=1 -v
+      - name: Release artifact matrix (NFR-010)
+        run: GHTMX_RELEASE_GATE=1 go test ./internal/release/ -count=1 -v -timeout 30m
+
+  release:
+    needs: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build checksummed artifacts for every platform
+        run: go run ./internal/release/cmd -version "$GITHUB_REF_NAME" -out dist/release
+      - name: Verify the shipped binary reports the tag
+        run: |
+          tar -xzf "dist/release/ghtmx_${GITHUB_REF_NAME#v}_linux_amd64.tar.gz" -C "$(mktemp -d /tmp/ghtmx-verify-XXXX)" ghtmx || exit 1
+          bin=$(ls /tmp/ghtmx-verify-*/ghtmx | head -1)
+          test "$("$bin" version)" = "$GITHUB_REF_NAME" || {
+            echo "shipped binary reports $("$bin" version), expected $GITHUB_REF_NAME"; exit 1; }
+      # Adapter tags go first: if anything fails after the release
+      # exists, a re-run must stay idempotent.
+      - name: Tag the adapter modules in lockstep
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for mod in adapters/*/go.mod; do
+            dir=$(dirname "$mod")
+            git tag -f "$dir/$GITHUB_REF_NAME"
+            git push -f origin "refs/tags/$dir/$GITHUB_REF_NAME"
+          done
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" dist/release/* \
+              --title "ghtmx $GITHUB_REF_NAME" --generate-notes

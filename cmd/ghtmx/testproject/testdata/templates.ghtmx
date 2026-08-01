@@ -1,0 +1,25 @@
+package main
+
+import "fmt"
+
+templ Page(count int) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>templ test page</title>
+		</head>
+		<body>
+			<h1>Count</h1>
+			<div data-testid="count">{ fmt.Sprintf("%d", count) }</div>
+			<div data-testid="modification">Original</div>
+		</body>
+	</html>
+}
+
+var nihao = "你好"
+
+type Struct struct {
+	Count int
+}
+
+var s = Struct{}

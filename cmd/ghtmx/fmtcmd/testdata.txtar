@@ -1,0 +1,66 @@
+-- a.ghtmx --
+package test
+
+templ a() {
+	<div><p class={ghtmx.Class("mapped")}>A
+</p></div>
+}
+-- a.ghtmx --
+package test
+
+templ a() {
+	<div>
+		<p class={ ghtmx.Class("mapped") }>
+			A
+		</p>
+	</div>
+}
+-- b.ghtmx --
+package test
+
+templ b() {
+	<div><p>B
+</p></div>
+}
+-- b.ghtmx --
+package test
+
+templ b() {
+	<div>
+		<p>
+			B
+		</p>
+	</div>
+}
+-- c.ghtmx --
+package test
+
+templ c() {
+	<div>
+		<p>
+			C
+		</p>
+	</div>
+}
+-- c.ghtmx --
+package test
+
+templ c() {
+	<div>
+		<p>
+			C
+		</p>
+	</div>
+}
+-- d.ghtmx --
+package test
+
+templ c(s string) {
+  <div s= {s}/>
+}
+-- d.ghtmx --
+package test
+
+templ c(s string) {
+  <div s={ s }/>
+}

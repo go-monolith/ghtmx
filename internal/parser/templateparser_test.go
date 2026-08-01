@@ -1,0 +1,1432 @@
+package parser
+
+import (
+	"testing"
+
+	"github.com/a-h/parse"
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestTemplateParser(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    *HTMLTemplate
+		expectError bool
+	}{
+		{
+			name: "template: no parameters",
+			input: `templ Name() {
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 16, Line: 1, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name()",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 12,
+							Line:  0,
+							Col:   12,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: with receiver",
+			input: `templ (data Data) Name() {
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 28, Line: 1, Col: 1},
+				},
+				Expression: Expression{
+					Value: "(data Data) Name()",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 24,
+							Line:  0,
+							Col:   24,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: no spaces",
+			input: `templ Name(){
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 15, Line: 1, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name()",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 12,
+							Line:  0,
+							Col:   12,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: single parameter",
+			input: `templ Name(p Parameter) {
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 27, Line: 1, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: can have multiline params",
+			input: `templ Multiline(
+	params expense,
+) {
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 39, Line: 3, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Multiline(\n\tparams expense,\n)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 35,
+							Line:  2,
+							Col:   1,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: containing element",
+			input: `templ Name(p Parameter) {
+<span>{ "span content" }</span>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 59, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+				Children: []Node{
+					&Element{
+						Name: "span",
+						NameRange: Range{
+							From: Position{Index: 27, Line: 1, Col: 1},
+							To:   Position{Index: 31, Line: 1, Col: 5},
+						},
+						Children: []Node{
+							&StringExpression{
+								Expression: Expression{
+									Value: `"span content"`,
+									Range: Range{
+										From: Position{
+											Index: 34,
+											Line:  1,
+											Col:   8,
+										},
+										To: Position{
+											Index: 48,
+											Line:  1,
+											Col:   22,
+										},
+									},
+								},
+								Range: Range{
+									From: Position{Index: 32, Line: 1, Col: 6},
+									To:   Position{Index: 50, Line: 1, Col: 24},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 26, Line: 1}, To: Position{Index: 32, Line: 1, Col: 6}},
+						CloseTagRange: &Range{From: Position{Index: 50, Line: 1, Col: 24}, To: Position{Index: 57, Line: 1, Col: 31}},
+						Range: Range{
+							From: Position{Index: 26, Line: 1, Col: 0},
+							To:   Position{Index: 58, Line: 2, Col: 0},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "template: containing element - no spacing",
+			input: `templ Name(p Parameter) { <span>{ "span content" }</span> }`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 59, Line: 0, Col: 59},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+				Children: []Node{
+					&Element{
+						Name: "span",
+						NameRange: Range{
+							From: Position{Index: 27, Line: 0, Col: 27},
+							To:   Position{Index: 31, Line: 0, Col: 31},
+						},
+						Children: []Node{
+							&StringExpression{
+								Expression: Expression{
+									Value: `"span content"`,
+									Range: Range{
+										From: Position{
+											Index: 34,
+											Line:  0,
+											Col:   34,
+										},
+										To: Position{
+											Index: 48,
+											Line:  0,
+											Col:   48,
+										},
+									},
+								},
+								Range: Range{
+									From: Position{Index: 32, Line: 0, Col: 32},
+									To:   Position{Index: 50, Line: 0, Col: 50},
+								},
+							},
+						},
+						TrailingSpace: SpaceHorizontal,
+						OpenTagRange:  Range{From: Position{Index: 26, Col: 26}, To: Position{Index: 32, Col: 32}},
+						CloseTagRange: &Range{From: Position{Index: 50, Col: 50}, To: Position{Index: 57, Col: 57}},
+						Range: Range{
+							From: Position{Index: 26, Line: 0, Col: 26},
+							To:   Position{Index: 58, Line: 0, Col: 58},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: containing nested elements",
+			input: `templ Name(p Parameter) {
+<div>
+  { "div content" }
+  <span>
+	{ "span content" }
+  </span>
+</div>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 99, Line: 7, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+				Children: []Node{
+					&Element{
+						Name: "div",
+						NameRange: Range{
+							From: Position{Index: 27, Line: 1, Col: 1},
+							To:   Position{Index: 30, Line: 1, Col: 4},
+						},
+						Children: []Node{
+							&Whitespace{Range: Range{
+								From: Position{
+									Index: 31,
+									Line:  1,
+									Col:   5,
+								},
+								To: Position{
+									Index: 34,
+									Line:  2,
+									Col:   2,
+								},
+							},
+								Value: "\n  "},
+							&StringExpression{
+								Expression: Expression{
+									Value: `"div content"`,
+									Range: Range{
+										From: Position{
+											Index: 36,
+											Line:  2,
+											Col:   4,
+										},
+										To: Position{
+											Index: 49,
+											Line:  2,
+											Col:   17,
+										},
+									},
+								},
+								TrailingSpace: SpaceVertical,
+								Range: Range{
+									From: Position{Index: 34, Line: 2, Col: 2},
+									To:   Position{Index: 54, Line: 3, Col: 2},
+								},
+							},
+							&Element{
+								Name: "span",
+								NameRange: Range{
+									From: Position{Index: 55, Line: 3, Col: 3},
+									To:   Position{Index: 59, Line: 3, Col: 7},
+								},
+								Children: []Node{
+									&Whitespace{Range: Range{
+										From: Position{
+											Index: 60,
+											Line:  3,
+											Col:   8,
+										},
+										To: Position{
+											Index: 62,
+											Line:  4,
+											Col:   1,
+										},
+									},
+										Value: "\n\t"},
+									&StringExpression{
+										Expression: Expression{
+											Value: `"span content"`,
+											Range: Range{
+												From: Position{
+													Index: 64,
+													Line:  4,
+													Col:   3,
+												},
+												To: Position{
+													Index: 78,
+													Line:  4,
+													Col:   17,
+												},
+											},
+										},
+										TrailingSpace: SpaceVertical,
+										Range: Range{
+											From: Position{Index: 62, Line: 4, Col: 1},
+											To:   Position{Index: 83, Line: 5, Col: 2},
+										},
+									},
+								},
+								IndentChildren: true,
+								TrailingSpace:  SpaceVertical,
+								OpenTagRange:   Range{From: Position{Index: 54, Line: 3, Col: 2}, To: Position{Index: 60, Line: 3, Col: 8}},
+								CloseTagRange:  &Range{From: Position{Index: 83, Line: 5, Col: 2}, To: Position{Index: 90, Line: 5, Col: 9}},
+								Range: Range{
+									From: Position{Index: 54, Line: 3, Col: 2},
+									To:   Position{Index: 91, Line: 6, Col: 0},
+								},
+							},
+						},
+						IndentChildren: true,
+						TrailingSpace:  SpaceVertical,
+						OpenTagRange:   Range{From: Position{Index: 26, Line: 1}, To: Position{Index: 31, Line: 1, Col: 5}},
+						CloseTagRange:  &Range{From: Position{Index: 91, Line: 6}, To: Position{Index: 97, Line: 6, Col: 6}},
+						Range: Range{
+							From: Position{Index: 26, Line: 1, Col: 0},
+							To:   Position{Index: 98, Line: 7, Col: 0},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: containing if element",
+			input: `templ Name(p Parameter) {
+	if p.Test {
+		<span>
+			{ "span content" }
+		</span>
+	}
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 84, Line: 6, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 26,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 27,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&IfExpression{
+						Expression: Expression{
+							Value: `p.Test`,
+							Range: Range{
+								From: Position{
+									Index: 30,
+									Line:  1,
+									Col:   4,
+								},
+								To: Position{
+									Index: 36,
+									Line:  1,
+									Col:   10,
+								},
+							},
+						},
+						Then: []Node{
+							&Whitespace{Range: Range{
+								From: Position{
+									Index: 39,
+									Line:  2,
+									Col:   0,
+								},
+								To: Position{
+									Index: 41,
+									Line:  2,
+									Col:   2,
+								},
+							},
+								Value: "\t\t"},
+							&Element{
+								Name: "span",
+								NameRange: Range{
+									From: Position{Index: 42, Line: 2, Col: 3},
+									To:   Position{Index: 46, Line: 2, Col: 7},
+								},
+								Children: []Node{
+									&Whitespace{Range: Range{
+										From: Position{
+											Index: 47,
+											Line:  2,
+											Col:   8,
+										},
+										To: Position{
+											Index: 51,
+											Line:  3,
+											Col:   3,
+										},
+									},
+										Value: "\n\t\t\t"},
+									&StringExpression{
+										Expression: Expression{
+											Value: `"span content"`,
+											Range: Range{
+												From: Position{
+													Index: 53,
+													Line:  3,
+													Col:   5,
+												},
+												To: Position{
+													Index: 67,
+													Line:  3,
+													Col:   19,
+												},
+											},
+										},
+										TrailingSpace: SpaceVertical,
+										Range: Range{
+											From: Position{Index: 51, Line: 3, Col: 3},
+											To:   Position{Index: 72, Line: 4, Col: 2},
+										},
+									},
+								},
+								IndentChildren: true,
+								TrailingSpace:  SpaceVertical,
+								OpenTagRange:   Range{From: Position{Index: 41, Line: 2, Col: 2}, To: Position{Index: 47, Line: 2, Col: 8}},
+								CloseTagRange:  &Range{From: Position{Index: 72, Line: 4, Col: 2}, To: Position{Index: 79, Line: 4, Col: 9}},
+								Range: Range{
+									From: Position{Index: 41, Line: 2, Col: 2},
+									To:   Position{Index: 81, Line: 5, Col: 1},
+								},
+							},
+						},
+						Range: Range{
+							From: Position{Index: 27, Line: 1, Col: 1},
+							To:   Position{Index: 82, Line: 5, Col: 2},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 82,
+							Line:  5,
+							Col:   2,
+						},
+						To: Position{
+							Index: 83,
+							Line:  6,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: inputs",
+			input: `templ Name(p Parameter) {
+	<input type="text" value="a" />
+	<input type="text" value="b" />
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 93, Line: 3, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(p Parameter)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 23,
+							Line:  0,
+							Col:   23,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 26,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 27,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&Element{
+						Name: "input",
+						NameRange: Range{
+							From: Position{Index: 28, Line: 1, Col: 2},
+							To:   Position{Index: 33, Line: 1, Col: 7},
+						},
+						Attributes: []Attribute{
+							&ConstantAttribute{
+								Value: "text",
+								Key: ConstantAttributeKey{
+									Name: "type",
+									NameRange: Range{
+										From: Position{Index: 34, Line: 1, Col: 8},
+										To:   Position{Index: 38, Line: 1, Col: 12},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 40, Line: 1, Col: 14},
+									To:   Position{Index: 44, Line: 1, Col: 18},
+								},
+								Range: Range{
+									From: Position{Index: 34, Line: 1, Col: 8},
+									To:   Position{Index: 45, Line: 1, Col: 19},
+								},
+							},
+							&ConstantAttribute{
+								Value: "a",
+								Key: ConstantAttributeKey{
+									Name: "value",
+									NameRange: Range{
+										From: Position{Index: 46, Line: 1, Col: 20},
+										To:   Position{Index: 51, Line: 1, Col: 25},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 53, Line: 1, Col: 27},
+									To:   Position{Index: 54, Line: 1, Col: 28},
+								},
+								Range: Range{
+									From: Position{Index: 46, Line: 1, Col: 20},
+									To:   Position{Index: 55, Line: 1, Col: 29},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 27, Line: 1, Col: 1}, To: Position{Index: 58, Line: 1, Col: 32}},
+						Range: Range{
+							From: Position{Index: 27, Line: 1, Col: 1},
+							To:   Position{Index: 60, Line: 2, Col: 1},
+						},
+						SelfClosing: true,
+					},
+					&Element{
+						Name: "input",
+						NameRange: Range{
+							From: Position{Index: 61, Line: 2, Col: 2},
+							To:   Position{Index: 66, Line: 2, Col: 7},
+						},
+						Attributes: []Attribute{
+							&ConstantAttribute{
+								Value: "text",
+								Key: ConstantAttributeKey{
+									Name: "type",
+									NameRange: Range{
+										From: Position{Index: 67, Line: 2, Col: 8},
+										To:   Position{Index: 71, Line: 2, Col: 12},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 73, Line: 2, Col: 14},
+									To:   Position{Index: 77, Line: 2, Col: 18},
+								},
+								Range: Range{
+									From: Position{Index: 67, Line: 2, Col: 8},
+									To:   Position{Index: 78, Line: 2, Col: 19},
+								},
+							},
+							&ConstantAttribute{
+								Value: "b",
+								Key: ConstantAttributeKey{
+									Name: "value",
+									NameRange: Range{
+										From: Position{Index: 79, Line: 2, Col: 20},
+										To:   Position{Index: 84, Line: 2, Col: 25},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 86, Line: 2, Col: 27},
+									To:   Position{Index: 87, Line: 2, Col: 28},
+								},
+								Range: Range{
+									From: Position{Index: 79, Line: 2, Col: 20},
+									To:   Position{Index: 88, Line: 2, Col: 29},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 60, Line: 2, Col: 1}, To: Position{Index: 91, Line: 2, Col: 32}},
+						Range: Range{
+							From: Position{Index: 60, Line: 2, Col: 1},
+							To:   Position{Index: 92, Line: 3, Col: 0},
+						},
+						SelfClosing: true,
+					},
+				},
+			},
+		},
+		{
+			name: "template: doctype",
+			input: `templ Name() {
+<!DOCTYPE html>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 32, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name()",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 12,
+							Line:  0,
+							Col:   12,
+						},
+					},
+				},
+				Children: []Node{
+					&DocType{
+						Range: Range{
+							From: Position{Index: 15, Line: 1, Col: 0},
+							To:   Position{Index: 30, Line: 1, Col: 15},
+						},
+						Value:      "html",
+						OpenRange:  Range{From: Position{Index: 15, Line: 1}, To: Position{Index: 24, Line: 1, Col: 9}},
+						ValueRange: Range{From: Position{Index: 25, Line: 1, Col: 10}, To: Position{Index: 29, Line: 1, Col: 14}},
+						CloseRange: Range{From: Position{Index: 29, Line: 1, Col: 14}, To: Position{Index: 30, Line: 1, Col: 15}},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 30,
+							Line:  1,
+							Col:   15,
+						},
+						To: Position{
+							Index: 31,
+							Line:  2,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: incomplete open tag",
+			input: `templ Name() {
+				        <div
+						{"some string"}
+					</div>
+}`,
+			expected:    &HTMLTemplate{},
+			expectError: true,
+		},
+		{
+			name: "template: can contain inline templ elements",
+			input: `templ x() {
+ <a href="/"> @Icon("home", Inline) Home</a>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 58, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 9,
+							Line:  0,
+							Col:   9,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 12,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 13,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: " "},
+					&Element{
+						Name: "a",
+						NameRange: Range{
+							From: Position{Index: 14, Line: 1, Col: 2},
+							To:   Position{Index: 15, Line: 1, Col: 3},
+						},
+						Attributes: []Attribute{
+							&ConstantAttribute{
+								Value: "/",
+								Key: ConstantAttributeKey{
+									Name: "href",
+									NameRange: Range{
+										From: Position{Index: 16, Line: 1, Col: 4},
+										To:   Position{Index: 20, Line: 1, Col: 8},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 22, Line: 1, Col: 10},
+									To:   Position{Index: 23, Line: 1, Col: 11},
+								},
+								Range: Range{
+									From: Position{Index: 16, Line: 1, Col: 4},
+									To:   Position{Index: 24, Line: 1, Col: 12},
+								},
+							},
+						},
+						Children: []Node{
+							&Whitespace{Range: Range{
+								From: Position{
+									Index: 25,
+									Line:  1,
+									Col:   13,
+								},
+								To: Position{
+									Index: 26,
+									Line:  1,
+									Col:   14,
+								},
+							},
+								Value: " "},
+							&TemplElementExpression{
+								Expression: Expression{
+									Value: `Icon("home", Inline)`,
+									Range: Range{
+										From: Position{
+											Index: 27,
+											Line:  1,
+											Col:   15,
+										},
+										To: Position{
+											Index: 47,
+											Line:  1,
+											Col:   35,
+										},
+									},
+								},
+								TrailingSpace: " ",
+								Range: Range{
+									From: Position{Index: 26, Line: 1, Col: 14},
+									To:   Position{Index: 47, Line: 1, Col: 35},
+								},
+							},
+							&Text{
+								Value: "Home",
+								Range: Range{
+									From: Position{Index: 48, Line: 1, Col: 36},
+									To:   Position{Index: 52, Line: 1, Col: 40},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 13, Line: 1, Col: 1}, To: Position{Index: 25, Line: 1, Col: 13}},
+						CloseTagRange: &Range{From: Position{Index: 52, Line: 1, Col: 40}, To: Position{Index: 56, Line: 1, Col: 44}},
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 57, Line: 2, Col: 0},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: inline templ element expression after text",
+			input: `templ x() {
+	<div>Left: @left()</div>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 39, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 9, Line: 0, Col: 9},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{Index: 12, Line: 1, Col: 0},
+						To:   Position{Index: 13, Line: 1, Col: 1},
+					},
+						Value: "\t"},
+					&Element{
+						Name: "div",
+						NameRange: Range{
+							From: Position{Index: 14, Line: 1, Col: 2},
+							To:   Position{Index: 17, Line: 1, Col: 5},
+						},
+						Children: []Node{
+							&Text{
+								Value: "Left:",
+								Range: Range{
+									From: Position{Index: 18, Line: 1, Col: 6},
+									To:   Position{Index: 23, Line: 1, Col: 11},
+								},
+								TrailingSpace: " ",
+							},
+							&TemplElementExpression{
+								Expression: Expression{
+									Value: "left()",
+									Range: Range{
+										From: Position{Index: 25, Line: 1, Col: 13},
+										To:   Position{Index: 31, Line: 1, Col: 19},
+									},
+								},
+								Range: Range{
+									From: Position{Index: 24, Line: 1, Col: 12},
+									To:   Position{Index: 31, Line: 1, Col: 19},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 18, Line: 1, Col: 6},
+						},
+						CloseTagRange: &Range{
+							From: Position{Index: 31, Line: 1, Col: 19},
+							To:   Position{Index: 37, Line: 1, Col: 25},
+						},
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 38, Line: 2, Col: 0},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: can contain single line comments",
+			input: `templ x() {
+	// Comment
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 25, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 9, Line: 0, Col: 9},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 12,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 13,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&GoComment{
+						Contents:  " Comment",
+						Multiline: false,
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 23, Line: 1, Col: 11},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 23,
+							Line:  1,
+							Col:   11,
+						},
+						To: Position{
+							Index: 24,
+							Line:  2,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: can contain block comments on the same line",
+			input: `templ x() {
+	/* Comment */
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 28, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 9, Line: 0, Col: 9},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 12,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 13,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&GoComment{
+						Contents:  " Comment ",
+						Multiline: true,
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 26, Line: 1, Col: 14},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 26,
+							Line:  1,
+							Col:   14,
+						},
+						To: Position{
+							Index: 27,
+							Line:  2,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: can contain block comments on multiple lines",
+			input: `templ x() {
+	/* Line 1
+		 Line 2
+	*/
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 38, Line: 4, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 9, Line: 0, Col: 9},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 12,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 13,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&GoComment{
+						Contents:  " Line 1\n\t\t Line 2\n\t",
+						Multiline: true,
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 36, Line: 3, Col: 3},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 36,
+							Line:  3,
+							Col:   3,
+						},
+						To: Position{
+							Index: 37,
+							Line:  4,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: can contain HTML comments",
+			input: `templ x() {
+	<!-- Single line -->
+	<!--
+		Multiline
+	-->
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 58, Line: 5, Col: 1},
+				},
+				Expression: Expression{
+					Value: "x()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 9, Line: 0, Col: 9},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 12,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 13,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&HTMLComment{
+						Contents: " Single line ",
+						Range: Range{
+							From: Position{Index: 13, Line: 1, Col: 1},
+							To:   Position{Index: 33, Line: 1, Col: 21},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 33,
+							Line:  1,
+							Col:   21,
+						},
+						To: Position{
+							Index: 35,
+							Line:  2,
+							Col:   1,
+						},
+					},
+						Value: "\n\t"},
+					&HTMLComment{
+						Contents: "\n\t\tMultiline\n\t",
+						Range: Range{
+							From: Position{Index: 35, Line: 2, Col: 1},
+							To:   Position{Index: 56, Line: 4, Col: 4},
+						},
+					},
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 56,
+							Line:  4,
+							Col:   4,
+						},
+						To: Position{
+							Index: 57,
+							Line:  5,
+							Col:   0,
+						},
+					},
+						Value: "\n"},
+				},
+			},
+		},
+		{
+			name: "template: containing spread attributes and children expression",
+			input: `templ Name(children ghtmx.Attributes) {
+		<span { children... }>
+			{ children... }
+		</span>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 95, Line: 4, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name(children ghtmx.Attributes)",
+					Range: Range{
+						From: Position{
+							Index: 6,
+							Line:  0,
+							Col:   6,
+						},
+						To: Position{
+							Index: 37,
+							Line:  0,
+							Col:   37,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 40,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 42,
+							Line:  1,
+							Col:   2,
+						},
+					},
+						Value: "\t\t"},
+					&Element{
+						Name: "span",
+						NameRange: Range{
+							From: Position{Index: 43, Line: 1, Col: 3},
+							To:   Position{Index: 47, Line: 1, Col: 7},
+						},
+						Attributes: []Attribute{&SpreadAttributes{
+							Expression: Expression{
+								Value: "children",
+								Range: Range{
+									From: Position{
+										Index: 50,
+										Line:  1,
+										Col:   10,
+									},
+									To: Position{
+										Index: 58,
+										Line:  1,
+										Col:   18,
+									},
+								},
+							},
+							Range: Range{
+								From: Position{Index: 48, Line: 1, Col: 8},
+								To:   Position{Index: 63, Line: 1, Col: 23},
+							},
+						}},
+						Children: []Node{
+							&Whitespace{Range: Range{
+								From: Position{
+									Index: 64,
+									Line:  1,
+									Col:   24,
+								},
+								To: Position{
+									Index: 68,
+									Line:  2,
+									Col:   3,
+								},
+							},
+								Value: "\n\t\t\t"},
+							&ChildrenExpression{
+								Range: Range{
+									From: Position{Index: 68, Line: 2, Col: 3},
+									To:   Position{Index: 83, Line: 2, Col: 18},
+								},
+							},
+							&Whitespace{Range: Range{
+								From: Position{
+									Index: 83,
+									Line:  2,
+									Col:   18,
+								},
+								To: Position{
+									Index: 86,
+									Line:  3,
+									Col:   2,
+								},
+							},
+								Value: "\n\t\t"},
+						},
+						IndentChildren: true,
+						TrailingSpace:  SpaceVertical,
+						OpenTagRange:   Range{From: Position{Index: 42, Line: 1, Col: 2}, To: Position{Index: 64, Line: 1, Col: 24}},
+						CloseTagRange:  &Range{From: Position{Index: 86, Line: 3, Col: 2}, To: Position{Index: 93, Line: 3, Col: 9}},
+						Range: Range{
+							From: Position{Index: 42, Line: 1, Col: 2},
+							To:   Position{Index: 94, Line: 4, Col: 0},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "template: void element closers are ignored",
+			input: `templ Name() {
+	<br></br><br>
+}`,
+			expected: &HTMLTemplate{
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 31, Line: 2, Col: 1},
+				},
+				Expression: Expression{
+					Value: "Name()",
+					Range: Range{
+						From: Position{Index: 6, Line: 0, Col: 6},
+						To:   Position{Index: 12, Line: 0, Col: 12},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 15,
+							Line:  1,
+							Col:   0,
+						},
+						To: Position{
+							Index: 16,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\t"},
+					&Element{
+						Name: "br",
+						NameRange: Range{
+							From: Position{Index: 17, Line: 1, Col: 2},
+							To:   Position{Index: 19, Line: 1, Col: 4},
+						},
+						TrailingSpace: SpaceNone,
+						OpenTagRange:  Range{From: Position{Index: 16, Line: 1, Col: 1}, To: Position{Index: 20, Line: 1, Col: 5}},
+						Range: Range{
+							From: Position{Index: 16, Line: 1, Col: 1},
+							To:   Position{Index: 25, Line: 1, Col: 10},
+						},
+					},
+					&Element{
+						Name: "br",
+						NameRange: Range{
+							From: Position{Index: 26, Line: 1, Col: 11},
+							To:   Position{Index: 28, Line: 1, Col: 13},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 25, Line: 1, Col: 10}, To: Position{Index: 29, Line: 1, Col: 14}},
+						Range: Range{
+							From: Position{Index: 25, Line: 1, Col: 10},
+							To:   Position{Index: 30, Line: 2, Col: 0},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			input := parse.NewInput(tt.input)
+			actual, matched, err := template.Parse(input)
+			diff := cmp.Diff(tt.expected, actual)
+			switch {
+			case tt.expectError && err == nil:
+				t.Errorf("expected an error got nil: %+v", actual)
+			case !tt.expectError && err != nil:
+				t.Errorf("unexpected error: %v", err)
+			case !tt.expectError && diff != "":
+				t.Error(diff)
+			}
+			if !matched {
+				t.Error("expected match, but got no match")
+			}
+		})
+	}
+}
+
+func TestTemplateParserErrors(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "template: containing element",
+			input: `templ Name(p Parameter) {
+<span
+}`,
+			expected: "<span>: malformed open element: line 3, col 0",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			input := parse.NewInput(tt.input)
+			_, matched, err := template.Parse(input)
+			if err == nil {
+				t.Fatalf("expected error %q, got nil", tt.expected)
+			}
+			if !matched {
+				t.Error("expected match, because there is a partial template")
+			}
+			if diff := cmp.Diff(tt.expected, err.Error()); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}

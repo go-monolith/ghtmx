@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # The supported Go version range: oldest supported to current.
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ["1.25", "1.26"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      # Pinned so a gopls release cannot break the suite independent of
+      # the code under test.
+      - name: Install gopls (required by LSP tests)
+        run: go install golang.org/x/tools/gopls@v0.23.0
+        shell: bash
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./... -timeout 10m
+        shell: bash
+      # Framework adapters live in nested modules so their dependencies
+      # never enter the core go.mod; the root test run cannot see them.
+      - name: Adapter module tests
+        run: |
+          for mod in adapters/*/go.mod; do
+            dir=$(dirname "$mod")
+            echo "== $dir"
+            (cd "$dir" && go build ./... && go vet ./... && go test ./...)
+          done
+        shell: bash
+
+  # NFR-001 and NFR-003: a dedicated job so the performance gates cannot
+  # silently vanish when the test matrix advances. ubuntu-latest is the
+  # reference machine; the tests warm their caches before timing.
+  perf-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Pinned to the toolchain the NFR-002 baseline was recorded
+          # with: compiler releases shift allocs/op, so the exact-allocs
+          # gate and this version bump together in a baseline-revision
+          # commit (see benchmarks/corpus/BASELINE.md).
+          go-version: "1.26"
+      - name: Regeneration budget (NFR-001)
+        run: GHTMX_PERF_GATE=1 go test ./cmd/ghtmx/generatecmd/ -run TestRegenerationBudget -count=1 -v
+      - name: Render regression gate (NFR-002)
+        run: GHTMX_PERF_GATE=1 go test ./benchmarks/corpus/ -run TestRenderRegressionGate -count=1 -v -timeout 20m
+      - name: Install gopls (required by the LSP latency gate)
+        run: go install golang.org/x/tools/gopls@v0.23.0
+      - name: LSP latency budget (NFR-003)
+        run: GHTMX_PERF_GATE=1 go test ./cmd/ghtmx/lspcmd/ -run TestLSPLatencyGate -count=1 -v
+
+  # NFR-008: govulncheck over every module on every build; a known,
+  # reachable vulnerability fails the job — blocking release — unless
+  # explicitly accepted with rationale in internal/vulncheck/accepted.json.
+  # Unlike the pinned tools, govulncheck deliberately floats @latest: a
+  # security scanner's freshness is its value, and the vulnerability
+  # database is fetched live either way.
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # The oldest supported Go: stdlib findings fixed in newer
+          # releases but affecting this line must still surface.
+          go-version: "1.25"
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck release gate (NFR-008)
+        run: GHTMX_VULN_GATE=1 go test ./internal/vulncheck/ -count=1 -v -timeout 20m
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      # NFR-012: also part of the regular test run on every build; the
+      # named step keeps the gate visible and impossible to lose.
+      - name: Runtime import isolation (NFR-012)
+        run: go test ./internal/importcheck/ -count=1 -v
+      # NFR-007: same pattern — the rendering conformance suite runs in
+      # the test matrix and stays visible here.
+      - name: Rendering conformance (NFR-007)
+        run: go test ./conformance/ -count=1 -v
+      # NFR-005 / D11: generate-time validation is self-contained (the
+      # compiler refuses to write invalid output) but cannot type-check
+      # against the surrounding package; this CI-phase gate compiles and
+      # vets the golden corpus and every fixture application where the
+      # package context is complete.
+      - name: Corpus and fixture compile+vet gate (NFR-005)
+        run: go test ./internal/corpusgate/ -count=1 -v
+      # NFR-013: SYNTAX.md is the language source of truth; the check
+      # binds it to the corpus and parser in both directions.
+      - name: Syntax specification coverage (NFR-013)
+        run: go test ./internal/syntaxcheck/ -count=1 -v
+      # FR-045/FR-071: the diagnostic catalogue and configuration
+      # reference are derived from the in-repo sources and cannot drift.
+      - name: Diagnostic and config catalogue coverage (FR-045/FR-071)
+        run: go test ./internal/catalogcheck/ -count=1 -v
+      # The documentation site builds on every CI run (publishing
+      # happens in docs.yml on release); the test also compiles and
+      # renders the getting-started guide's own code.
+      - name: Documentation site build (NFR-013/NFR-014)
+        run: go test ./internal/docsite/ -count=1 -v
+      # NFR-010: the changelog discipline, named and visible. The full
+      # install-path checks run in the 3-OS test matrix; -short here
+      # skips duplicating them on ubuntu.
+      - name: Installation paths and changelog discipline (NFR-010)
+        run: go test ./internal/installcheck/ -count=1 -v -short
+      # NFR-014: the fixture app (runtime + generated components + chi
+      # adapter) and every included adapter compile for js/wasm and
+      # wasip1/wasm; exclusions live in the matrix with their upstream
+      # reason. A failure blocks release.
+      - name: WASM build matrix (NFR-014)
+        run: go test ./internal/wasmcheck/ -count=1 -v -timeout 20m
+
+  ensure-generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Regenerate corpus
+        # -cache=false: the determinism check must exercise real
+        # generation, never cached output.
+        run: go run ./cmd/ghtmx generate -include-version=false -cache=false
+      - name: Ensure no drift
+        run: |
+          git diff --exit-code
+          untracked=$(git status --porcelain)
+          if [ -n "$untracked" ]; then
+            echo "generate produced untracked changes:"
+            echo "$untracked"
+            exit 1
+          fi
+
+  fuzz:
+    # Bounded fuzz budget on every build (NFR-006); longer campaigns run
+    # on demand via internal/parser/fuzz.sh and goexpression/fuzz.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Fuzz parser targets
+        run: |
+          for target in FuzzParseString FuzzElement FuzzScriptParser FuzzExtractFuncDeclSignature; do
+            go test ./internal/parser -run '^$' -fuzz "^${target}$" -fuzztime 20s
+          done
+      - name: Fuzz goexpression targets
+        run: |
+          for target in FuzzIf FuzzFor FuzzSwitch FuzzCaseStandard FuzzCaseDefault FuzzTemplExpression FuzzExpression FuzzSliceArgs FuzzFuncs; do
+            go test ./internal/parser/goexpression -run '^$' -fuzz "^${target}$" -fuzztime 10s
+          done
+

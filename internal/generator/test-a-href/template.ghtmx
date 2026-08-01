@@ -1,0 +1,7 @@
+package testahref
+
+templ render() {
+	<a href="javascript:alert('unaffected');">Ignored</a>
+	<a href={ ghtmx.URL("javascript:alert('should be sanitized')") }>Sanitized</a>
+	<a href={ ghtmx.SafeURL("javascript:alert('should not be sanitized')") }>Unsanitized</a>
+}

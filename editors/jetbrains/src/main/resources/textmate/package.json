@@ -1,0 +1,19 @@
+{
+  "name": "ghtmx",
+  "version": "0.1.0",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ghtmx",
+        "extensions": [".ghtmx"]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ghtmx",
+        "scopeName": "source.ghtmx",
+        "path": "./ghtmx.tmLanguage.json"
+      }
+    ]
+  }
+}

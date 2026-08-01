@@ -1,2 +1,55 @@
 # ghtmx
-A template engine for writing htmx (HTML) web application in Go
+
+A compiled Go template engine where htmx is a first-class,
+compile-checked language concept — a hard fork of
+[templ](https://github.com/a-h/templ) (see `TEMPL_SYNTAX_BASELINE.md`
+and `NOTICE`) that adds route-aware bindings, compile-time fragments,
+and a server-driven event contract, with a stdlib-only runtime.
+
+- `hx-post={ handlers.CreateUser }` resolves against your actual Go
+  routes at build time; renaming a route breaks the build at every
+  binding site.
+- `fragment` blocks compile to byte-identical inline and standalone
+  entry points for htmx partial updates.
+- `event` declarations generate the only symbols that can emit
+  `HX-Trigger`, with typed payloads.
+
+Documentation: `SYNTAX.md` (the language), `DIAGNOSTICS.md` (every
+diagnostic), `CONFIG.md` (settings and flags), `docs/site/` (the
+published site, including getting started).
+
+## Install
+
+Two supported paths, verified on Linux, macOS, and Windows by
+`internal/installcheck` on every CI run:
+
+**With the Go toolchain:**
+
+```sh
+go install github.com/go-monolith/ghtmx/cmd/ghtmx@latest
+go install golang.org/x/tools/gopls@latest   # embedded-Go support in the LSP
+```
+
+**From a release archive:** download the archive for your platform
+from the GitHub release, verify it against `checksums.txt`, and put
+the binary on your PATH:
+
+```sh
+sha256sum --check --ignore-missing checksums.txt    # macOS: shasum -a 256 --check
+tar -xzf ghtmx_<version>_linux_amd64.tar.gz ghtmx   # .zip on Windows (verify with Get-FileHash)
+```
+
+Both paths yield the same single-version binary: `ghtmx version`
+prints the release tag.
+
+## Stability (pre-1.0)
+
+ghtmx is pre-1.0: breaking changes to language syntax, generated-code
+shape, and the runtime API may land between minor versions. Every
+breaking change carries a `CHANGELOG.md` entry with a migration note —
+that discipline is enforced by a build gate. Pin a version and read
+the changelog before upgrading.
+
+## License
+
+Apache-2.0. Portions derived from templ (MIT) — see `NOTICE`.

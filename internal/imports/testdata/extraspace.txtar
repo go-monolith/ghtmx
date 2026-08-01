@@ -1,0 +1,15 @@
+-- fmt_templ.ghtmx --
+package test
+
+const x = 123
+
+
+var x = fmt.Sprintf("Hello")
+-- fmt_templ.ghtmx --
+package test
+
+import "fmt"
+
+const x = 123
+
+var x = fmt.Sprintf("Hello")

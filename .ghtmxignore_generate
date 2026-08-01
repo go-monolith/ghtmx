@@ -1,0 +1,5 @@
+# LSP test fixtures: an embedded project with its own routes and events.
+# Generating it from the repo root would bind against the wrong route
+# table (go tooling hides testdata dirs) and collide with the examples'
+# event namespace. Its generated pairs are maintained as fixtures.
+cmd/ghtmx/testproject/testdata

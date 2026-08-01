@@ -1,0 +1,22 @@
+-- fmt.ghtmx --
+package test
+
+import (
+	"strings"
+	"fmt"
+
+	"strconv"
+)
+
+var _, _ = fmt.Print(strings.Contains(strconv.Quote("Hello"), ""))
+-- fmt.ghtmx --
+package test
+
+import (
+	"fmt"
+	"strings"
+
+	"strconv"
+)
+
+var _, _ = fmt.Print(strings.Contains(strconv.Quote("Hello"), ""))
