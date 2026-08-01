@@ -36,6 +36,26 @@ func TestRewriteLinks(t *testing.T) {
 			in:   "See `build-targets.md` too.",
 			want: "See `build-targets.md` too.",
 		},
+		{
+			name: "repo path links to GitHub source",
+			in:   "*Verified by:* `internal/generator/test-html`.",
+			want: "*Verified by:* [`internal/generator/test-html`](https://github.com/go-monolith/ghtmx/tree/main/internal/generator/test-html).",
+		},
+		{
+			name: "trailing slash trimmed from the URL",
+			in:   "See `examples/fragments/` for the demo.",
+			want: "See [`examples/fragments`](https://github.com/go-monolith/ghtmx/tree/main/examples/fragments) for the demo.",
+		},
+		{
+			name: "fenced repo path untouched",
+			in:   "```\ngo test ./internal/generator/test-html\n```",
+			want: "```\ngo test ./internal/generator/test-html\n```",
+		},
+		{
+			name: "already-linked repo path untouched",
+			in:   "[`internal/parser`](https://example.com/x)",
+			want: "[`internal/parser`](https://example.com/x)",
+		},
 	}
 	for _, tc := range cases {
 		if got := string(rewriteLinks([]byte(tc.in))); got != tc.want {

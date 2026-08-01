@@ -385,9 +385,11 @@ func PageHTML(file string) (string, error) {
 }
 
 // rewriteLinks maps repository-document mentions like `SYNTAX.md` to
-// their site routes so cross-references keep working. Fenced code
-// blocks are left untouched: an example quoting a document name must
-// not gain a link.
+// their site routes and backticked repository paths (the spec's
+// "Verified by" anchors and friends) to the sources on GitHub, so a
+// reader can click through to the verifying tests. Fenced code blocks
+// are left untouched: an example quoting a document name must not
+// gain a link.
 func rewriteLinks(source []byte) []byte {
 	segments := strings.Split(string(source), "```")
 	for i := range segments {
@@ -400,8 +402,44 @@ func rewriteLinks(source []byte) []byte {
 			}
 			segments[i] = linkifyMentions(segments[i], d.File, "/docs/"+d.Slug)
 		}
+		segments[i] = linkifyRepoPaths(segments[i])
 	}
 	return []byte(strings.Join(segments, "```"))
+}
+
+// repoTreeURL is where backticked repository paths link to; GitHub
+// redirects tree URLs to blob view for files.
+const repoTreeURL = "https://github.com/go-monolith/ghtmx/tree/main/"
+
+var repoPathPattern = regexp.MustCompile("`((?:internal|examples|conformance|benchmarks|adapters|editors|cmd|runtime|docs)/[A-Za-z0-9_./\\-]*)`")
+
+// linkifyRepoPaths turns backticked repository paths into GitHub
+// source links, leaving mentions that are already link text alone.
+func linkifyRepoPaths(segment string) string {
+	matches := repoPathPattern.FindAllStringSubmatchIndex(segment, -1)
+	if len(matches) == 0 {
+		return segment
+	}
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		start, end := m[0], m[1]
+		path := strings.TrimSuffix(segment[m[2]:m[3]], "/")
+		b.WriteString(segment[last:start])
+		if start > 0 && segment[start-1] == '[' {
+			b.WriteString(segment[start:end])
+		} else {
+			b.WriteString("[`")
+			b.WriteString(path)
+			b.WriteString("`](")
+			b.WriteString(repoTreeURL)
+			b.WriteString(path)
+			b.WriteString(")")
+		}
+		last = end
+	}
+	b.WriteString(segment[last:])
+	return b.String()
 }
 
 // linkifyMentions turns `name` mentions into links to target, leaving
