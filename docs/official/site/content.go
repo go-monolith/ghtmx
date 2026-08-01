@@ -7,14 +7,17 @@ package site
 import (
 	"bytes"
 	"fmt"
+	stdhtml "html"
 	"io/fs"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 
 	"github.com/go-monolith/ghtmx/docs/official/content"
@@ -38,6 +41,162 @@ var Docs = []Doc{
 	{Slug: "conformance", Title: "templ conformance", File: "CONFORMANCE.md"},
 	{Slug: "baseline", Title: "Fork baseline", File: "TEMPL_SYNTAX_BASELINE.md"},
 	{Slug: "changelog", Title: "Changelog", File: "CHANGELOG.md"},
+}
+
+// TOCEntry is one "On this page" link, extracted from a rendered
+// document's h2/h3 headings.
+type TOCEntry struct {
+	Level int // 2 or 3
+	ID    string
+	Text  string
+}
+
+// NavLink is a pager (previous/next) target.
+type NavLink struct {
+	Title string
+	Href  string
+}
+
+// PageView is everything a reference-document page needs: the
+// rendered body, its table of contents, and its pager neighbours.
+type PageView struct {
+	Active string
+	Body   string
+	TOC    []TOCEntry
+	Prev   NavLink
+	Next   NavLink
+}
+
+// NewPageView assembles the view for one document slug.
+func NewPageView(active, body string) PageView {
+	prev, next := pagerFor(active)
+	return PageView{
+		Active: active,
+		Body:   body,
+		TOC:    extractTOC(body),
+		Prev:   prev,
+		Next:   next,
+	}
+}
+
+// headingPattern matches goldmark's heading output, where the
+// auto-generated id is always the first attribute. Accepted limits
+// for repo-owned content: a raw-HTML heading with another leading
+// attribute is skipped, and the close tag is not level-matched (RE2
+// has no backreferences) — well-formed output never mixes levels.
+var headingPattern = regexp.MustCompile(`(?s)<h([23]) id="([^"]+)"[^>]*>(.*?)</h[23]>`)
+var tagPattern = regexp.MustCompile(`<[^>]*>`)
+
+// extractTOC pulls the h2/h3 headings out of rendered HTML. Heading
+// IDs come from goldmark's auto-heading-ID parser option.
+func extractTOC(body string) []TOCEntry {
+	var toc []TOCEntry
+	for _, m := range headingPattern.FindAllStringSubmatch(body, -1) {
+		level := 2
+		if m[1] == "3" {
+			level = 3
+		}
+		text := strings.TrimSpace(stdhtml.UnescapeString(tagPattern.ReplaceAllString(m[3], "")))
+		if text == "" {
+			continue
+		}
+		toc = append(toc, TOCEntry{Level: level, ID: m[2], Text: text})
+	}
+	return toc
+}
+
+// tocClass styles a TOC entry by heading depth.
+func tocClass(level int) string {
+	if level == 3 {
+		return "toc-h3"
+	}
+	return "toc-h2"
+}
+
+// pagerOrder is the reading order the previous/next pager follows —
+// the same top-to-bottom order as the sidebar.
+func pagerOrder() []NavLink {
+	order := []NavLink{
+		{Title: "Introduction", Href: "/"},
+		{Title: "Getting started", Href: "/getting-started"},
+	}
+	for _, d := range append(append([]Doc{}, LanguageDocs...), ProjectDocs...) {
+		order = append(order, NavLink{Title: d.Title, Href: "/docs/" + d.Slug})
+	}
+	return append(order, NavLink{Title: "Examples", Href: "/examples"})
+}
+
+// pagerFor returns the neighbours of a page in reading order. The
+// active key is "home", "examples", or a document slug.
+func pagerFor(active string) (prev, next NavLink) {
+	href := "/docs/" + active
+	switch active {
+	case "home":
+		href = "/"
+	case "getting-started", "examples":
+		href = "/" + active
+	}
+	order := pagerOrder()
+	for i, link := range order {
+		if link.Href != href {
+			continue
+		}
+		if i > 0 {
+			prev = order[i-1]
+		}
+		if i < len(order)-1 {
+			next = order[i+1]
+		}
+		return prev, next
+	}
+	return NavLink{}, NavLink{}
+}
+
+// Sidebar groups: the Language and Project categories partition Docs
+// for display, and the pager follows the grouped order. Docs remains
+// the routing table; TestDocGroupsPartitionDocs keeps the partition
+// complete.
+func docsBySlug(slugs ...string) []Doc {
+	var out []Doc
+	for _, slug := range slugs {
+		if d, ok := DocBySlug(slug); ok {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+var (
+	LanguageDocs = docsBySlug("syntax", "diagnostics", "config")
+	ProjectDocs  = docsBySlug("overview", "build-targets", "conformance", "baseline", "changelog")
+)
+
+// heroCode is the landing-page sample: the hello-world example's
+// template, close to templ syntax but with a bound route.
+const heroCode = `package main
+
+templ page(name string) {
+	<!DOCTYPE html>
+	<html>
+		<head>@ghtmxgen.HTMXScript()</head>
+		<body>
+			<h1>Hello, { name }</h1>
+			<button hx-get={ home } hx-target="body">reload</button>
+		</body>
+	</html>
+}`
+
+// sourceLanguage picks the client-side highlighter grammar class for
+// a displayed source file (.ghtmx maps to Go in the layout script).
+func sourceLanguage(name string) string {
+	switch {
+	case strings.HasSuffix(name, ".ghtmx"):
+		return "language-ghtmx"
+	case strings.HasSuffix(name, ".go"):
+		return "language-go"
+	default:
+		return "language-plaintext"
+	}
 }
 
 // navClass builds a sidebar link's class list.
@@ -96,6 +255,7 @@ type SourceFile struct {
 
 var markdown = goldmark.New(
 	goldmark.WithExtensions(extension.GFM),
+	goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 	goldmark.WithRendererOptions(html.WithUnsafe()),
 )
 
@@ -170,9 +330,9 @@ func linkifyMentions(segment, name, target string) string {
 			b.WriteString(segment[:i+len(needle)])
 		} else {
 			b.WriteString(segment[:i])
-			b.WriteString("[")
+			b.WriteString("[`")
 			b.WriteString(name)
-			b.WriteString("](")
+			b.WriteString("`](")
 			b.WriteString(target)
 			b.WriteString(")")
 		}

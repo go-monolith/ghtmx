@@ -12,10 +12,13 @@ import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
 // The site's own event contract: every reference-document view is
 // announced through a generated HX-Trigger emitter, and the footer
 // listens for it — the same pattern examples/events demonstrates.
-// shell is the page chrome: the htmx script from the pinned helper,
-// the sidebar bound to real routes (symbol bindings for zero-param
-// routes, ghtmxgen constructors for parameterised ones), and the
-// content region every fragment swaps into.
+// shell is the page chrome, styled after templ.guide (Docusaurus):
+// a sticky top navbar, a grouped sidebar bound to real routes (symbol
+// bindings for zero-param routes, ghtmxgen constructors for
+// parameterised ones), and the content region every fragment swaps
+// into. Code blocks highlight client-side (highlight.js from a
+// pinned, SRI-checked CDN asset — same policy as the htmx tag), so
+// the wasm binary carries no highlighter.
 func shell(active string) ghtmx.Component {
 	return ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 		ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
@@ -45,46 +48,50 @@ func shell(active string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { color-scheme: light dark; }\n\t\t\t\tbody { font-family: system-ui, sans-serif; margin: 0; display: flex; min-height: 100vh; }\n\t\t\t\tnav { min-width: 14rem; padding: 1.5rem 1rem; border-right: 1px solid #8884; }\n\t\t\t\tnav a { display: block; padding: .3rem .5rem; text-decoration: none; color: inherit; border-radius: .3rem; }\n\t\t\t\tnav a.active, nav a:hover { background: #8882; }\n\t\t\t\tnav a.brand { font-weight: 700; margin-bottom: 1rem; }\n\t\t\t\tmain { padding: 2rem 3rem; max-width: 52rem; overflow-x: auto; flex: 1; }\n\t\t\t\tpre { padding: 1rem; background: #8881; overflow-x: auto; border-radius: .4rem; }\n\t\t\t\tcode { font-family: ui-monospace, monospace; }\n\t\t\t\ttable { border-collapse: collapse; }\n\t\t\t\ttd, th { border: 1px solid #8884; padding: .4rem .6rem; text-align: left; vertical-align: top; }\n\t\t\t\th1, h2 { border-bottom: 1px solid #8884; padding-bottom: .3rem; }\n\t\t\t\tfooter { position: fixed; bottom: 0; right: 0; padding: .3rem .8rem; font-size: .8rem; opacity: .6; }\n\t\t\t\t.hero a { display: inline-block; margin-right: 1rem; padding: .5rem 1rem; border: 1px solid #8884; border-radius: .4rem; text-decoration: none; color: inherit; }\n\t\t\t\t.example-card { margin-bottom: 1.5rem; }\n\t\t\t</style></head><body hx-on:doc-viewed=\"document.getElementById('last-viewed').textContent = event.detail.slug\"><nav>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<script src=\"https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js\" integrity=\"sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU\" crossorigin=\"anonymous\" defer></script><script>\n\t\t\t\t(function () {\n\t\t\t\t\tvar theme = null;\n\t\t\t\t\ttry {\n\t\t\t\t\t\ttheme = localStorage.getItem(\"theme\");\n\t\t\t\t\t} catch (e) {}\n\t\t\t\t\tif (!theme) {\n\t\t\t\t\t\ttheme = window.matchMedia(\"(prefers-color-scheme: dark)\").matches ? \"dark\" : \"light\";\n\t\t\t\t\t}\n\t\t\t\t\tdocument.documentElement.dataset.theme = theme;\n\t\t\t\t})();\n\t\t\t</script><style>\n\t\t\t\t:root {\n\t\t\t\t\t--primary: #008391;\n\t\t\t\t\t--primary-hover: #006974;\n\t\t\t\t\t--primary-contrast-bg: #e6f6f8;\n\t\t\t\t\t--bg: #ffffff;\n\t\t\t\t\t--bg-surface: #ffffff;\n\t\t\t\t\t--text: #1c1e21;\n\t\t\t\t\t--text-secondary: #525860;\n\t\t\t\t\t--border: #dadde1;\n\t\t\t\t\t--code-bg: #f6f7f8;\n\t\t\t\t\t--inline-code-bg: rgba(0, 0, 0, 0.06);\n\t\t\t\t\t--navbar-bg: rgba(255, 255, 255, 0.92);\n\t\t\t\t\t--shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);\n\t\t\t\t\t--c-comment: #6a737d;\n\t\t\t\t\t--c-keyword: #d73a49;\n\t\t\t\t\t--c-string: #032f62;\n\t\t\t\t\t--c-number: #005cc5;\n\t\t\t\t\t--c-func: #6f42c1;\n\t\t\t\t\t--c-type: #22863a;\n\t\t\t\t\t--c-attr: #005cc5;\n\t\t\t\t\tcolor-scheme: light;\n\t\t\t\t}\n\t\t\t\t[data-theme=\"dark\"] {\n\t\t\t\t\t--primary: #dbbc30;\n\t\t\t\t\t--primary-hover: #e7c946;\n\t\t\t\t\t--primary-contrast-bg: rgba(219, 188, 48, 0.12);\n\t\t\t\t\t--bg: #1b1b1d;\n\t\t\t\t\t--bg-surface: #242526;\n\t\t\t\t\t--text: #e3e3e3;\n\t\t\t\t\t--text-secondary: #a5adba;\n\t\t\t\t\t--border: #444950;\n\t\t\t\t\t--code-bg: #282a2e;\n\t\t\t\t\t--inline-code-bg: rgba(255, 255, 255, 0.1);\n\t\t\t\t\t--navbar-bg: rgba(36, 37, 38, 0.92);\n\t\t\t\t\t--shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);\n\t\t\t\t\t--c-comment: #8b949e;\n\t\t\t\t\t--c-keyword: #ff7b72;\n\t\t\t\t\t--c-string: #a5d6ff;\n\t\t\t\t\t--c-number: #79c0fd;\n\t\t\t\t\t--c-func: #d2a8ff;\n\t\t\t\t\t--c-type: #7ee787;\n\t\t\t\t\t--c-attr: #79c0ff;\n\t\t\t\t\tcolor-scheme: dark;\n\t\t\t\t}\n\t\t\t\t* { box-sizing: border-box; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Noto Sans\", sans-serif;\n\t\t\t\t\tmargin: 0;\n\t\t\t\t\tbackground: var(--bg);\n\t\t\t\t\tcolor: var(--text);\n\t\t\t\t\tline-height: 1.65;\n\t\t\t\t}\n\t\t\t\ta { color: var(--primary); text-decoration: none; }\n\t\t\t\ta:hover { text-decoration: underline; }\n\n\t\t\t\t.navbar {\n\t\t\t\t\tposition: sticky; top: 0; z-index: 20;\n\t\t\t\t\tdisplay: flex; align-items: center; justify-content: space-between;\n\t\t\t\t\theight: 3.75rem; padding: 0 1.25rem;\n\t\t\t\t\tbackground: var(--navbar-bg);\n\t\t\t\t\tbackdrop-filter: blur(8px);\n\t\t\t\t\tbox-shadow: var(--shadow);\n\t\t\t\t}\n\t\t\t\t.navbar-brand { font-weight: 700; font-size: 1.15rem; color: var(--text); }\n\t\t\t\t.navbar-brand:hover { text-decoration: none; color: var(--primary); }\n\t\t\t\t.navbar-links { display: flex; align-items: center; gap: 1rem; }\n\t\t\t\t.navbar-links a { color: var(--text); font-size: .95rem; }\n\t\t\t\t.navbar-links a:hover { color: var(--primary); text-decoration: none; }\n\t\t\t\t.theme-toggle {\n\t\t\t\t\tborder: 1px solid var(--border); border-radius: .5rem;\n\t\t\t\t\tbackground: none; color: var(--text);\n\t\t\t\t\twidth: 2.1rem; height: 2.1rem; cursor: pointer; font-size: 1rem;\n\t\t\t\t}\n\t\t\t\t.theme-toggle::after { content: \"🌙\"; }\n\t\t\t\t[data-theme=\"dark\"] .theme-toggle::after { content: \"☀️\"; }\n\n\t\t\t\t.page { display: flex; max-width: 87.5rem; margin: 0 auto; align-items: flex-start; }\n\t\t\t\t.sidebar {\n\t\t\t\t\twidth: 17.5rem; flex-shrink: 0;\n\t\t\t\t\tposition: sticky; top: 3.75rem;\n\t\t\t\t\tmax-height: calc(100vh - 3.75rem); overflow-y: auto;\n\t\t\t\t\tpadding: 1.25rem 1rem 2rem;\n\t\t\t\t\tborder-right: 1px solid var(--border);\n\t\t\t\t}\n\t\t\t\t.sidebar-label {\n\t\t\t\t\tfont-size: .78rem; font-weight: 700; text-transform: uppercase;\n\t\t\t\t\tletter-spacing: .04em; color: var(--text-secondary);\n\t\t\t\t\tmargin: 1.1rem 0 .3rem; padding: 0 .5rem;\n\t\t\t\t}\n\t\t\t\t.sidebar-group:first-child .sidebar-label { margin-top: 0; }\n\t\t\t\t.sidebar a {\n\t\t\t\t\tdisplay: block; padding: .32rem .5rem; border-radius: .4rem;\n\t\t\t\t\tcolor: var(--text-secondary); font-size: .92rem;\n\t\t\t\t}\n\t\t\t\t.sidebar a:hover { background: var(--inline-code-bg); color: var(--text); text-decoration: none; }\n\t\t\t\t.sidebar a.active { color: var(--primary); background: var(--primary-contrast-bg); font-weight: 600; }\n\n\t\t\t\tmain#content { flex: 1; min-width: 0; padding: 2rem 2.5rem 4rem; }\n\t\t\t\t.doc-row { display: flex; gap: 2.5rem; align-items: flex-start; }\n\t\t\t\t.doc-article { flex: 1; min-width: 0; max-width: 47.5rem; }\n\t\t\t\t.toc {\n\t\t\t\t\twidth: 14rem; flex-shrink: 0;\n\t\t\t\t\tposition: sticky; top: 5rem;\n\t\t\t\t\tmax-height: calc(100vh - 6rem); overflow-y: auto;\n\t\t\t\t\tfont-size: .82rem;\n\t\t\t\t\tborder-left: 1px solid var(--border);\n\t\t\t\t\tpadding-left: .9rem;\n\t\t\t\t}\n\t\t\t\t.toc-title { font-weight: 700; margin-bottom: .4rem; color: var(--text); }\n\t\t\t\t.toc ul { list-style: none; margin: 0; padding: 0; }\n\t\t\t\t.toc li { margin: .28rem 0; }\n\t\t\t\t.toc a { color: var(--text-secondary); display: block; }\n\t\t\t\t.toc a:hover { color: var(--primary); text-decoration: none; }\n\t\t\t\t.toc-h3 { padding-left: .9rem; }\n\n\t\t\t\th1 { font-size: 2rem; line-height: 1.25; margin-top: 0; }\n\t\t\t\th2 { margin-top: 2.2rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }\n\t\t\t\th1, h2, h3, h4 { scroll-margin-top: 4.75rem; }\n\t\t\t\thr { border: none; border-top: 1px solid var(--border); }\n\t\t\t\tblockquote {\n\t\t\t\t\tmargin: 1rem 0; padding: .6rem 1rem;\n\t\t\t\t\tborder-left: .3rem solid var(--primary);\n\t\t\t\t\tbackground: var(--primary-contrast-bg);\n\t\t\t\t\tborder-radius: 0 .4rem .4rem 0;\n\t\t\t\t}\n\t\t\t\tblockquote p { margin: .2rem 0; }\n\t\t\t\tcode {\n\t\t\t\t\tfont-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n\t\t\t\t\tfont-size: .875em;\n\t\t\t\t\tbackground: var(--inline-code-bg);\n\t\t\t\t\tborder-radius: .25rem; padding: .1em .3em;\n\t\t\t\t}\n\t\t\t\tpre {\n\t\t\t\t\tbackground: var(--code-bg);\n\t\t\t\t\tborder-radius: .5rem;\n\t\t\t\t\tpadding: 1rem 1.2rem;\n\t\t\t\t\toverflow-x: auto;\n\t\t\t\t\tbox-shadow: var(--shadow);\n\t\t\t\t\tline-height: 1.5;\n\t\t\t\t}\n\t\t\t\tpre code { background: none; padding: 0; font-size: .85rem; }\n\t\t\t\ttable { border-collapse: collapse; display: block; overflow-x: auto; }\n\t\t\t\ttd, th { border: 1px solid var(--border); padding: .45rem .7rem; text-align: left; vertical-align: top; }\n\t\t\t\tth { background: var(--code-bg); }\n\n\t\t\t\t.hljs-comment, .hljs-quote { color: var(--c-comment); font-style: italic; }\n\t\t\t\t.hljs-keyword, .hljs-literal, .hljs-selector-tag { color: var(--c-keyword); }\n\t\t\t\t.hljs-string, .hljs-regexp { color: var(--c-string); }\n\t\t\t\t.hljs-number, .hljs-symbol, .hljs-meta { color: var(--c-number); }\n\t\t\t\t.hljs-title, .hljs-title.function_, .hljs-section { color: var(--c-func); }\n\t\t\t\t.hljs-type, .hljs-built_in, .hljs-title.class_ { color: var(--c-type); }\n\t\t\t\t.hljs-attr, .hljs-attribute, .hljs-name, .hljs-tag { color: var(--c-attr); }\n\n\t\t\t\t.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem; }\n\t\t\t\t.pager-link {\n\t\t\t\t\tflex: 1; border: 1px solid var(--border); border-radius: .5rem;\n\t\t\t\t\tpadding: .7rem 1rem; line-height: 1.4;\n\t\t\t\t}\n\t\t\t\t.pager-link:hover { border-color: var(--primary); text-decoration: none; }\n\t\t\t\t.pager-next { text-align: right; }\n\t\t\t\t.pager-dir { display: block; font-size: .78rem; color: var(--text-secondary); }\n\t\t\t\t.pager-title { font-weight: 600; }\n\n\t\t\t\t.hero { padding: 1.5rem 0 .5rem; }\n\t\t\t\t.hero-title { font-size: 2.6rem; margin: 0 0 .4rem; }\n\t\t\t\t.hero-accent { color: var(--primary); }\n\t\t\t\t.hero-tagline { font-size: 1.15rem; color: var(--text-secondary); max-width: 40rem; margin: 0 0 1.4rem; }\n\t\t\t\t.hero-actions { display: flex; gap: .8rem; flex-wrap: wrap; }\n\t\t\t\t.btn {\n\t\t\t\t\tdisplay: inline-block; padding: .55rem 1.3rem; border-radius: .5rem;\n\t\t\t\t\tborder: 1px solid var(--border); color: var(--text); font-weight: 600;\n\t\t\t\t}\n\t\t\t\t.btn:hover { border-color: var(--primary); text-decoration: none; }\n\t\t\t\t.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }\n\t\t\t\t[data-theme=\"dark\"] .btn-primary { color: #1b1b1d; }\n\t\t\t\t.btn-primary:hover { background: var(--primary-hover); }\n\t\t\t\t.features {\n\t\t\t\t\tdisplay: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));\n\t\t\t\t\tgap: 1rem; margin: 2rem 0;\n\t\t\t\t}\n\t\t\t\t.feature {\n\t\t\t\t\tborder: 1px solid var(--border); border-radius: .6rem;\n\t\t\t\t\tpadding: 1rem 1.2rem; background: var(--bg-surface);\n\t\t\t\t\tbox-shadow: var(--shadow);\n\t\t\t\t}\n\t\t\t\t.feature h3 { margin: 0 0 .4rem; font-size: 1.02rem; }\n\t\t\t\t.feature p { margin: 0; font-size: .92rem; color: var(--text-secondary); }\n\n\t\t\t\t.example-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }\n\t\t\t\t.example-card {\n\t\t\t\t\tborder: 1px solid var(--border); border-radius: .6rem;\n\t\t\t\t\tpadding: 1rem 1.2rem; background: var(--bg-surface); box-shadow: var(--shadow);\n\t\t\t\t}\n\t\t\t\t.example-card h2 { margin: 0 0 .4rem; border: none; padding: 0; font-size: 1.1rem; }\n\t\t\t\t.example-card p { margin: 0; font-size: .92rem; color: var(--text-secondary); }\n\n\t\t\t\t.site-footer {\n\t\t\t\t\tposition: fixed; bottom: 0; right: 0; z-index: 10;\n\t\t\t\t\tpadding: .25rem .8rem; font-size: .78rem;\n\t\t\t\t\tcolor: var(--text-secondary); background: var(--bg);\n\t\t\t\t\tborder-top-left-radius: .4rem; border: 1px solid var(--border); border-right: none; border-bottom: none;\n\t\t\t\t}\n\n\t\t\t\t@media (max-width: 68.75rem) { .toc { display: none; } }\n\t\t\t\t@media (max-width: 56.25rem) {\n\t\t\t\t\t.page { flex-direction: column; }\n\t\t\t\t\t.sidebar { position: static; width: 100%; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }\n\t\t\t\t\tmain#content { padding: 1.5rem 1.25rem 4rem; }\n\t\t\t\t}\n\t\t\t</style></head><body hx-on:doc-viewed=\"document.getElementById('last-viewed').textContent = event.detail.slug\"><header class=\"navbar\"><a class=\"navbar-brand\" href=\"")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var2 = []any{navClass("brand", active == "home")}
-		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var2...)
+		var ghtmx_7f3b9d1a_Var2 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.HomePath))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 252, Col: 63}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "<a class=\"")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "\" hx-get=\"/\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">ghtmx</a><div class=\"navbar-links\"><a href=\"")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var3 string
-		ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var2).String())
+		var ghtmx_7f3b9d1a_Var3 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.GettingStartedPath))
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 254, Col: 53}
 		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var3)
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "\" href=\"")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Docs</a> <a href=\"")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 		var ghtmx_7f3b9d1a_Var4 ghtmx.SafeURL
-		ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.HomePath))
+		ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 42, Col: 88}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 255, Col: 52}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var4))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "\" hx-get=\"/\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">ghtmx</a> ")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Examples</a> <a href=\"https://github.com/go-monolith/ghtmx\" target=\"_blank\" rel=\"noopener\">GitHub</a> <button class=\"theme-toggle\" id=\"theme-toggle\" type=\"button\" aria-label=\"Toggle color theme\"></button></div></header><div class=\"page\"><nav class=\"sidebar\"><div class=\"sidebar-group\"><div class=\"sidebar-label\">Getting started</div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var5 = []any{navClass("", active == "getting-started")}
+		var ghtmx_7f3b9d1a_Var5 = []any{navClass("", active == "home")}
 		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var5...)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
@@ -107,109 +114,256 @@ func shell(active string) ghtmx.Component {
 			return ghtmx_7f3b9d1a_Err
 		}
 		var ghtmx_7f3b9d1a_Var7 ghtmx.SafeURL
-		ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.GettingStartedPath))
+		ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.HomePath))
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 43, Col: 104}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 264, Col: 85}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var7))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Getting started</a> ")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "\" hx-get=\"/\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Introduction</a> ")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		for _, d := range Docs {
-			var ghtmx_7f3b9d1a_Var8 = []any{navClass("", active == d.Slug)}
-			ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var8...)
+		var ghtmx_7f3b9d1a_Var8 = []any{navClass("", active == "getting-started")}
+		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var8...)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<a class=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var9 string
+		ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var8).String())
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var9)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "\" href=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var10 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var10, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.GettingStartedPath))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 265, Col: 106}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var10))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Getting started</a></div><div class=\"sidebar-group\"><div class=\"sidebar-label\">Language</div>")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		for _, d := range LanguageDocs {
+			var ghtmx_7f3b9d1a_Var11 = []any{navClass("", active == d.Slug)}
+			ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var11...)
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<a class=\"")
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			var ghtmx_7f3b9d1a_Var9 string
-			ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var8).String())
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
-			}
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var9)
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "\" href=\"")
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			var ghtmx_7f3b9d1a_Var10 ghtmx.SafeURL
-			ghtmx_7f3b9d1a_Var10, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.DocPage(d.Slug))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 45, Col: 80}
-			}
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var10))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "\" hx-get=\"")
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			var ghtmx_7f3b9d1a_Var11 ghtmx.SafeURL = ghtmxgen.DocPage(d.Slug)
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var11)))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<a class=\"")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
 			var ghtmx_7f3b9d1a_Var12 string
-			ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(d.Title)
+			ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var11).String())
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 45, Col: 188}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
 			}
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var12))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "</a> ")
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var12)
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "\" href=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var13 ghtmx.SafeURL
+			ghtmx_7f3b9d1a_Var13, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.DocPage(d.Slug))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 270, Col: 82}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var13))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\" hx-get=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var14 ghtmx.SafeURL = ghtmxgen.DocPage(d.Slug)
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var14)))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var15 string
+			ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(d.Title)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 270, Col: 190}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var15))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "</a>")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
 		}
-		var ghtmx_7f3b9d1a_Var13 = []any{navClass("", active == "examples")}
-		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var13...)
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "</div><div class=\"sidebar-group\"><div class=\"sidebar-label\">Project</div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "<a class=\"")
+		for _, d := range ProjectDocs {
+			var ghtmx_7f3b9d1a_Var16 = []any{navClass("", active == d.Slug)}
+			ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var16...)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "<a class=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var17 string
+			ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var16).String())
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var17)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\" href=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var18 ghtmx.SafeURL
+			ghtmx_7f3b9d1a_Var18, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.DocPage(d.Slug))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 276, Col: 82}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var18))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 20, "\" hx-get=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var19 ghtmx.SafeURL = ghtmxgen.DocPage(d.Slug)
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var19)))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 21, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var20 string
+			ghtmx_7f3b9d1a_Var20, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(d.Title)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 276, Col: 190}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var20))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 22, "</a>")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 23, "</div><div class=\"sidebar-group\"><div class=\"sidebar-label\">Examples</div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var14 string
-		ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var13).String())
+		var ghtmx_7f3b9d1a_Var21 = []any{navClass("", active == "examples")}
+		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var21...)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 24, "<a class=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var22 string
+		ghtmx_7f3b9d1a_Var22, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var21).String())
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 1, Col: 0}
 		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var14)
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var22)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "\" href=\"")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 25, "\" href=\"")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var15 ghtmx.SafeURL
-		ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
+		var ghtmx_7f3b9d1a_Var23 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var23, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 47, Col: 96}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 281, Col: 98}
 		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var15))
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var23))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Examples</a></nav><main id=\"content\">")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 26, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">All examples</a> ")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		for _, e := range Examples {
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 27, "<a href=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var24 ghtmx.SafeURL
+			ghtmx_7f3b9d1a_Var24, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.ExampleDetail(e.Name))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 283, Col: 47}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var24))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 28, "\" hx-get=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var25 ghtmx.SafeURL = ghtmxgen.ExampleDetail(e.Name)
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var25)))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 29, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var26 string
+			ghtmx_7f3b9d1a_Var26, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Title)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/layout.ghtmx`, Line: 283, Col: 161}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var26))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 30, "</a>")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 31, "</div></nav><main id=\"content\" hx-history-elt>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -217,7 +371,7 @@ func shell(active string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "</main><footer>last viewed: <span id=\"last-viewed\">—</span></footer></body></html>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 32, "</main></div><footer class=\"site-footer\">last viewed: <span id=\"last-viewed\">—</span></footer><script>\n\t\t\t\tfunction ghtmxHighlight(root) {\n\t\t\t\t\troot.querySelectorAll(\"code.language-templ, code.language-ghtmx\").forEach(function (c) {\n\t\t\t\t\t\tc.classList.remove(\"language-templ\", \"language-ghtmx\");\n\t\t\t\t\t\tc.classList.add(\"language-go\");\n\t\t\t\t\t});\n\t\t\t\t\tif (window.hljs) {\n\t\t\t\t\t\troot.querySelectorAll(\"pre code\").forEach(function (c) {\n\t\t\t\t\t\t\tif (c.dataset.highlighted !== \"yes\") {\n\t\t\t\t\t\t\t\thljs.highlightElement(c);\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tfunction ghtmxMarkActive() {\n\t\t\t\t\tvar path = location.pathname;\n\t\t\t\t\tdocument.querySelectorAll(\".sidebar a\").forEach(function (a) {\n\t\t\t\t\t\ta.classList.toggle(\"active\", a.getAttribute(\"href\") === path);\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t\tdocument.addEventListener(\"DOMContentLoaded\", function () {\n\t\t\t\t\tghtmxHighlight(document);\n\t\t\t\t});\n\t\t\t\tdocument.body.addEventListener(\"htmx:afterSwap\", function (e) {\n\t\t\t\t\tghtmxHighlight(e.target);\n\t\t\t\t});\n\t\t\t\tdocument.body.addEventListener(\"htmx:afterSettle\", function () {\n\t\t\t\t\tghtmxMarkActive();\n\t\t\t\t});\n\t\t\t\twindow.addEventListener(\"popstate\", function () {\n\t\t\t\t\tghtmxMarkActive();\n\t\t\t\t});\n\t\t\t\tdocument.addEventListener(\"click\", function (e) {\n\t\t\t\t\tif (!e.target.closest(\"#theme-toggle\")) {\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tvar next = document.documentElement.dataset.theme === \"dark\" ? \"light\" : \"dark\";\n\t\t\t\t\tdocument.documentElement.dataset.theme = next;\n\t\t\t\t\ttry {\n\t\t\t\t\t\tlocalStorage.setItem(\"theme\", next);\n\t\t\t\t\t} catch (err) {}\n\t\t\t\t});\n\t\t\t</script></body></html>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}

@@ -52,7 +52,8 @@ func GettingStarted(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
-	render(w, r, chiadapter.WithPage(docPage("getting-started", body), docBodyFragment(body)))
+	pv := NewPageView("getting-started", body)
+	render(w, r, chiadapter.WithPage(docPage(pv), docBodyFragment(pv)))
 }
 
 // DocPage serves one reference document and announces the view through
@@ -75,7 +76,8 @@ func DocPage(w http.ResponseWriter, r *http.Request) {
 			log.Printf("emit doc-viewed: %v", err)
 		}
 	}
-	render(w, r, chiadapter.WithPage(docPage(slug, body), docBodyFragment(body)))
+	pv := NewPageView(slug, body)
+	render(w, r, chiadapter.WithPage(docPage(pv), docBodyFragment(pv)))
 }
 
 // ExamplesIndex lists every example application.

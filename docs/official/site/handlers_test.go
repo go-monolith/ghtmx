@@ -59,7 +59,7 @@ func TestEveryNavRouteFullPage(t *testing.T) {
 			t.Errorf("GET %s = %d, want 200", path, resp.StatusCode)
 			continue
 		}
-		for _, marker := range []string{"<nav>", `id="content"`, "https://cdn.jsdelivr.net/npm/htmx.org@"} {
+		for _, marker := range []string{`class="sidebar"`, `class="navbar"`, `id="content"`, "hx-history-elt", "https://cdn.jsdelivr.net/npm/htmx.org@", "highlight.min.js"} {
 			if !strings.Contains(body, marker) {
 				t.Errorf("GET %s: full page missing %q", path, marker)
 			}
@@ -78,7 +78,7 @@ func TestEveryNavRouteFragment(t *testing.T) {
 			t.Errorf("GET %s (htmx) = %d, want 200", path, resp.StatusCode)
 			continue
 		}
-		for _, forbidden := range []string{"<html", "<nav>"} {
+		for _, forbidden := range []string{"<html", `class="sidebar"`, `class="navbar"`} {
 			if strings.Contains(fragment, forbidden) {
 				t.Errorf("GET %s (htmx): fragment contains %q — page chrome leaked", path, forbidden)
 			}
@@ -137,6 +137,54 @@ func TestExampleDetailShowsSource(t *testing.T) {
 	}
 	if !strings.Contains(body, "&lt;table id=&#34;todo-list&#34;&gt;") {
 		t.Error("example source markup is not escaped")
+	}
+}
+
+// TestDocPageHasTOCAndPager: a reference document carries its "On
+// this page" contents (from real headings) and reading-order pager.
+func TestDocPageHasTOCAndPager(t *testing.T) {
+	srv := serve(t)
+	_, body := get(t, srv, "/docs/syntax", false)
+	for _, marker := range []string{
+		"On this page",
+		`class="toc"`,
+		`href="#fragments-ghtmx"`,
+		`class="pager"`,
+		"Previous", "Next",
+	} {
+		if !strings.Contains(body, marker) {
+			t.Errorf("/docs/syntax: missing %q", marker)
+		}
+	}
+}
+
+// TestHistoryRestoreScopedToContent: htmx back/forward restores must
+// stay inside #content — the page declares hx-history-elt there, and
+// a history-restore request (HX-Request is set on those too) gets the
+// bare fragment that belongs in it, never a nested full document.
+func TestHistoryRestoreScopedToContent(t *testing.T) {
+	srv := serve(t)
+	_, page := get(t, srv, "/docs/syntax", false)
+	if !strings.Contains(page, "hx-history-elt") {
+		t.Error("full page does not scope htmx history with hx-history-elt")
+	}
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/docs/syntax", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-History-Restore-Request", "true")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "<html") {
+		t.Error("history-restore response contains a full document; it is swapped into #content")
 	}
 }
 

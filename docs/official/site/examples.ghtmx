@@ -6,12 +6,14 @@ fragment examplesBody(list []Example) {
 	<section id="examples">
 		<h1>Examples</h1>
 		<p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run .</code></p>
-		for _, e := range list {
-			<div class="example-card">
-				<h2><a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a></h2>
-				<p>{ e.Description }</p>
-			</div>
-		}
+		<div class="example-grid">
+			for _, e := range list {
+				<div class="example-card">
+					<h2><a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a></h2>
+					<p>{ e.Description }</p>
+				</div>
+			}
+		</div>
 	</section>
 }
 
@@ -22,9 +24,10 @@ templ examplesPage(list []Example) {
 }
 
 // exampleBody shows an example's README followed by its sources; the
-// source text is interpolated, so it arrives escaped.
+// source text is interpolated, so it arrives escaped, and the
+// highlighter picks a grammar per file extension client-side.
 fragment exampleBody(e Example, files []SourceFile, readme string) {
-	<article id="example">
+	<article id="example" class="doc-article">
 		<h1>{ e.Title }</h1>
 		<p>{ e.Description }</p>
 		if readme != "" {
@@ -32,7 +35,7 @@ fragment exampleBody(e Example, files []SourceFile, readme string) {
 		}
 		for _, f := range files {
 			<h3><code>{ f.Name }</code></h3>
-			<pre><code>{ f.Source }</code></pre>
+			<pre><code class={ sourceLanguage(f.Name) }>{ f.Source }</code></pre>
 		}
 		<p><a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">All examples</a></p>
 	</article>

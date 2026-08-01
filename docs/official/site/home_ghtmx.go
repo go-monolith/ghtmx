@@ -9,8 +9,8 @@ import ghtmxruntime "github.com/go-monolith/ghtmx/runtime"
 
 import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
 
-// homeBody is the landing content: the site-only index.md plus a hero
-// whose links are bound to real routes.
+// homeBody is the landing content: a hero, the three language
+// pillars, a code sample, and the site-only index.md rendered below.
 // ghtmxFragmentBody_homeBody is the shared body of fragment homeBody: both entry
 // points and every declaration site execute it, so the render modes cannot
 // diverge.
@@ -30,7 +30,46 @@ func ghtmxFragmentBody_homeBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<article id=\"home\">")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<article id=\"home\" class=\"home\"><div class=\"hero\"><h1 class=\"hero-title\">ghtmx <span class=\"hero-accent\">— build HTML with Go and htmx</span></h1><p class=\"hero-tagline\">A templ-compatible template engine that makes htmx a compile-checked language concept: every URL, fragment, and server event in your templates is verified against your Go code at build time.</p><p class=\"hero-actions\"><a class=\"btn btn-primary\" href=\"")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var1 ghtmx.SafeURL
+	ghtmx_7f3b9d1a_Var1, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.GettingStartedPath))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/home.ghtmx`, Line: 13, Col: 76}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var1))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Get started</a> <a class=\"btn\" href=\"")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var2 ghtmx.SafeURL
+	ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/home.ghtmx`, Line: 14, Col: 63}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Browse examples</a> <a class=\"btn\" href=\"https://github.com/go-monolith/ghtmx\" target=\"_blank\" rel=\"noopener\">GitHub</a></p></div><div class=\"features\"><div class=\"feature\"><h3>Route-aware bindings</h3><p>Every hx-get and hx-post URL resolves against a real Go route at build time — rename a route and the build breaks at every binding site.</p></div><div class=\"feature\"><h3>Compile-time fragments</h3><p><code>fragment</code> blocks render inline in a page and standalone for htmx swaps, byte-identically — no drift between full pages and partial updates.</p></div><div class=\"feature\"><h3>Typed server events</h3><p><code>event</code> declarations generate the only HX-Trigger emitters, with typed payloads shared by handlers and templates.</p></div></div><pre class=\"hero-code\"><code class=\"language-templ\">")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var3 string
+	ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(heroCode)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/home.ghtmx`, Line: 32, Col: 64}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "</code></pre>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -38,33 +77,7 @@ func ghtmxFragmentBody_homeBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<p class=\"hero\"><a href=\"")
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	var ghtmx_7f3b9d1a_Var1 ghtmx.SafeURL
-	ghtmx_7f3b9d1a_Var1, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.GettingStartedPath))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/home.ghtmx`, Line: 11, Col: 51}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var1))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Get started</a> <a href=\"")
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	var ghtmx_7f3b9d1a_Var2 ghtmx.SafeURL
-	ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/home.ghtmx`, Line: 12, Col: 50}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Browse the examples</a></p></article>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "</article>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -101,12 +114,12 @@ func homePage(intro string) ghtmx.Component {
 			}()
 		}
 		ctx = ghtmx.InitializeContext(ctx)
-		ghtmx_7f3b9d1a_Var3 := ghtmx.GetChildren(ctx)
-		if ghtmx_7f3b9d1a_Var3 == nil {
-			ghtmx_7f3b9d1a_Var3 = ghtmx.NopComponent
+		ghtmx_7f3b9d1a_Var4 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var4 == nil {
+			ghtmx_7f3b9d1a_Var4 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Var4 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_Var5 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
 			if !ghtmx_7f3b9d1a_IsBuffer {
@@ -124,7 +137,7 @@ func homePage(intro string) ghtmx.Component {
 			}
 			return nil
 		})
-		ghtmx_7f3b9d1a_Err = shell("home").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var4), ghtmx_7f3b9d1a_Buffer)
+		ghtmx_7f3b9d1a_Err = shell("home").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var5), ghtmx_7f3b9d1a_Buffer)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}

@@ -1,16 +1,45 @@
 package site
 
-// docBody carries one rendered reference document. The HTML comes
-// from goldmark over repository-owned markdown, so injecting it raw
-// is safe by construction.
-fragment docBody(body string) {
-	<article id="doc">
-		@ghtmx.Raw(body)
-	</article>
+// docBody carries one rendered reference document plus its "On this
+// page" contents and reading-order pager. The HTML comes from
+// goldmark over repository-owned markdown, so injecting it raw is
+// safe by construction.
+fragment docBody(p PageView) {
+	<div class="doc-row" id="doc">
+		<article class="doc-article">
+			@ghtmx.Raw(p.Body)
+			@pager(p.Prev, p.Next)
+		</article>
+		if len(p.TOC) > 0 {
+			<aside class="toc">
+				<div class="toc-title">On this page</div>
+				<ul>
+					for _, e := range p.TOC {
+						// Anchor IDs are goldmark-generated from repo-owned
+						// headings; SafeURL avoids the sanitizer misreading a
+						// "#a:b" fragment as a protocol.
+						<li class={ tocClass(e.Level) }><a href={ ghtmx.SafeURL("#" + e.ID) }>{ e.Text }</a></li>
+					}
+				</ul>
+			</aside>
+		}
+	</div>
 }
 
-templ docPage(active string, body string) {
-	@shell(active) {
-		@docBody(body)
+// pager renders the previous/next reading-order links.
+templ pager(prev NavLink, next NavLink) {
+	<div class="pager">
+		if prev.Href != "" {
+			<a class="pager-link" href={ ghtmx.URL(prev.Href) }><span class="pager-dir">Previous</span><span class="pager-title">« { prev.Title }</span></a>
+		}
+		if next.Href != "" {
+			<a class="pager-link pager-next" href={ ghtmx.URL(next.Href) }><span class="pager-dir">Next</span><span class="pager-title">{ next.Title } »</span></a>
+		}
+	</div>
+}
+
+templ docPage(p PageView) {
+	@shell(p.Active) {
+		@docBody(p)
 	}
 }
