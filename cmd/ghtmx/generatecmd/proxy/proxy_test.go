@@ -519,8 +519,11 @@ func TestProxy(t *testing.T) {
 		if diff := cmp.Diff(expectedString, sBB.String()); diff != "" {
 			t.Errorf("unexpected response body (-got +want):\n%s", diff)
 		}
-		if largestGap < streamingGap {
-			t.Errorf("expected at least one gap of >%v between tokens, got largest gap of %v", streamingGap, largestGap)
+		// Half the writer's sleep still proves the body streamed rather
+		// than buffered; demanding the full sleep races the reader's
+		// clock, which starts after the first token is processed.
+		if largestGap < streamingGap/2 {
+			t.Errorf("expected at least one gap of >%v between tokens, got largest gap of %v", streamingGap/2, largestGap)
 		}
 
 		if writerErr1 != nil {

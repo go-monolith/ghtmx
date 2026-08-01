@@ -17,6 +17,12 @@ func Create(moduleRoot string) (dir string, err error) {
 	if err != nil {
 		return dir, fmt.Errorf("failed to make test dir: %w", err)
 	}
+	// Canonicalize: Windows can hand out 8.3 short names (RUNNER~1) and
+	// macOS symlinks /var to /private/var; gopls resolves both, and URIs
+	// built from the raw form then match none of its workspace views.
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	}
 	files, err := testdata.ReadDir("testdata")
 	if err != nil {
 		return dir, fmt.Errorf("failed to read embedded dir: %w", err)
