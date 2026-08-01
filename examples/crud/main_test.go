@@ -1,4 +1,4 @@
-package main
+package crud
 
 import (
 	"context"
@@ -16,12 +16,12 @@ import (
 	"github.com/go-monolith/ghtmx/cmd/ghtmx/generatecmd"
 )
 
-func reset() { todos = newStore() }
+func reset() { todos = NewStore() }
 
 func serve(t *testing.T) *httptest.Server {
 	t.Helper()
 	reset()
-	srv := httptest.NewServer(routes())
+	srv := httptest.NewServer(Routes())
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -66,7 +66,7 @@ func TestFullPageServesEverything(t *testing.T) {
 		`<script src="https://cdn.jsdelivr.net/npm/htmx.org@`,
 		`0 of 0 done`,
 		`hx-post="/todos"`,
-		`hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body"`,
+		`hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body, todos-bulk-changed from:body"`,
 		`<table id="todo-list">`,
 	} {
 		if !strings.Contains(body, want) {
@@ -190,6 +190,110 @@ func TestBoundURLsComeFromBindings(t *testing.T) {
 	}
 }
 
+// TestToggleAllAndClearCompleted: the bulk routes flip and purge the
+// whole list, each announcing itself through one merged event.
+func TestToggleAllAndClearCompleted(t *testing.T) {
+	srv := serve(t)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"One"}}, true)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Two"}}, true)
+
+	resp, body := do(t, srv, http.MethodPut, "/todos/toggle-all", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("toggle-all status = %d", resp.StatusCode)
+	}
+	if got, want := resp.Header.Get("HX-Trigger"), `{"todos-bulk-changed":{"count":2}}`; got != want {
+		t.Errorf("HX-Trigger = %q, want %q", got, want)
+	}
+	if strings.Count(body, `class="done"`) != 2 {
+		t.Errorf("toggle-all must render every row done, got %q", body)
+	}
+
+	// All done → toggling again reopens everything.
+	_, body = do(t, srv, http.MethodPut, "/todos/toggle-all", nil, true)
+	if strings.Contains(body, `class="done"`) {
+		t.Errorf("second toggle-all must reopen every row, got %q", body)
+	}
+
+	do(t, srv, http.MethodPut, "/todos/1", nil, true) // complete one
+	resp, body = do(t, srv, http.MethodDelete, "/todos/completed", nil, true)
+	if got, want := resp.Header.Get("HX-Trigger"), `{"todos-bulk-changed":{"count":1}}`; got != want {
+		t.Errorf("HX-Trigger = %q, want %q", got, want)
+	}
+	if strings.Contains(body, "One") || !strings.Contains(body, "Two") {
+		t.Errorf("clear-completed must remove only done todos, got %q", body)
+	}
+}
+
+// TestFilteredList: the filter buttons call the same bound /todos
+// route with hx-vals; the server narrows the returned list.
+func TestFilteredList(t *testing.T) {
+	srv := serve(t)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Open item"}}, true)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Done item"}}, true)
+	do(t, srv, http.MethodPut, "/todos/2", nil, true)
+
+	_, active := do(t, srv, http.MethodGet, "/todos?filter=active", nil, true)
+	if !strings.Contains(active, "Open item") || strings.Contains(active, "Done item") {
+		t.Errorf("active filter must return only open todos, got %q", active)
+	}
+	_, completed := do(t, srv, http.MethodGet, "/todos?filter=completed", nil, true)
+	if strings.Contains(completed, "Open item") || !strings.Contains(completed, "Done item") {
+		t.Errorf("completed filter must return only done todos, got %q", completed)
+	}
+	_, all := do(t, srv, http.MethodGet, "/todos", nil, true)
+	if !strings.Contains(all, "Open item") || !strings.Contains(all, "Done item") {
+		t.Errorf("unfiltered list must return everything, got %q", all)
+	}
+}
+
+// TestEmptyStateRendered: an empty store shows the empty row inside
+// the list fragment (so the byte-identity contract still holds).
+func TestEmptyStateRendered(t *testing.T) {
+	srv := serve(t)
+	_, body := do(t, srv, http.MethodGet, "/todos", nil, true)
+	if !strings.Contains(body, `class="empty"`) {
+		t.Errorf("empty list must render the empty state, got %q", body)
+	}
+}
+
+// TestStoreCapsEnforced: the public-demo bounds — overlong titles and
+// a full store are rejected with 422 on every mutating path.
+func TestStoreCapsEnforced(t *testing.T) {
+	srv := serve(t)
+	longTitle := strings.Repeat("x", maxTitleLen+1)
+
+	resp, _ := do(t, srv, http.MethodPost, "/todos", url.Values{"title": {longTitle}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("creating with a %d-char title = %d, want 422", maxTitleLen+1, resp.StatusCode)
+	}
+
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Rename me"}}, true)
+	resp, _ = do(t, srv, http.MethodPut, "/todos/1/title", url.Values{"title": {longTitle}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("renaming to a %d-char title = %d, want 422", maxTitleLen+1, resp.StatusCode)
+	}
+	if _, row := do(t, srv, http.MethodGet, "/todos", nil, true); !strings.Contains(row, "Rename me") {
+		t.Error("a rejected rename must leave the original title in place")
+	}
+
+	for i := 2; i <= maxTodos; i++ {
+		resp, _ := do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"filler"}}, true)
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("create #%d = %d, want 201", i, resp.StatusCode)
+		}
+	}
+	resp, _ = do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"one too many"}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("create #%d = %d, want 422 once the store is full", maxTodos+1, resp.StatusCode)
+	}
+	// Deleting one reopens capacity.
+	do(t, srv, http.MethodDelete, "/todos/1", nil, true)
+	resp, _ = do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"fits again"}}, true)
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("create after a delete = %d, want 201", resp.StatusCode)
+	}
+}
+
 // TestZeroHandWrittenGlue: the acceptance guarantee, self-enforced —
 // no constant hx-verb URLs in the template, no hand-written HX-Trigger
 // or htmx script tag in the Go source.
@@ -203,7 +307,7 @@ func TestZeroHandWrittenGlue(t *testing.T) {
 	if constantURL := regexp.MustCompile(`(data-)?hx-(get|post|put|patch|delete)="`); constantURL.Match(template) {
 		t.Error("the template hand-writes an hx-verb URL; every URL must come from a binding")
 	}
-	source, err := os.ReadFile("main.go")
+	source, err := os.ReadFile("crud.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,14 +336,14 @@ func TestRouteChangesBreakTheBuild(t *testing.T) {
 	setup := func(t *testing.T, mutate func(main string) string) string {
 		t.Helper()
 		dir := t.TempDir()
-		for _, name := range []string{"main.go", "crud.ghtmx"} {
+		for _, name := range []string{"crud.go", "crud.ghtmx"} {
 			data, err := os.ReadFile(name)
 			if err != nil {
 				t.Fatal(err)
 			}
 			content := string(data)
 			content = strings.ReplaceAll(content, "github.com/go-monolith/ghtmx/ghtmxgen", "example.com/crud/ghtmxgen")
-			if name == "main.go" && mutate != nil {
+			if name == "crud.go" && mutate != nil {
 				content = mutate(content)
 			}
 			if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -334,13 +438,13 @@ func TestRouteChangesBreakTheBuild(t *testing.T) {
 			t.Fatalf("%v\n%s", err, diagnostics)
 		}
 		tidy(t, dir)
-		data, err := os.ReadFile(filepath.Join(dir, "main.go"))
+		data, err := os.ReadFile(filepath.Join(dir, "crud.go"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		mutated := strings.ReplaceAll(string(data), "func CreateTodo(", "func MakeTodo(")
 		mutated = strings.ReplaceAll(mutated, `mux.HandleFunc("POST /todos", CreateTodo)`, `mux.HandleFunc("POST /todos", MakeTodo)`)
-		if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(mutated), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "crud.go"), []byte(mutated), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		out, err := build(t, dir)

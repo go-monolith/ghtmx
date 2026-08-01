@@ -140,7 +140,7 @@ Anything that would exceed 5 days has been split.
 - [x] 11\. Walking-skeleton demo application
   - A minimal `net/http` application rendering a generated component, proving the full path from `.ghtmx` source to bytes in a browser.
   - Acceptance Criteria:
-    - `ghtmx generate && go run .` serves the rendered template.
+    - `ghtmx generate && go run ./cmd` serves the rendered template.
     - The application imports only the runtime — no adapter, no compiler package.
     - The demo is committed as the seed of the fixture-application corpus.
   - _Dependencies: 9_

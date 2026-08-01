@@ -1,4 +1,4 @@
-package main
+package events
 
 import (
 	"net/http"
@@ -15,7 +15,7 @@ import (
 func TestTwoEmissionsMergeIntoOneHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/events/items/1", nil)
-	eventsMux().ServeHTTP(rec, req)
+	Routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("save failed with status %d: %s", rec.Code, rec.Body.String())
@@ -49,7 +49,7 @@ func TestEmitterIsTyped(t *testing.T) {
 func TestPageBindsEventListeners(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/events", nil)
-	eventsMux().ServeHTTP(rec, req)
+	Routes().ServeHTTP(rec, req)
 
 	body := rec.Body.String()
 	for _, want := range []string{`hx-on:item-saved=`, `hx-trigger="cart-cleared from:body"`, `hx-post="/events/items/1"`} {
@@ -67,7 +67,7 @@ func TestCSRFBindingNeedsNoHandWrittenPlumbing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/events", nil)
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "tok123"})
-	eventsMux().ServeHTTP(rec, req)
+	Routes().ServeHTTP(rec, req)
 
 	body := rec.Body.String()
 	want := `hx-headers="{&#34;X-CSRF-Token&#34;:&#34;tok123&#34;}"`

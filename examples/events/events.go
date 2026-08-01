@@ -3,12 +3,11 @@
 // an undeclared event has no symbol and cannot compile (FR-037). The save
 // handler emits both events in one response; they merge into a single
 // HX-Trigger header.
-package main
+package events
 
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/go-monolith/ghtmx/ghtmxgen"
 )
@@ -64,18 +63,11 @@ func demoCSRFToken(r *http.Request) string {
 	return "demo-token"
 }
 
-func eventsMux() *http.ServeMux {
+// Routes builds the example's router; the official docs site mounts
+// it as a live demo.
+func Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /events", eventsHome)
 	mux.HandleFunc("POST /events/items/{id}", saveItem)
 	return mux
-}
-
-func main() {
-	addr := "127.0.0.1:8083"
-	fmt.Printf("Listening on http://%s/events\n", addr)
-	if err := http.ListenAndServe(addr, eventsMux()); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }

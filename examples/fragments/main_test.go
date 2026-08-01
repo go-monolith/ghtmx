@@ -1,4 +1,4 @@
-package main
+package fragments
 
 import (
 	"context"
@@ -115,7 +115,7 @@ func (w *bareResponseWriter) WriteHeader(int) { w.wroteHeader = true }
 func TestHandlerRendersFragmentStandalone(t *testing.T) {
 	rec := &bareResponseWriter{header: http.Header{}}
 	req := httptest.NewRequest(http.MethodGet, "/fragments/rows/2", nil)
-	newMux().ServeHTTP(rec, req)
+	Routes().ServeHTTP(rec, req)
 
 	if rec.wroteHeader {
 		t.Error("no explicit status code may be written on the handler-explicit path")
@@ -140,7 +140,7 @@ func TestHandlerRendersFragmentStandalone(t *testing.T) {
 func TestHandlerKeepsControlOfStatusAndHeaders(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/fragments/rows/does-not-exist", nil)
-	newMux().ServeHTTP(rec, req)
+	Routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("the handler's own status must reach the client, got %d", rec.Code)

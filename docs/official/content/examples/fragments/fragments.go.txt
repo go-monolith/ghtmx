@@ -3,12 +3,10 @@
 // binds a typed route constructor whose handler renders only the fragment
 // via ItemRowFragment(...).RenderFragment — no page around it (FR-031,
 // FR-034).
-package main
+package fragments
 
 import (
-	"fmt"
 	"net/http"
-	"os"
 )
 
 // Item is a row of the demo table.
@@ -50,20 +48,11 @@ func rowDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newMux() *http.ServeMux {
+// Routes builds the example's router; the official docs site mounts
+// it as a live demo.
+func Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /fragments", fragmentsHome)
 	mux.HandleFunc("GET /fragments/rows/{id}", rowDetail)
 	return mux
-}
-
-func main() {
-	mux := newMux()
-
-	addr := "127.0.0.1:8082"
-	fmt.Printf("Listening on http://%s/fragments\n", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }

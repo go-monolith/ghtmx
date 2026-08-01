@@ -28,7 +28,7 @@ func ghtmxFragmentBody_examplesBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedC
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<section id=\"examples\"><h1>Examples</h1><p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run .</code></p><div class=\"example-grid\">")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<section id=\"examples\"><h1>Examples</h1><p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run ./cmd</code></p><div class=\"example-grid\">")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -81,12 +81,25 @@ func ghtmxFragmentBody_examplesBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedC
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 6, "</p></div>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 6, "</p><p><a class=\"demo-link\" href=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var5 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var5, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(e.DemoPath))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 14, Col: 57}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var5))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, "\" target=\"_blank\" rel=\"noopener\">Live demo ↗</a></p></div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, "</div></section>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "</div></section>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -123,12 +136,12 @@ func examplesPage(list []Example) ghtmx.Component {
 			}()
 		}
 		ctx = ghtmx.InitializeContext(ctx)
-		ghtmx_7f3b9d1a_Var5 := ghtmx.GetChildren(ctx)
-		if ghtmx_7f3b9d1a_Var5 == nil {
-			ghtmx_7f3b9d1a_Var5 = ghtmx.NopComponent
+		ghtmx_7f3b9d1a_Var6 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var6 == nil {
+			ghtmx_7f3b9d1a_Var6 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Var6 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_Var7 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
 			if !ghtmx_7f3b9d1a_IsBuffer {
@@ -146,7 +159,7 @@ func examplesPage(list []Example) ghtmx.Component {
 			}
 			return nil
 		})
-		ghtmx_7f3b9d1a_Err = shell("examples").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var6), ghtmx_7f3b9d1a_Buffer)
+		ghtmx_7f3b9d1a_Err = shell("examples").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var7), ghtmx_7f3b9d1a_Buffer)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -176,33 +189,46 @@ func ghtmxFragmentBody_exampleBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "<article id=\"example\" class=\"doc-article\"><h1>")
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	var ghtmx_7f3b9d1a_Var7 string
-	ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Title)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 31, Col: 15}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var7))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "</h1><p>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<article id=\"example\" class=\"doc-article\"><h1>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
 	var ghtmx_7f3b9d1a_Var8 string
-	ghtmx_7f3b9d1a_Var8, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Description)
+	ghtmx_7f3b9d1a_Var8, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Title)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 32, Col: 20}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 32, Col: 15}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var8))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "</p>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "</h1><p>")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var9 string
+	ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Description)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 33, Col: 20}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var9))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "</p><p><a class=\"btn btn-primary\" href=\"")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var10 ghtmx.SafeURL
+	ghtmx_7f3b9d1a_Var10, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(e.DemoPath))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 34, Col: 60}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var10))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "\" target=\"_blank\" rel=\"noopener\">Live demo ↗</a></p>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -213,73 +239,73 @@ func ghtmxFragmentBody_exampleBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 		}
 	}
 	for _, f := range files {
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "<h3><code>")
-		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx_7f3b9d1a_Err
-		}
-		var ghtmx_7f3b9d1a_Var9 string
-		ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(f.Name)
-		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 37, Col: 21}
-		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var9))
-		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx_7f3b9d1a_Err
-		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "</code></h3><pre>")
-		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx_7f3b9d1a_Err
-		}
-		var ghtmx_7f3b9d1a_Var10 = []any{sourceLanguage(f.Name)}
-		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var10...)
-		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx_7f3b9d1a_Err
-		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "<code class=\"")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "<h3><code>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 		var ghtmx_7f3b9d1a_Var11 string
-		ghtmx_7f3b9d1a_Var11, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var10).String())
+		ghtmx_7f3b9d1a_Var11, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(f.Name)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 39, Col: 21}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var11))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "</code></h3><pre>")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var12 = []any{sourceLanguage(f.Name)}
+		ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var12...)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "<code class=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var13 string
+		ghtmx_7f3b9d1a_Var13, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var12).String())
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 1, Col: 0}
 		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var11)
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var13)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\">")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "\">")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		var ghtmx_7f3b9d1a_Var12 string
-		ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(f.Source)
+		var ghtmx_7f3b9d1a_Var14 string
+		ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(f.Source)
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 38, Col: 57}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 40, Col: 57}
 		}
-		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var12))
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var14))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "</code></pre>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "</code></pre>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "<p><a href=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "<p><a href=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var13 ghtmx.SafeURL
-	ghtmx_7f3b9d1a_Var13, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
+	var ghtmx_7f3b9d1a_Var15 ghtmx.SafeURL
+	ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.ExamplesIndexPath))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 40, Col: 52}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 42, Col: 52}
 	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var13))
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var15))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">All examples</a></p></article>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">All examples</a></p></article>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -316,12 +342,12 @@ func examplePage(e Example, files []SourceFile, readme string) ghtmx.Component {
 			}()
 		}
 		ctx = ghtmx.InitializeContext(ctx)
-		ghtmx_7f3b9d1a_Var14 := ghtmx.GetChildren(ctx)
-		if ghtmx_7f3b9d1a_Var14 == nil {
-			ghtmx_7f3b9d1a_Var14 = ghtmx.NopComponent
+		ghtmx_7f3b9d1a_Var16 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var16 == nil {
+			ghtmx_7f3b9d1a_Var16 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Var15 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_Var17 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
 			if !ghtmx_7f3b9d1a_IsBuffer {
@@ -339,7 +365,7 @@ func examplePage(e Example, files []SourceFile, readme string) ghtmx.Component {
 			}
 			return nil
 		})
-		ghtmx_7f3b9d1a_Err = shell("examples").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var15), ghtmx_7f3b9d1a_Buffer)
+		ghtmx_7f3b9d1a_Err = shell("examples").Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var17), ghtmx_7f3b9d1a_Buffer)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
