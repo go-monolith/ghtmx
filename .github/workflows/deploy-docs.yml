@@ -1,0 +1,70 @@
+name: Deploy docs
+
+# Ships docs/official — the single-binary documentation site — to
+# Cloudflare Workers. Every content change necessarily touches
+# docs/official (the sync drift gate forces the embedded copies to be
+# committed), so the paths filter is complete. The wasm build itself
+# runs through wrangler.toml's [build] command, keeping this workflow
+# and local deploys byte-identical.
+"on":
+  push:
+    branches: [main]
+    paths:
+      - "docs/official/**"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: |
+            go.sum
+            docs/official/go.sum
+      - name: Verify the site before shipping
+        run: cd docs/official && go vet ./... && go test ./...
+      # The deploy is skipped, not failed, while the repository has no
+      # Cloudflare credentials: the workflow stays green for forks and
+      # for main pushes made before the secret is configured.
+      - name: Check deploy credentials
+        id: creds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN is not configured; build verified, deployment skipped."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy to Cloudflare Workers
+        if: steps.creds.outputs.configured == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: docs/official
+      # wrangler.toml's [build] command already produced build/app.wasm
+      # for the deploy above; fall back to building it here when the
+      # deploy was skipped, so every run proves the artifact compiles
+      # and reports its size.
+      - name: Build the wasm artifact (deploy skipped)
+        if: steps.creds.outputs.configured != 'true'
+        run: |
+          cd docs/official
+          GOOS=js GOARCH=wasm go build -ldflags="-s -w" -trimpath -o build/app.wasm .
+      - name: Report artifact size
+        run: |
+          cd docs/official
+          if [ -f build/app.wasm ]; then
+            gzip -k -9 -f build/app.wasm
+            ls -la build/app.wasm build/app.wasm.gz
+          fi

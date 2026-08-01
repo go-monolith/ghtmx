@@ -49,8 +49,22 @@ Workers.
 
 ## Deploy to Cloudflare Workers
 
-Deployment uses wrangler (Node tooling — deploy-only; the Go build and
-CI never invoke it):
+**Continuous deployment**: `.github/workflows/deploy-docs.yml` deploys
+this site on every `main` push that touches `docs/official/` (all
+content changes do — the drift gate forces the embedded copies to be
+committed here). It needs two repository secrets:
+
+- `CLOUDFLARE_API_TOKEN` — an API token with the *Workers Scripts:
+  Edit* permission (Cloudflare dashboard → My Profile → API Tokens →
+  "Edit Cloudflare Workers" template).
+- `CLOUDFLARE_ACCOUNT_ID` — the account ID from the Workers overview
+  page (optional when the token is scoped to a single account).
+
+Until the token secret exists, the workflow verifies the build and
+skips the deploy step with a notice, so it stays green.
+
+**Manual deployment** uses wrangler (Node tooling — deploy-only; the
+Go build and test pipeline never invoke it):
 
 ```sh
 npx wrangler dev      # local Workers emulation
