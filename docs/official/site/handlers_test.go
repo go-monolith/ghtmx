@@ -251,6 +251,167 @@ func TestHistoryRestoreScopedToContent(t *testing.T) {
 	}
 }
 
+// TestLiveDemosServed: every example's real router is compiled into
+// the binary and serves at its native paths, and each example page
+// links to its demo.
+func TestLiveDemosServed(t *testing.T) {
+	srv := serve(t)
+	markers := map[string]string{
+		"hello-world": "Hello",
+		"hx-bindings": "hx-get",
+		"fragments":   "hx-get",
+		"events":      "hx-post",
+		"crud":        "Todos",
+	}
+	for _, e := range Examples {
+		if e.DemoPath == "" {
+			t.Errorf("example %s has no demo path", e.Name)
+			continue
+		}
+		marker, ok := markers[e.Name]
+		if !ok {
+			t.Errorf("example %s has no demo marker in this test — add one", e.Name)
+			continue
+		}
+		resp, body := get(t, srv, e.DemoPath, false)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s (%s demo) = %d, want 200", e.DemoPath, e.Name, resp.StatusCode)
+			continue
+		}
+		if !strings.Contains(body, marker) {
+			t.Errorf("demo %s: missing marker %q", e.DemoPath, marker)
+		}
+		_, detail := get(t, srv, "/examples/"+e.Name, false)
+		if !strings.Contains(detail, `href="`+e.DemoPath+`"`) {
+			t.Errorf("example page %s does not link its live demo %s", e.Name, e.DemoPath)
+		}
+	}
+	// The demo fallback must not swallow the docs' own 404s.
+	resp, _ := get(t, srv, "/todos/does/not/exist", false)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /todos/does/not/exist = %d, want 404", resp.StatusCode)
+	}
+	// Documented divergence: a method mismatch on a demo path is 404
+	// here (ServeMux.Handler reports no pattern for mismatches), where
+	// the standalone example would answer 405 + Allow.
+	req, err := http.NewRequest(http.MethodDelete, srv.URL+"/hello", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mm, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mm.Body.Close()
+	if mm.StatusCode != http.StatusNotFound {
+		t.Errorf("DELETE /hello = %d, want the documented 404", mm.StatusCode)
+	}
+}
+
+// TestCrudDemoRoundTrip: the crud demo is actually alive — creating a
+// todo through the real handler emits the contract event and returns
+// the refreshed list fragment. The created todo intentionally leaks
+// into the cookie-less "" demo session's store for the rest of the
+// test binary; no other test asserts that session's contents.
+func TestCrudDemoRoundTrip(t *testing.T) {
+	srv := serve(t)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/todos", strings.NewReader("title=demo+todo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /todos = %d, want 201", resp.StatusCode)
+	}
+	if !strings.Contains(resp.Header.Get("HX-Trigger"), "todo-created") {
+		t.Errorf("HX-Trigger = %q, want todo-created", resp.Header.Get("HX-Trigger"))
+	}
+	if !strings.Contains(string(data), "demo todo") {
+		t.Error("created todo missing from the returned list fragment")
+	}
+}
+
+// TestDemoStateIsolatedPerSession: two visitors with different demo
+// cookies get independent crud stores — one visitor's edits never
+// appear in another's list — and a cookie-less first request is
+// issued a session cookie.
+func TestDemoStateIsolatedPerSession(t *testing.T) {
+	srv := serve(t)
+	demoReq := func(method, path, cookie string, form string) (*http.Response, string) {
+		t.Helper()
+		var body io.Reader
+		if form != "" {
+			body = strings.NewReader(form)
+		}
+		req, err := http.NewRequest(method, srv.URL+path, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if form != "" {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+		req.Header.Set("HX-Request", "true")
+		if cookie != "" {
+			req.AddCookie(&http.Cookie{Name: "ghtmx_demo", Value: cookie})
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp, string(data)
+	}
+
+	resp, _ := demoReq(http.MethodPost, "/todos", "visitor-a", "title=alice+private+task")
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("visitor A create = %d", resp.StatusCode)
+	}
+	_, bList := demoReq(http.MethodGet, "/todos", "visitor-b", "")
+	if strings.Contains(bList, "alice private task") {
+		t.Error("visitor B sees visitor A's todo — demo state is shared across sessions")
+	}
+	if !strings.Contains(bList, `class="empty"`) {
+		t.Error("visitor B's fresh session should be empty")
+	}
+	_, aList := demoReq(http.MethodGet, "/todos", "visitor-a", "")
+	if !strings.Contains(aList, "alice private task") {
+		t.Error("visitor A lost their own todo")
+	}
+
+	// A cookie-less demo request is minted a session.
+	resp, _ = demoReq(http.MethodGet, "/todos", "", "")
+	minted := false
+	for _, c := range resp.Cookies() {
+		if c.Name == "ghtmx_demo" && c.Value != "" {
+			minted = true
+		}
+	}
+	if !minted {
+		t.Error("first demo request did not receive a ghtmx_demo session cookie")
+	}
+	// Docs pages themselves never set the demo cookie.
+	resp, _ = get(t, srv, "/docs/syntax", false)
+	for _, c := range resp.Cookies() {
+		if c.Name == "ghtmx_demo" {
+			t.Error("a docs page set the demo session cookie")
+		}
+	}
+}
+
 // TestUnknownSlugs404: unknown documents and examples are not pages.
 func TestUnknownSlugs404(t *testing.T) {
 	srv := serve(t)

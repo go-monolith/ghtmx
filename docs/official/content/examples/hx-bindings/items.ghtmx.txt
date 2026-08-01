@@ -1,4 +1,4 @@
-package main
+package hxbindings
 
 import (
 	"github.com/go-monolith/ghtmx/examples/hx-bindings/handlers"
@@ -13,4 +13,24 @@ templ itemList(ids []string) {
 		}
 		<div id="detail"></div>
 	</div>
+}
+
+// itemsPage wraps the list for the live demo's full-page response.
+templ itemsPage(ids []string) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>hx-bindings</title>
+			@ghtmxgen.HTMXScript()
+		</head>
+		<body>
+			<h1>Route bindings</h1>
+			@itemList(ids)
+		</body>
+	</html>
+}
+
+// itemDetail is what a constructor-bound link swaps into #detail.
+templ itemDetail(id string) {
+	<span>item <strong>{ id }</strong></span>
 }

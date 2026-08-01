@@ -5,12 +5,13 @@ import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
 fragment examplesBody(list []Example) {
 	<section id="examples">
 		<h1>Examples</h1>
-		<p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run .</code></p>
+		<p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run ./cmd</code></p>
 		<div class="example-grid">
 			for _, e := range list {
 				<div class="example-card">
 					<h2><a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a></h2>
 					<p>{ e.Description }</p>
+					<p><a class="demo-link" href={ ghtmx.URL(e.DemoPath) } target="_blank" rel="noopener">Live demo ↗</a></p>
 				</div>
 			}
 		</div>
@@ -30,6 +31,7 @@ fragment exampleBody(e Example, files []SourceFile, readme string) {
 	<article id="example" class="doc-article">
 		<h1>{ e.Title }</h1>
 		<p>{ e.Description }</p>
+		<p><a class="btn btn-primary" href={ ghtmx.URL(e.DemoPath) } target="_blank" rel="noopener">Live demo ↗</a></p>
 		if readme != "" {
 			@ghtmx.Raw(readme)
 		}
