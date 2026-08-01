@@ -6,7 +6,10 @@
 // landing page, getting started, build targets) live in docs/site.
 //
 // The builder is pure Go — no Node, per the constitution — and runs in
-// tests on every build; the release workflow publishes its output.
+// tests on every build. It is a verification harness: its tests prove
+// the site builds and that the getting-started guide compiles and
+// renders. The published documentation site is docs/official, deployed
+// to https://ghtmx.dev by deploy-docs.yml.
 package docsite
 
 import (

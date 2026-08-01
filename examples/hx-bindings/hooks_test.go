@@ -17,7 +17,7 @@ func TestHooksInstalledByInit(t *testing.T) {
 		t.Fatalf("GET /items = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `hx-get="/items"`) || !strings.Contains(body, "<html>") {
+	if !strings.Contains(body, `hx-get="/items"`) || !strings.Contains(body, "<html") {
 		t.Errorf("installed hook must render the full bound page, got %q", body)
 	}
 
