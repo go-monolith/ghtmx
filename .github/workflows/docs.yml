@@ -3,7 +3,7 @@ name: Docs
 # The documentation site publishes on release (and on demand). Every CI
 # build already verifies the site builds and that the getting-started
 # guide compiles and renders — see the lint job in ci.yml.
-on:
+"on":
   release:
     types: [published]
   workflow_dispatch:

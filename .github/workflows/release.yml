@@ -10,7 +10,7 @@ name: Release
 # release-prep commit (see RELEASING.md) sets .version and the adapter
 # requires to the tag's version, so the tagged tree is self-consistent
 # for `go install` and `go get` consumers too.
-on:
+"on":
   push:
     tags: ["v*"]
 
