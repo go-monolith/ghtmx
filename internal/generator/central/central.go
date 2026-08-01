@@ -50,7 +50,8 @@ type Event struct {
 	// "(id string, name string)"; "()" for payload-less events.
 	Params string
 	// DeclaredAt is the declaration site for doc comments, already
-	// module-relative.
+	// module-relative and FILE ONLY — line/column would churn the
+	// committed output when edits shift the declaration.
 	DeclaredAt string
 }
 
@@ -313,13 +314,17 @@ func Generate(table *routes.Table, opts Options) ([]byte, error) {
 	for _, name := range names {
 		c := byName[name]
 		r := c.Route
+		// Doc comments carry the registration FILE only: line and
+		// column would churn the committed output whenever an edit
+		// above a registration site shifts it, failing the
+		// ensure-generated gate on unrelated changes.
 		r.Pos.File = relativePos(opts.ModRoot, r.Pos.File)
 		verb := string(r.Verb)
 		if r.Verb == routes.AnyVerb {
 			verb = "ANY"
 		}
 		if len(r.Params) == 0 {
-			fmt.Fprintf(&sb, "// %sPath is the path of %s %s -> %s (%s).\n", name, verb, r.Path, r.Handler, r.Pos)
+			fmt.Fprintf(&sb, "// %sPath is the path of %s %s -> %s (%s).\n", name, verb, r.Path, r.Handler, r.Pos.File)
 			fmt.Fprintf(&sb, "const %sPath = %q\n\n", name, r.Path)
 			continue
 		}
@@ -368,7 +373,7 @@ func writeConstructor(sb *strings.Builder, name, verb string, r routes.Route) {
 	for i, p := range r.Params {
 		params[i] = sanitizeParam(p.Name) + " string"
 	}
-	fmt.Fprintf(sb, "// %s builds the URL for %s %s -> %s (%s).\n", name, verb, r.Path, r.Handler, r.Pos)
+	fmt.Fprintf(sb, "// %s builds the URL for %s %s -> %s (%s).\n", name, verb, r.Path, r.Handler, r.Pos.File)
 	fmt.Fprintf(sb, "func %s(%s) ghtmx.SafeURL {\n", name, strings.Join(params, ", "))
 	sb.WriteString("\treturn ghtmx.SafeURL(")
 
