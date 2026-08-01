@@ -1,6 +1,6 @@
 name: CI
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:
@@ -29,6 +29,12 @@ jobs:
         run: go build ./...
       - name: Test
         run: go test ./... -timeout 10m
+        shell: bash
+      # NFR-010: named so the install-path verification cannot silently
+      # vanish from the 3-OS matrix. The flags match the full run above
+      # exactly, so this is a test-cache hit, not a re-run.
+      - name: Install-path verification (NFR-010)
+        run: go test ./internal/installcheck/ -timeout 10m
         shell: bash
       # Framework adapters live in nested modules so their dependencies
       # never enter the core go.mod; the root test run cannot see them.
@@ -129,10 +135,11 @@ jobs:
       # renders the getting-started guide's own code.
       - name: Documentation site build (NFR-013/NFR-014)
         run: go test ./internal/docsite/ -count=1 -v
-      # NFR-010: the changelog discipline, named and visible. The full
-      # install-path checks run in the 3-OS test matrix; -short here
-      # skips duplicating them on ubuntu.
-      - name: Installation paths and changelog discipline (NFR-010)
+      # NFR-010: the changelog discipline, named and visible. The
+      # install-path assertions are skipped by -short here: they run —
+      # also as a named step — in the 3-OS test matrix, which is the
+      # platform coverage the requirement actually demands.
+      - name: Changelog discipline (NFR-010)
         run: go test ./internal/installcheck/ -count=1 -v -short
       # NFR-014: the fixture app (runtime + generated components + chi
       # adapter) and every included adapter compile for js/wasm and
