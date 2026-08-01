@@ -19,18 +19,18 @@ func BenchItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/bench/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// ClearCompletedPath is the path of DELETE /todos/completed -> github.com/go-monolith/ghtmx/examples/crud.ClearCompleted (examples/crud/crud.go:378:2).
+// ClearCompletedPath is the path of DELETE /todos/completed -> github.com/go-monolith/ghtmx/examples/crud.ClearCompleted (examples/crud/crud.go:395:2).
 const ClearCompletedPath = "/todos/completed"
 
-// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/crud.go:372:2).
+// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/crud.go:389:2).
 const CreateTodoPath = "/todos"
 
-// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/crud.go:377:2).
+// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/crud.go:394:2).
 func DeleteTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }
 
-// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/crud.go:373:2).
+// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/crud.go:390:2).
 func EditTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/edit")
 }
@@ -49,16 +49,16 @@ func GetItem(id string) ghtmx.SafeURL {
 // HomePath is the path of GET /hello -> github.com/go-monolith/ghtmx/examples/hello-world.home (examples/hello-world/helloworld.go:29:2).
 const HomePath = "/hello"
 
-// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/crud.go:370:2).
+// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/crud.go:387:2).
 const IndexPath = "/"
 
 // ListItemsPath is the path of GET /items -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.ListItems (examples/hx-bindings/hxbindings.go:42:2).
 const ListItemsPath = "/items"
 
-// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/crud.go:371:2).
+// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/crud.go:388:2).
 const ListTodosPath = "/todos"
 
-// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/crud.go:374:2).
+// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/crud.go:391:2).
 func RenameTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/title")
 }
@@ -73,13 +73,13 @@ func SaveItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/events/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/crud.go:379:2).
+// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/crud.go:396:2).
 const TodoStatsPath = "/todos/stats"
 
-// ToggleAllTodosPath is the path of PUT /todos/toggle-all -> github.com/go-monolith/ghtmx/examples/crud.ToggleAllTodos (examples/crud/crud.go:376:2).
+// ToggleAllTodosPath is the path of PUT /todos/toggle-all -> github.com/go-monolith/ghtmx/examples/crud.ToggleAllTodos (examples/crud/crud.go:393:2).
 const ToggleAllTodosPath = "/todos/toggle-all"
 
-// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/crud.go:375:2).
+// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/crud.go:392:2).
 func ToggleTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }
