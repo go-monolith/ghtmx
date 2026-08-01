@@ -11,8 +11,12 @@ compatibility_date = "2026-08-01"
 # same account; the deploy token can manage its DNS). The default
 # workers.dev URL stays available alongside it.
 routes = [
-  { pattern = "ghtmx.0xgosu.dev", custom_domain = true }
+  { pattern = "ghtmx.dev", custom_domain = true }
 ]
+
+[observability.logs]
+enabled = true
+invocation_logs = true
 
 [build]
 # Unix shell only; the workers-assets-gen pin must stay in lockstep

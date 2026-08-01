@@ -99,8 +99,15 @@ templ shell(active string) {
 					backdrop-filter: blur(8px);
 					box-shadow: var(--shadow);
 				}
+				.navbar-left { display: flex; align-items: baseline; gap: .8rem; }
 				.navbar-brand { font-weight: 700; font-size: 1.15rem; color: var(--text); }
 				.navbar-brand:hover { text-decoration: none; color: var(--primary); }
+				.built-with {
+					font-size: .78rem; color: var(--text-secondary);
+					border: 1px solid var(--border); border-radius: 999px;
+					padding: .15rem .6rem; white-space: nowrap;
+				}
+				.built-with:hover { color: var(--primary); border-color: var(--primary); text-decoration: none; }
 				.navbar-links { display: flex; align-items: center; gap: 1rem; }
 				.navbar-links a { color: var(--text); font-size: .95rem; }
 				.navbar-links a:hover { color: var(--primary); text-decoration: none; }
@@ -261,7 +268,10 @@ templ shell(active string) {
 		</head>
 		<body hx-on:doc-viewed="document.getElementById('last-viewed').textContent = event.detail.slug">
 			<header class="navbar">
-				<a class="navbar-brand" href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">ghtmx</a>
+				<div class="navbar-left">
+					<a class="navbar-brand" href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">ghtmx</a>
+					<a class="built-with" href="https://myspec.dev/" target="_blank" rel="noopener">Built with MySpec.dev</a>
+				</div>
 				<div class="navbar-links">
 					<a href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Docs</a>
 					<a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Examples</a>

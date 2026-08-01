@@ -47,7 +47,7 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { color-scheme: light dark; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t\tbackground: light-dark(#f5f5f5, #17181c); color: light-dark(#2b2b2b, #e6e6e6);\n\t\t\t\t}\n\t\t\t\t.todoapp {\n\t\t\t\t\twidth: min(34rem, 92vw); margin-top: 3rem; border-radius: .6rem;\n\t\t\t\t\tbackground: light-dark(#ffffff, #22242a);\n\t\t\t\t\tbox-shadow: 0 8px 24px rgba(0, 0, 0, .12); padding: 1.5rem 1.75rem 1rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 1rem; font-weight: 650; letter-spacing: .01em; }\n\t\t\t\tform.new-todo { display: flex; gap: .6rem; margin-bottom: .4rem; }\n\t\t\t\tform.new-todo input {\n\t\t\t\t\tflex: 1; font-size: 1rem; padding: .55rem .8rem; border-radius: .45rem;\n\t\t\t\t\tborder: 1px solid light-dark(#d8d8d8, #3a3d46);\n\t\t\t\t\tbackground: light-dark(#fafafa, #1b1d22); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button, .toolbar button {\n\t\t\t\t\tfont-size: .9rem; padding: .5rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid light-dark(#d8d8d8, #3a3d46);\n\t\t\t\t\tbackground: light-dark(#f2f2f2, #2a2d34); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button:hover, .toolbar button:hover { border-color: #808891; }\n\t\t\t\ttable#todo-list { width: 100%; border-collapse: collapse; margin: .6rem 0; }\n\t\t\t\t#todo-list td { padding: .45rem .3rem; border-bottom: 1px solid light-dark(#ececec, #2e3138); }\n\t\t\t\t#todo-list tr:last-child td { border-bottom: none; }\n\t\t\t\t#todo-list td:nth-child(2) { width: 100%; font-size: 1.02rem; }\n\t\t\t\ttd.done { text-decoration: line-through; opacity: .45; }\n\t\t\t\t.check {\n\t\t\t\t\twidth: 1.7rem; height: 1.7rem; border-radius: 50%; cursor: pointer;\n\t\t\t\t\tborder: 1.5px solid light-dark(#c9c9c9, #4a4e58); background: none; color: #3fa860;\n\t\t\t\t\tfont-size: .95rem; line-height: 1;\n\t\t\t\t}\n\t\t\t\t.check:hover { border-color: #3fa860; }\n\t\t\t\t.row-action {\n\t\t\t\t\tborder: none; background: none; cursor: pointer; color: inherit;\n\t\t\t\t\topacity: .4; font-size: .95rem; padding: .2rem .3rem;\n\t\t\t\t}\n\t\t\t\t.row-action:hover { opacity: 1; }\n\t\t\t\ttr.empty td { text-align: center; opacity: .5; padding: 1.4rem 0; }\n\t\t\t\t.toolbar {\n\t\t\t\t\tdisplay: flex; gap: .5rem; align-items: center; flex-wrap: wrap;\n\t\t\t\t\tpadding-top: .6rem; border-top: 1px solid light-dark(#ececec, #2e3138);\n\t\t\t\t}\n\t\t\t\t.toolbar .spacer { flex: 1; }\n\t\t\t\t#todo-stats { font-size: .85rem; opacity: .75; padding: .55rem 0; }\n\t\t\t\tform.edit-inline { display: flex; gap: .5rem; }\n\t\t\t\tform.edit-inline input { flex: 1; padding: .35rem .6rem; border-radius: .4rem; border: 1px solid #808891; background: inherit; color: inherit; }\n\t\t\t</style></head><body><main class=\"todoapp\"><h1>Todos</h1>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; color-scheme: light dark; }\n\t\t\t\t@media (prefers-color-scheme: dark) {\n\t\t\t\t\t:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; }\n\t\t\t\t}\n\t\t\t\t* { box-sizing: border-box; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t\tbackground: var(--bg); color: var(--text);\n\t\t\t\t}\n\t\t\t\t.todoapp {\n\t\t\t\t\twidth: min(34rem, 92vw); margin-top: 3rem; border-radius: .6rem;\n\t\t\t\t\tbackground: var(--surface); border: 1px solid var(--border);\n\t\t\t\t\tbox-shadow: 0 8px 24px rgba(0, 0, 0, .1); padding: 1.5rem 1.75rem 1rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 1rem; font-weight: 650; letter-spacing: .01em; }\n\t\t\t\tform.new-todo { display: flex; gap: .6rem; margin-bottom: .4rem; }\n\t\t\t\tform.new-todo input {\n\t\t\t\t\tflex: 1; font-size: 1rem; padding: .55rem .8rem; border-radius: .45rem;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button {\n\t\t\t\t\tfont-size: .9rem; padding: .5rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid var(--primary); background: var(--primary); color: var(--surface);\n\t\t\t\t}\n\t\t\t\t.toolbar button {\n\t\t\t\t\tfont-size: .9rem; padding: .5rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button:hover, .toolbar button:hover { border-color: var(--primary); }\n\t\t\t\t.toolbar button:hover { color: var(--primary); }\n\t\t\t\ttable#todo-list { width: 100%; border-collapse: collapse; margin: .6rem 0; }\n\t\t\t\t#todo-list td { padding: .45rem .3rem; border-bottom: 1px solid var(--border); }\n\t\t\t\t#todo-list tr:last-child td { border-bottom: none; }\n\t\t\t\t#todo-list td:nth-child(2) { width: 100%; font-size: 1.02rem; }\n\t\t\t\ttd.done { text-decoration: line-through; opacity: .45; }\n\t\t\t\t.check {\n\t\t\t\t\twidth: 1.7rem; height: 1.7rem; border-radius: 50%; cursor: pointer;\n\t\t\t\t\tborder: 1.5px solid var(--border); background: none; color: var(--primary);\n\t\t\t\t\tfont-size: .95rem; line-height: 1;\n\t\t\t\t}\n\t\t\t\t.check:hover { border-color: var(--primary); }\n\t\t\t\t.row-action {\n\t\t\t\t\tborder: none; background: none; cursor: pointer; color: inherit;\n\t\t\t\t\topacity: .4; font-size: .95rem; padding: .2rem .3rem;\n\t\t\t\t}\n\t\t\t\t.row-action:hover { opacity: 1; color: var(--primary); }\n\t\t\t\ttr.empty td { text-align: center; opacity: .5; padding: 1.4rem 0; }\n\t\t\t\t.toolbar {\n\t\t\t\t\tdisplay: flex; gap: .5rem; align-items: center; flex-wrap: wrap;\n\t\t\t\t\tpadding-top: .6rem; border-top: 1px solid var(--border);\n\t\t\t\t}\n\t\t\t\t.toolbar .spacer { flex: 1; }\n\t\t\t\t#todo-stats { font-size: .85rem; color: var(--muted); padding: .55rem 0; }\n\t\t\t\tform.edit-inline { display: flex; gap: .5rem; }\n\t\t\t\tform.edit-inline input { flex: 1; padding: .35rem .6rem; border-radius: .4rem; border: 1px solid var(--primary); background: inherit; color: inherit; }\n\t\t\t</style></head><body><main class=\"todoapp\"><h1>Todos</h1>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -100,7 +100,7 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 	var ghtmx_7f3b9d1a_Var2 string
 	ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(done))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 20}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 146, Col: 20}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -113,7 +113,7 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 	var ghtmx_7f3b9d1a_Var3 string
 	ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(total))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 39}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 146, Col: 39}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -126,7 +126,7 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 	var ghtmx_7f3b9d1a_Var4 string
 	ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(total - done))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 70}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 146, Col: 70}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var4))
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -237,7 +237,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	var ghtmx_7f3b9d1a_Var5 string
 	ghtmx_7f3b9d1a_Var5, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 152, Col: 27}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 159, Col: 27}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var5)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -259,7 +259,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	var ghtmx_7f3b9d1a_Var7 string
 	ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 157, Col: 34}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 164, Col: 34}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var7)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -304,7 +304,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	var ghtmx_7f3b9d1a_Var10 string
 	ghtmx_7f3b9d1a_Var10, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(t.Title)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 166, Col: 46}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 173, Col: 46}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var10))
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -326,7 +326,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	var ghtmx_7f3b9d1a_Var12 string
 	ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 171, Col: 34}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 178, Col: 34}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var12)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -348,7 +348,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	var ghtmx_7f3b9d1a_Var14 string
 	ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 179, Col: 34}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 186, Col: 34}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var14)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -406,7 +406,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var15 string
 	ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 195, Col: 24}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 202, Col: 24}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var15)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -428,7 +428,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var17 string
 	ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 200, Col: 31}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 207, Col: 31}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var17)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -441,7 +441,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var18 string
 	ghtmx_7f3b9d1a_Var18, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(t.Title)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 203, Col: 51}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 210, Col: 51}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var18)
 	if ghtmx_7f3b9d1a_Err != nil {

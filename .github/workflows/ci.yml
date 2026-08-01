@@ -137,7 +137,7 @@ jobs:
       - name: Diagnostic and config catalogue coverage (FR-045/FR-071)
         run: go test ./internal/catalogcheck/ -count=1 -v
       # The documentation site builds on every CI run (publishing
-      # happens in docs.yml on release); the test also compiles and
+      # the official site at ghtmx.dev deploys via deploy-docs.yml); the test also compiles and
       # renders the getting-started guide's own code.
       - name: Documentation site build (NFR-013/NFR-014)
         run: go test ./internal/docsite/ -count=1 -v
