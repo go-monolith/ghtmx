@@ -1,0 +1,115 @@
+package main
+
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+// The MVP acceptance application (task 67): full CRUD over todos with
+// htmx partial updates through compile-time fragments, route-aware
+// bindings, and the server-driven event contract. There is no
+// hand-written htmx glue anywhere: every URL comes from a binding,
+// every HX-Trigger from a generated emitter, and the htmx script tag
+// from the pinned helper.
+
+// The event contract: these declarations are the only source of the
+// Emit* symbols the handlers use. The stats panel listens for them.
+event TodoCreated(id string)
+
+event TodoToggled(id string, done bool)
+
+event TodoDeleted(id string)
+
+templ todoPage(todos []Todo, total int, done int) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>ghtmx todos</title>
+			@ghtmxgen.HTMXScript()
+		</head>
+		<body>
+			<h1>Todos</h1>
+			@statsPanel(total, done)
+			<form
+				hx-post={ CreateTodo }
+				hx-target="#todo-list"
+				hx-swap="outerHTML"
+			>
+				<input type="text" name="title" placeholder="What needs doing?" required/>
+				<button type="submit">Add</button>
+			</form>
+			<button
+				hx-get={ ListTodos }
+				hx-target="#todo-list"
+				hx-swap="outerHTML"
+			>refresh</button>
+			@todoList(todos)
+		</body>
+	</html>
+}
+
+// statsPanel refreshes itself whenever any contract event fires
+// anywhere on the page.
+fragment statsPanel(total int, done int) {
+	<div
+		id="todo-stats"
+		hx-get={ TodoStats }
+		hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body"
+		hx-swap="outerHTML"
+	>
+		<span>{ itoa(done) } of { itoa(total) } done</span>
+	</div>
+}
+
+// The list is itself a fragment: the page embeds it inline, and the
+// standalone entry point serves htmx refreshes byte-identically.
+fragment todoList(todos []Todo) {
+	<table id="todo-list">
+		for _, t := range todos {
+			fragment todoRow(t Todo) {
+				<tr id={ "todo-" + t.ID }>
+					<td class={ doneClass(t.Done) }>{ t.Title }</td>
+					<td>
+						<button
+							hx-get={ ghtmxgen.EditTodo(t.ID) }
+							hx-target={ "#todo-" + t.ID }
+							hx-swap="outerHTML"
+						>edit</button>
+					</td>
+					<td>
+						<button
+							hx-put={ ghtmxgen.ToggleTodo(t.ID) }
+							hx-target={ "#todo-" + t.ID }
+							hx-swap="outerHTML"
+						>toggle</button>
+					</td>
+					<td>
+						<button
+							hx-delete={ ghtmxgen.DeleteTodo(t.ID) }
+							hx-target={ "#todo-" + t.ID }
+							hx-swap="outerHTML"
+						>delete</button>
+					</td>
+				</tr>
+			}
+		}
+	</table>
+}
+
+// The inline edit flow: the edit button swaps a row for this form, and
+// submitting swaps back the refreshed row. The fragment is rendered
+// only from the EditTodo handler (FR-034's handler-explicit path), so
+// generation reports GHTMX-W0101 for it — the reachability check sees
+// template references, not Go handler bodies. The warning is the
+// documented cost of a handler-only fragment.
+fragment todoEditRow(t Todo) {
+	<tr id={ "todo-" + t.ID }>
+		<td colspan="4">
+			<form
+				hx-put={ ghtmxgen.RenameTodo(t.ID) }
+				hx-target={ "#todo-" + t.ID }
+				hx-swap="outerHTML"
+			>
+				<input type="text" name="title" value={ t.Title } required/>
+				<button type="submit">Save</button>
+			</form>
+		</td>
+	</tr>
+}

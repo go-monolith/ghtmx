@@ -1,0 +1,30 @@
+package main
+
+// ghtmx.CSRFHeader needs no import: generated code always imports the
+// ghtmx runtime.
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+// The server-driven event contract (FR-037): these declarations are the
+// only source of the EmitItemSaved / EmitCartCleared symbols and their
+// payload types in ghtmxgen.
+event ItemSaved(id string, name string)
+
+event CartCleared() // emitted alongside item-saved to demo header merging
+
+templ eventsPage(items []Item, csrf string) {
+	<div id="board" hx-on:item-saved="this.dataset.last = event.detail.id">
+		<table id="items">
+			<tbody>
+				for _, it := range items {
+					<tr id={ "item-" + it.ID }>
+						<td>{ it.Name }</td>
+						<td>
+							<button hx-post={ ghtmxgen.SaveItem(it.ID) } hx-headers={ ghtmx.CSRFHeader(csrf) } hx-target={ "#item-" + it.ID } hx-swap="outerHTML">Save</button>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		<div id="cart" hx-get={ eventsHome } hx-trigger="cart-cleared from:body" hx-target="#cart" hx-select="#cart" hx-swap="outerHTML"></div>
+	</div>
+}

@@ -1,0 +1,364 @@
+package site
+
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// The site's own event contract: every reference-document view is
+// announced through a generated HX-Trigger emitter, and the footer
+// listens for it — the same pattern examples/events demonstrates.
+event DocViewed(slug string)
+
+// shell is the page chrome, styled after templ.guide (Docusaurus):
+// a sticky top navbar, a grouped sidebar bound to real routes (symbol
+// bindings for zero-param routes, ghtmxgen constructors for
+// parameterised ones), and the content region every fragment swaps
+// into. Code blocks highlight client-side (highlight.js from a
+// pinned, SRI-checked CDN asset — same policy as the htmx tag), so
+// the wasm binary carries no highlighter.
+templ shell(active string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>ghtmx — compile-checked htmx for Go</title>
+			@ghtmxgen.HTMXScript()
+			<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js" integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous" defer></script>
+			<script>
+				(function () {
+					var theme = null;
+					try {
+						theme = localStorage.getItem("theme");
+					} catch (e) {}
+					if (!theme) {
+						theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+					}
+					document.documentElement.dataset.theme = theme;
+				})();
+			</script>
+			<style>
+				:root {
+					--primary: #008391;
+					--primary-hover: #006974;
+					--primary-contrast-bg: #e6f6f8;
+					--bg: #ffffff;
+					--bg-surface: #ffffff;
+					--text: #1c1e21;
+					--text-secondary: #525860;
+					--border: #dadde1;
+					--code-bg: #f6f7f8;
+					--inline-code-bg: rgba(0, 0, 0, 0.06);
+					--navbar-bg: rgba(255, 255, 255, 0.92);
+					--shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+					--c-comment: #6a737d;
+					--c-keyword: #d73a49;
+					--c-string: #032f62;
+					--c-number: #005cc5;
+					--c-func: #6f42c1;
+					--c-type: #22863a;
+					--c-attr: #005cc5;
+					color-scheme: light;
+				}
+				[data-theme="dark"] {
+					--primary: #dbbc30;
+					--primary-hover: #e7c946;
+					--primary-contrast-bg: rgba(219, 188, 48, 0.12);
+					--bg: #1b1b1d;
+					--bg-surface: #242526;
+					--text: #e3e3e3;
+					--text-secondary: #a5adba;
+					--border: #444950;
+					--code-bg: #282a2e;
+					--inline-code-bg: rgba(255, 255, 255, 0.1);
+					--navbar-bg: rgba(36, 37, 38, 0.92);
+					--shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+					--c-comment: #8b949e;
+					--c-keyword: #ff7b72;
+					--c-string: #a5d6ff;
+					--c-number: #79c0fd;
+					--c-func: #d2a8ff;
+					--c-type: #7ee787;
+					--c-attr: #79c0ff;
+					color-scheme: dark;
+				}
+				* { box-sizing: border-box; }
+				body {
+					font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
+					margin: 0;
+					background: var(--bg);
+					color: var(--text);
+					line-height: 1.65;
+				}
+				a { color: var(--primary); text-decoration: none; }
+				a:hover { text-decoration: underline; }
+
+				.navbar {
+					position: sticky; top: 0; z-index: 20;
+					display: flex; align-items: center; justify-content: space-between;
+					height: 3.75rem; padding: 0 1.25rem;
+					background: var(--navbar-bg);
+					backdrop-filter: blur(8px);
+					box-shadow: var(--shadow);
+				}
+				.navbar-brand { font-weight: 700; font-size: 1.15rem; color: var(--text); }
+				.navbar-brand:hover { text-decoration: none; color: var(--primary); }
+				.navbar-links { display: flex; align-items: center; gap: 1rem; }
+				.navbar-links a { color: var(--text); font-size: .95rem; }
+				.navbar-links a:hover { color: var(--primary); text-decoration: none; }
+				.theme-toggle {
+					border: 1px solid var(--border); border-radius: .5rem;
+					background: none; color: var(--text);
+					width: 2.1rem; height: 2.1rem; cursor: pointer; font-size: 1rem;
+				}
+				.theme-toggle::after { content: "🌙"; }
+				[data-theme="dark"] .theme-toggle::after { content: "☀️"; }
+
+				.page { display: flex; max-width: 87.5rem; margin: 0 auto; align-items: flex-start; }
+				.sidebar {
+					width: 17.5rem; flex-shrink: 0;
+					position: sticky; top: 3.75rem;
+					max-height: calc(100vh - 3.75rem); overflow-y: auto;
+					padding: 1.25rem 1rem 2rem;
+					border-right: 1px solid var(--border);
+				}
+				.sidebar-label {
+					font-size: .78rem; font-weight: 700; text-transform: uppercase;
+					letter-spacing: .04em; color: var(--text-secondary);
+					margin: 1.1rem 0 .3rem; padding: 0 .5rem;
+				}
+				.sidebar-group:first-child .sidebar-label { margin-top: 0; }
+				.sidebar a {
+					display: block; padding: .32rem .5rem; border-radius: .4rem;
+					color: var(--text-secondary); font-size: .92rem;
+				}
+				.sidebar a:hover { background: var(--inline-code-bg); color: var(--text); text-decoration: none; }
+				.sidebar a.active { color: var(--primary); background: var(--primary-contrast-bg); font-weight: 600; }
+				.sidebar-cat summary {
+					cursor: pointer; padding: .32rem .5rem; border-radius: .4rem;
+					color: var(--text-secondary); font-size: .92rem; list-style: none;
+				}
+				.sidebar-cat summary::before { content: "›"; display: inline-block; margin-right: .4rem; transition: transform .15s; }
+				.sidebar-cat[open] summary::before { transform: rotate(90deg); }
+				.sidebar-cat summary:hover { background: var(--inline-code-bg); color: var(--text); }
+				.sidebar-cat a { padding-left: 1.4rem; }
+
+				.breadcrumbs { font-size: .82rem; color: var(--text-secondary); margin-bottom: 1rem; }
+				.breadcrumbs .crumb-sep { margin: 0 .35rem; opacity: .6; }
+				.breadcrumbs .crumb-here { color: var(--text); font-weight: 600; }
+
+				main#content { flex: 1; min-width: 0; padding: 2rem 2.5rem 4rem; }
+				.doc-row { display: flex; gap: 2.5rem; align-items: flex-start; }
+				.doc-article { flex: 1; min-width: 0; max-width: 47.5rem; }
+				.toc {
+					width: 14rem; flex-shrink: 0;
+					position: sticky; top: 5rem;
+					max-height: calc(100vh - 6rem); overflow-y: auto;
+					font-size: .82rem;
+					border-left: 1px solid var(--border);
+					padding-left: .9rem;
+				}
+				.toc-title { font-weight: 700; margin-bottom: .4rem; color: var(--text); }
+				.toc ul { list-style: none; margin: 0; padding: 0; }
+				.toc li { margin: .28rem 0; }
+				.toc a { color: var(--text-secondary); display: block; }
+				.toc a:hover { color: var(--primary); text-decoration: none; }
+				.toc-h3 { padding-left: .9rem; }
+
+				h1 { font-size: 2rem; line-height: 1.25; margin-top: 0; }
+				h2 { margin-top: 2.2rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+				h1, h2, h3, h4 { scroll-margin-top: 4.75rem; }
+				hr { border: none; border-top: 1px solid var(--border); }
+				blockquote {
+					margin: 1rem 0; padding: .6rem 1rem;
+					border-left: .3rem solid var(--primary);
+					background: var(--primary-contrast-bg);
+					border-radius: 0 .4rem .4rem 0;
+				}
+				blockquote p { margin: .2rem 0; }
+				code {
+					font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+					font-size: .875em;
+					background: var(--inline-code-bg);
+					border-radius: .25rem; padding: .1em .3em;
+				}
+				pre {
+					background: var(--code-bg);
+					border-radius: .5rem;
+					padding: 1rem 1.2rem;
+					overflow-x: auto;
+					box-shadow: var(--shadow);
+					line-height: 1.5;
+				}
+				pre code { background: none; padding: 0; font-size: .85rem; }
+				table { border-collapse: collapse; display: block; overflow-x: auto; }
+				td, th { border: 1px solid var(--border); padding: .45rem .7rem; text-align: left; vertical-align: top; }
+				th { background: var(--code-bg); }
+
+				.hljs-comment, .hljs-quote { color: var(--c-comment); font-style: italic; }
+				.hljs-keyword, .hljs-literal, .hljs-selector-tag { color: var(--c-keyword); }
+				.hljs-string, .hljs-regexp { color: var(--c-string); }
+				.hljs-number, .hljs-symbol, .hljs-meta { color: var(--c-number); }
+				.hljs-title, .hljs-title.function_, .hljs-section { color: var(--c-func); }
+				.hljs-type, .hljs-built_in, .hljs-title.class_ { color: var(--c-type); }
+				.hljs-attr, .hljs-attribute, .hljs-name, .hljs-tag { color: var(--c-attr); }
+
+				.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem; }
+				.pager-link {
+					flex: 1; border: 1px solid var(--border); border-radius: .5rem;
+					padding: .7rem 1rem; line-height: 1.4;
+				}
+				.pager-link:hover { border-color: var(--primary); text-decoration: none; }
+				.pager-next { text-align: right; }
+				.pager-dir { display: block; font-size: .78rem; color: var(--text-secondary); }
+				.pager-title { font-weight: 600; }
+
+				.hero { padding: 1.5rem 0 .5rem; }
+				.hero-title { font-size: 2.6rem; margin: 0 0 .4rem; }
+				.hero-accent { color: var(--primary); }
+				.hero-tagline { font-size: 1.15rem; color: var(--text-secondary); max-width: 40rem; margin: 0 0 1.4rem; }
+				.hero-actions { display: flex; gap: .8rem; flex-wrap: wrap; }
+				.btn {
+					display: inline-block; padding: .55rem 1.3rem; border-radius: .5rem;
+					border: 1px solid var(--border); color: var(--text); font-weight: 600;
+				}
+				.btn:hover { border-color: var(--primary); text-decoration: none; }
+				.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+				[data-theme="dark"] .btn-primary { color: #1b1b1d; }
+				.btn-primary:hover { background: var(--primary-hover); }
+				.features {
+					display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+					gap: 1rem; margin: 2rem 0;
+				}
+				.feature {
+					border: 1px solid var(--border); border-radius: .6rem;
+					padding: 1rem 1.2rem; background: var(--bg-surface);
+					box-shadow: var(--shadow);
+				}
+				.feature h3 { margin: 0 0 .4rem; font-size: 1.02rem; }
+				.feature p { margin: 0; font-size: .92rem; color: var(--text-secondary); }
+
+				.example-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
+				.example-card {
+					border: 1px solid var(--border); border-radius: .6rem;
+					padding: 1rem 1.2rem; background: var(--bg-surface); box-shadow: var(--shadow);
+				}
+				.example-card h2 { margin: 0 0 .4rem; border: none; padding: 0; font-size: 1.1rem; }
+				.example-card p { margin: 0; font-size: .92rem; color: var(--text-secondary); }
+
+				.site-footer {
+					position: fixed; bottom: 0; right: 0; z-index: 10;
+					padding: .25rem .8rem; font-size: .78rem;
+					color: var(--text-secondary); background: var(--bg);
+					border-top-left-radius: .4rem; border: 1px solid var(--border); border-right: none; border-bottom: none;
+				}
+
+				@media (max-width: 68.75rem) { .toc { display: none; } }
+				@media (max-width: 56.25rem) {
+					.page { flex-direction: column; }
+					.sidebar { position: static; width: 100%; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+					main#content { padding: 1.5rem 1.25rem 4rem; }
+				}
+			</style>
+		</head>
+		<body hx-on:doc-viewed="document.getElementById('last-viewed').textContent = event.detail.slug">
+			<header class="navbar">
+				<a class="navbar-brand" href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">ghtmx</a>
+				<div class="navbar-links">
+					<a href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Docs</a>
+					<a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Examples</a>
+					<a href="https://github.com/go-monolith/ghtmx" target="_blank" rel="noopener">GitHub</a>
+					<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme"></button>
+				</div>
+			</header>
+			<div class="page">
+				<nav class="sidebar">
+					<div class="sidebar-group">
+						<div class="sidebar-label">Getting started</div>
+						<a class={ navClass("", active == "home") } href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Introduction</a>
+						<a class={ navClass("", active == "getting-started") } href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Getting started</a>
+					</div>
+					<div class="sidebar-group">
+						<div class="sidebar-label">Language</div>
+						<details class="sidebar-cat" open?={ inSyntax(active) }>
+							<summary>Syntax and usage</summary>
+							<a class={ navClass("", active == "syntax") } href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Overview</a>
+							for _, s := range syntaxNav() {
+								<a class={ navClass("", active == "syntax/"+s.ID) } href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ s.Title }</a>
+							}
+						</details>
+					</div>
+					<div class="sidebar-group">
+						<div class="sidebar-label">Reference</div>
+						for _, d := range ReferenceDocs {
+							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
+						}
+					</div>
+					<div class="sidebar-group">
+						<div class="sidebar-label">Project</div>
+						for _, d := range ProjectDocs {
+							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
+						}
+					</div>
+					<div class="sidebar-group">
+						<div class="sidebar-label">Examples</div>
+						<a class={ navClass("", active == "examples") } href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">All examples</a>
+						for _, e := range Examples {
+							<a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a>
+						}
+					</div>
+				</nav>
+				<main id="content" hx-history-elt>
+					{ children... }
+				</main>
+			</div>
+			<footer class="site-footer">last viewed: <span id="last-viewed">—</span></footer>
+			<script>
+				function ghtmxHighlight(root) {
+					root.querySelectorAll("code.language-templ, code.language-ghtmx").forEach(function (c) {
+						c.classList.remove("language-templ", "language-ghtmx");
+						c.classList.add("language-go");
+					});
+					if (window.hljs) {
+						root.querySelectorAll("pre code").forEach(function (c) {
+							if (c.dataset.highlighted !== "yes") {
+								hljs.highlightElement(c);
+							}
+						});
+					}
+				}
+				function ghtmxMarkActive() {
+					var path = location.pathname;
+					document.querySelectorAll(".sidebar a").forEach(function (a) {
+						a.classList.toggle("active", a.getAttribute("href") === path);
+					});
+					document.querySelectorAll(".sidebar details").forEach(function (d) {
+						if (d.querySelector("a.active")) {
+							d.open = true;
+						}
+					});
+				}
+				document.addEventListener("DOMContentLoaded", function () {
+					ghtmxHighlight(document);
+				});
+				document.body.addEventListener("htmx:afterSwap", function (e) {
+					ghtmxHighlight(e.target);
+				});
+				document.body.addEventListener("htmx:afterSettle", function () {
+					ghtmxMarkActive();
+				});
+				window.addEventListener("popstate", function () {
+					ghtmxMarkActive();
+				});
+				document.addEventListener("click", function (e) {
+					if (!e.target.closest("#theme-toggle")) {
+						return;
+					}
+					var next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+					document.documentElement.dataset.theme = next;
+					try {
+						localStorage.setItem("theme", next);
+					} catch (err) {}
+				});
+			</script>
+		</body>
+	</html>
+}

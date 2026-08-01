@@ -46,6 +46,12 @@ jobs:
             (cd "$dir" && go build ./... && go vet ./... && go test ./...)
           done
         shell: bash
+      # The official docs site is a nested module too (it depends on
+      # chi); its tests include the content-drift gate that keeps the
+      # embedded copies identical to the single-source documents.
+      - name: Docs site module tests
+        run: cd docs/official && go build ./... && go vet ./... && go test ./...
+        shell: bash
 
   # NFR-001 and NFR-003: a dedicated job so the performance gates cannot
   # silently vanish when the test matrix advances. ubuntu-latest is the
@@ -147,6 +153,11 @@ jobs:
       # reason. A failure blocks release.
       - name: WASM build matrix (NFR-014)
         run: go test ./internal/wasmcheck/ -count=1 -v -timeout 20m
+      # The docs site ships as a wasm binary (Cloudflare Workers); this
+      # is its compile gate — main_wasm.go is behind the js build tag,
+      # so no other step ever compiles it.
+      - name: Docs site WASM build (js/wasm)
+        run: cd docs/official && GOOS=js GOARCH=wasm go build -o /tmp/ghtmx-docs.wasm .
 
   ensure-generated:
     runs-on: ubuntu-latest
@@ -159,6 +170,11 @@ jobs:
         # -cache=false: the determinism check must exercise real
         # generation, never cached output.
         run: go run ./cmd/ghtmx generate -include-version=false -cache=false
+      # The docs site is excluded from the root pass (.ghtmxignore_generate)
+      # because it has its own module, config, and central package; it
+      # regenerates with its own -path and the same drift check below.
+      - name: Regenerate docs site
+        run: go run ./cmd/ghtmx generate -include-version=false -cache=false -path docs/official
       - name: Ensure no drift
         run: |
           git diff --exit-code

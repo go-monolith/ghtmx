@@ -836,9 +836,6 @@ Anything that would exceed 5 days has been split.
   - _Requirements: NFR-010_
   - _Modules: —_
   - _Complexity: Small_
-- [-] Drive CI run 30690812847 to fully green: wait for it to finish, then fix every failing job and re-push until all jobs (6-cell test matrix, perf-gate, lint, ensure-generated, vulncheck, fuzz, WASM) pass. Expect cross-OS breakage on macos-latest/windows-latest — path separators, line endings, and the pinned gopls install are the likely culprits. Report the actual job results, not just that the run was started.
-- [x] Resolve the 2 diagnostics reported on the last .github/workflows/ci.yml edit (ctrl+o to expand). go vet ./... passes, so confirm whether they are workflow-schema/YAML issues, fix them, and while there re-check that the -short change to the NFR-010 job is still consistent with the spec's traceability notes — the install-path assertions now only run inside the 3-OS matrix, so the named NFR-010 job no longer proves them on its own.
-- [-] Stop pushing straight to main: enable branch protection requiring CI to pass, and route all further changes through a feature branch plus pull request tagged @CharlieHelps please review, per the project guidelines. Also record in the repo that git push needs HTTPS with the gh credential helper, since the container has no SSH key.
 
 ## Requirement Coverage Map
 
