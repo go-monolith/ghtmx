@@ -1,0 +1,4 @@
+# Byte-exact golden and fixture comparisons everywhere: every text
+# file checks out with LF on every platform (a CRLF checkout breaks
+# txtar markers, gofmt cleanliness, and expected-output tests).
+* text=auto eol=lf

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/fsnotify/fsnotify"
+	"github.com/go-monolith/ghtmx/cmd/ghtmx/generatecmd/modcheck"
 	"github.com/go-monolith/ghtmx/internal/analyzer"
 	"github.com/go-monolith/ghtmx/internal/config"
 	"github.com/go-monolith/ghtmx/internal/generator/central"
@@ -24,6 +25,21 @@ templ hello() {
 	<div>Hello</div>
 }
 `
+
+// ghtmxModuleRoot resolves the repository root for scratch-module
+// replace directives — never hardcode the checkout path.
+func ghtmxModuleRoot(t testing.TB) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := modcheck.WalkUp(wd)
+	if err != nil {
+		t.Fatalf("cannot locate the ghtmx go.mod: %v", err)
+	}
+	return root
+}
 
 func writeFile(t testing.TB, dir, name, content string) string {
 	t.Helper()
@@ -366,7 +382,7 @@ go 1.25
 
 require github.com/go-monolith/ghtmx v0.0.0
 
-replace github.com/go-monolith/ghtmx => /workspaces/ghtmx
+replace github.com/go-monolith/ghtmx => `+ghtmxModuleRoot(t)+`
 `)
 	writeFile(t, dir, "main.go", `package main
 
@@ -679,7 +695,7 @@ go 1.25
 
 require github.com/go-monolith/ghtmx v0.0.0
 
-replace github.com/go-monolith/ghtmx => /workspaces/ghtmx
+replace github.com/go-monolith/ghtmx => `+ghtmxModuleRoot(t)+`
 `)
 	writeFile(t, dir, "page.ghtmx", `package main
 

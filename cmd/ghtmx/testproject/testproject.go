@@ -28,7 +28,7 @@ func Create(moduleRoot string) (dir string, err error) {
 			}
 			continue
 		}
-		src := filepath.Join("testdata", file.Name())
+		src := "testdata/" + file.Name() // embed.FS paths always use forward slashes
 		data, err := testdata.ReadFile(src)
 		if err != nil {
 			return dir, fmt.Errorf("failed to read file: %w", err)
@@ -52,7 +52,7 @@ func Create(moduleRoot string) (dir string, err error) {
 		return dir, fmt.Errorf("failed to read embedded dir: %w", err)
 	}
 	for _, file := range files {
-		src := filepath.Join("testdata", "css-classes", file.Name())
+		src := "testdata/css-classes/" + file.Name() // embed.FS paths always use forward slashes
 		data, err := testdata.ReadFile(src)
 		if err != nil {
 			return dir, fmt.Errorf("failed to read file: %w", err)
