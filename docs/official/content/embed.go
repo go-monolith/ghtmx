@@ -6,9 +6,10 @@ package content
 
 import "embed"
 
-// all: keeps underscore- and dot-prefixed copies embedded too, so a
-// file the sync manifest copies can never silently vanish from the
-// binary.
+// Plain patterns deliberately exclude dot- and underscore-prefixed
+// files so a future sync change can never sweep them into the binary;
+// the sync manifest's copyName mirrors the exclusion, so nothing that
+// is copied can silently miss the embed either.
 //
-//go:embed all:docs all:examples
+//go:embed docs examples
 var FS embed.FS

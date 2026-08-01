@@ -87,6 +87,10 @@ func TestCopyName(t *testing.T) {
 		{"crud_ghtmx.go", "", false},
 		{"main_test.go", "", false},
 		{"notes.txt", "", false},
+		{"_helpers.go", "", false},
+		{".env.go", "", false},
+		{"_private/util.go", "", false},
+		{"sub/.hidden.ghtmx", "", false},
 	}
 	for _, tc := range cases {
 		got, ok := copyName(tc.rel)

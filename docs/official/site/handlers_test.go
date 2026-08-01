@@ -206,6 +206,21 @@ func TestSyntaxCategoryPages(t *testing.T) {
 	}
 }
 
+// TestHighlightScriptPinnedWithSRI: the highlighter loads from a
+// pinned CDN asset whose subresource integrity the browser enforces.
+// Bumping the CDN version without recomputing the hash must fail here
+// instead of silently breaking highlighting in the browser.
+func TestHighlightScriptPinnedWithSRI(t *testing.T) {
+	srv := serve(t)
+	_, body := get(t, srv, "/", false)
+	want := `<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"` +
+		` integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU"` +
+		` crossorigin="anonymous" defer></script>`
+	if !strings.Contains(body, want) {
+		t.Errorf("full page missing the pinned, SRI-checked highlight.js tag:\n%s", want)
+	}
+}
+
 // TestHistoryRestoreScopedToContent: htmx back/forward restores must
 // stay inside #content — the page declares hx-history-elt there, and
 // a history-restore request (HX-Request is set on those too) gets the
