@@ -63,6 +63,12 @@ committed here). It needs two repository secrets:
 Until the token secret exists, the workflow verifies the build and
 skips the deploy step with a notice, so it stays green.
 
+The site is served at **https://ghtmx.0xgosu.dev** — a Workers custom
+domain declared in `wrangler.toml` (`custom_domain = true`), so
+Cloudflare provisions the DNS record and certificate automatically on
+deploy. The token additionally needs DNS permission on the zone for
+that provisioning.
+
 **Manual deployment** uses wrangler (Node tooling — deploy-only; the
 Go build and test pipeline never invoke it):
 
