@@ -9,3 +9,9 @@
   has no SSH key. If pushes fail over SSH:
   `git remote set-url origin https://github.com/go-monolith/ghtmx.git && gh auth setup-git`
 - Full contribution flow: see CONTRIBUTING.md.
+- After changing anything under `examples/` or the reference docs
+  (README.md, SYNTAX.md, DIAGNOSTICS.md, CONFIG.md, CONFORMANCE.md,
+  TEMPL_SYNTAX_BASELINE.md, CHANGELOG.md, docs/site/*.md), refresh the
+  docs site's embedded copies: `cd docs/official && go run ./internal/sync`
+  — then commit the updated files under `docs/official/content/`. CI's
+  drift gate fails otherwise.
