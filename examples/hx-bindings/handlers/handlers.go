@@ -3,6 +3,9 @@
 // The templates bind these symbols (hx-get={ handlers.ListItems }),
 // so this package must not import the template package back — the
 // example installs the render bodies below from its own init instead.
+// Serving these handlers without importing the example package is a
+// wiring bug, and they fail loudly rather than masking it with an
+// empty 200.
 package handlers
 
 import "net/http"
@@ -15,17 +18,17 @@ var (
 )
 
 func ListItems(w http.ResponseWriter, r *http.Request) {
-	if ListItemsBody != nil {
-		ListItemsBody(w, r)
+	if ListItemsBody == nil {
+		http.Error(w, "hx-bindings: handlers.ListItemsBody hook is not installed — import the example package", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	ListItemsBody(w, r)
 }
 
 func GetItem(w http.ResponseWriter, r *http.Request) {
-	if GetItemBody != nil {
-		GetItemBody(w, r)
+	if GetItemBody == nil {
+		http.Error(w, "hx-bindings: handlers.GetItemBody hook is not installed — import the example package", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	GetItemBody(w, r)
 }

@@ -15,5 +15,7 @@ templates can demonstrate a *cross-package* symbol binding. Because
 the templates bind `handlers.*` symbols, the handlers package cannot
 import the template package back — the example installs the render
 bodies through the `handlers.ListItemsBody`/`GetItemBody` hooks in its
-`init`. A single-package application needs none of this plumbing; the
-crud example is the canonical single-package shape.
+`init`. Serving the handlers without those hooks installed is a loud
+500 naming the missing hook, never a healthy-looking empty response.
+A single-package application needs none of this plumbing; the crud
+example is the canonical single-package shape.
