@@ -47,7 +47,8 @@ func NewRouter() http.Handler {
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		for _, mux := range demos {
 			if _, pattern := mux.Handler(req); pattern != "" {
-				mux.ServeHTTP(w, req)
+				// Demo state is per visitor (see demostate.go).
+				mux.ServeHTTP(w, withDemoSession(w, req))
 				return
 			}
 		}

@@ -30,15 +30,18 @@ type Todo struct {
 	Done  bool
 }
 
-// store is an in-memory todo store with deterministic IDs.
-type store struct {
+// Store is an in-memory todo store with deterministic IDs.
+type Store struct {
 	mu    sync.Mutex
 	next  int
 	todos map[string]Todo
 }
 
-func newStore() *store {
-	return &store{todos: map[string]Todo{}}
+// NewStore builds an empty todo store. Embedders that need isolated
+// instances (the docs site scopes one per visitor) construct their
+// own and route to them through StoreSelector.
+func NewStore() *Store {
+	return &Store{todos: map[string]Todo{}}
 }
 
 // maxTodos and maxTitleLen bound the in-memory store: the app also
@@ -49,7 +52,7 @@ const (
 	maxTitleLen = 200
 )
 
-func (s *store) add(title string) (Todo, bool) {
+func (s *Store) add(title string) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.todos) >= maxTodos {
@@ -61,7 +64,7 @@ func (s *store) add(title string) (Todo, bool) {
 	return t, true
 }
 
-func (s *store) toggle(id string) (Todo, bool) {
+func (s *Store) toggle(id string) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t, ok := s.todos[id]
@@ -73,7 +76,7 @@ func (s *store) toggle(id string) (Todo, bool) {
 	return t, true
 }
 
-func (s *store) remove(id string) bool {
+func (s *Store) remove(id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.todos[id]; !ok {
@@ -86,7 +89,7 @@ func (s *store) remove(id string) bool {
 // toggleAll implements the TodoMVC rule: if any todo is still
 // active, everything becomes done; if all are done, everything
 // reopens. Returns how many rows changed.
-func (s *store) toggleAll() int {
+func (s *Store) toggleAll() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	allDone := true
@@ -109,7 +112,7 @@ func (s *store) toggleAll() int {
 }
 
 // clearCompleted removes every done todo, returning how many.
-func (s *store) clearCompleted() int {
+func (s *Store) clearCompleted() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	removed := 0
@@ -122,7 +125,7 @@ func (s *store) clearCompleted() int {
 	return removed
 }
 
-func (s *store) list() []Todo {
+func (s *Store) list() []Todo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]Todo, 0, len(s.todos))
@@ -137,7 +140,7 @@ func (s *store) list() []Todo {
 	return out
 }
 
-func (s *store) rename(id, title string) (Todo, bool) {
+func (s *Store) rename(id, title string) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t, ok := s.todos[id]
@@ -149,20 +152,20 @@ func (s *store) rename(id, title string) (Todo, bool) {
 	return t, true
 }
 
-func (s *store) get(id string) (Todo, bool) {
+func (s *Store) get(id string) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t, ok := s.todos[id]
 	return t, ok
 }
 
-func (s *store) stats() (total, done int) {
+func (s *Store) stats() (total, done int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.statsLocked()
 }
 
-func (s *store) statsLocked() (total, done int) {
+func (s *Store) statsLocked() (total, done int) {
 	for _, t := range s.todos {
 		total++
 		if t.Done {
@@ -174,7 +177,7 @@ func (s *store) statsLocked() (total, done int) {
 
 // snapshot returns the list and stats under one lock, so a page render
 // never shows a list inconsistent with its stats line.
-func (s *store) snapshot() (list []Todo, total, done int) {
+func (s *Store) snapshot() (list []Todo, total, done int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, t := range s.todos {
@@ -189,7 +192,21 @@ func (s *store) snapshot() (list []Todo, total, done int) {
 	return list, total, done
 }
 
-var todos = newStore()
+var todos = NewStore()
+
+// StoreSelector lets an embedder scope the demo's state per request —
+// the docs site keys it by a visitor cookie so no two visitors share
+// a list. Nil (the default, and the reference wiring) means the
+// single shared package store. Install it before serving; handlers
+// read it on every request.
+var StoreSelector func(*http.Request) *Store
+
+func currentStore(r *http.Request) *Store {
+	if StoreSelector != nil {
+		return StoreSelector(r)
+	}
+	return todos
+}
 
 // Template helpers.
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -203,7 +220,7 @@ func doneClass(done bool) string {
 
 // Index serves the full page.
 func Index(w http.ResponseWriter, r *http.Request) {
-	list, total, done := todos.snapshot()
+	list, total, done := currentStore(r).snapshot()
 	if err := todoPage(list, total, done).Render(r.Context(), w); err != nil {
 		log.Printf("render index: %v", err)
 	}
@@ -231,7 +248,7 @@ func filterTodos(list []Todo, filter string) []Todo {
 // the same bound route with hx-vals, so the view narrows without any
 // hand-written URL.
 func ListTodos(w http.ResponseWriter, r *http.Request) {
-	list, total, done := todos.snapshot()
+	list, total, done := currentStore(r).snapshot()
 	list = filterTodos(list, r.FormValue("filter"))
 	err := nethttp.Render(w, r,
 		nethttp.WithPage(todoPage(list, total, done), todoListFragment(list)))
@@ -243,11 +260,11 @@ func ListTodos(w http.ResponseWriter, r *http.Request) {
 // ToggleAllTodos flips the whole list at once and announces the bulk
 // change through one merged event.
 func ToggleAllTodos(w http.ResponseWriter, r *http.Request) {
-	changed := todos.toggleAll()
+	changed := currentStore(r).toggleAll()
 	if err := ghtmxgen.EmitTodosBulkChanged(w, ghtmxgen.TodosBulkChangedPayload{Count: changed}); err != nil {
 		log.Printf("emit todos-bulk-changed: %v", err)
 	}
-	list, _, _ := todos.snapshot()
+	list, _, _ := currentStore(r).snapshot()
 	if err := nethttp.Render(w, r, todoListFragment(list)); err != nil {
 		log.Printf("render list: %v", err)
 	}
@@ -256,11 +273,11 @@ func ToggleAllTodos(w http.ResponseWriter, r *http.Request) {
 // ClearCompleted deletes every done todo and returns the refreshed
 // list.
 func ClearCompleted(w http.ResponseWriter, r *http.Request) {
-	removed := todos.clearCompleted()
+	removed := currentStore(r).clearCompleted()
 	if err := ghtmxgen.EmitTodosBulkChanged(w, ghtmxgen.TodosBulkChangedPayload{Count: removed}); err != nil {
 		log.Printf("emit todos-bulk-changed: %v", err)
 	}
-	list, _, _ := todos.snapshot()
+	list, _, _ := currentStore(r).snapshot()
 	if err := nethttp.Render(w, r, todoListFragment(list)); err != nil {
 		log.Printf("render list: %v", err)
 	}
@@ -278,7 +295,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title is too long", http.StatusUnprocessableEntity)
 		return
 	}
-	t, ok := todos.add(title)
+	t, ok := currentStore(r).add(title)
 	if !ok {
 		http.Error(w, "the demo store is full — delete a todo first", http.StatusUnprocessableEntity)
 		return
@@ -286,7 +303,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	if err := ghtmxgen.EmitTodoCreated(w, ghtmxgen.TodoCreatedPayload{Id: t.ID}); err != nil {
 		log.Printf("emit todo-created: %v", err)
 	}
-	list, _, _ := todos.snapshot()
+	list, _, _ := currentStore(r).snapshot()
 	err := nethttp.Render(w, r, todoListFragment(list), nethttp.Status(http.StatusCreated))
 	if err != nil {
 		log.Printf("render list: %v", err)
@@ -295,7 +312,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 // ToggleTodo flips a todo's done state and returns its refreshed row.
 func ToggleTodo(w http.ResponseWriter, r *http.Request) {
-	t, ok := todos.toggle(r.PathValue("id"))
+	t, ok := currentStore(r).toggle(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -310,7 +327,7 @@ func ToggleTodo(w http.ResponseWriter, r *http.Request) {
 
 // EditTodo swaps a row for its inline edit form.
 func EditTodo(w http.ResponseWriter, r *http.Request) {
-	t, ok := todos.get(r.PathValue("id"))
+	t, ok := currentStore(r).get(r.PathValue("id"))
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -331,7 +348,7 @@ func RenameTodo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title is too long", http.StatusUnprocessableEntity)
 		return
 	}
-	t, ok := todos.rename(r.PathValue("id"), title)
+	t, ok := currentStore(r).rename(r.PathValue("id"), title)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -345,7 +362,7 @@ func RenameTodo(w http.ResponseWriter, r *http.Request) {
 // removes the row client-side.
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if !todos.remove(id) {
+	if !currentStore(r).remove(id) {
 		http.NotFound(w, r)
 		return
 	}
@@ -357,7 +374,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 
 // TodoStats renders the stats panel fragment.
 func TodoStats(w http.ResponseWriter, r *http.Request) {
-	total, done := todos.stats()
+	total, done := currentStore(r).stats()
 	if err := nethttp.Render(w, r, statsPanelFragment(total, done)); err != nil {
 		log.Printf("render stats: %v", err)
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/go-monolith/ghtmx/cmd/ghtmx/generatecmd"
 )
 
-func reset() { todos = newStore() }
+func reset() { todos = NewStore() }
 
 func serve(t *testing.T) *httptest.Server {
 	t.Helper()

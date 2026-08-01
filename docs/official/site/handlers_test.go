@@ -311,8 +311,8 @@ func TestLiveDemosServed(t *testing.T) {
 // TestCrudDemoRoundTrip: the crud demo is actually alive — creating a
 // todo through the real handler emits the contract event and returns
 // the refreshed list fragment. The created todo intentionally leaks
-// into crud's package-global store for the rest of the test binary;
-// no other test asserts that store's contents.
+// into the cookie-less "" demo session's store for the rest of the
+// test binary; no other test asserts that session's contents.
 func TestCrudDemoRoundTrip(t *testing.T) {
 	srv := serve(t)
 	req, err := http.NewRequest(http.MethodPost, srv.URL+"/todos", strings.NewReader("title=demo+todo"))
@@ -338,6 +338,77 @@ func TestCrudDemoRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "demo todo") {
 		t.Error("created todo missing from the returned list fragment")
+	}
+}
+
+// TestDemoStateIsolatedPerSession: two visitors with different demo
+// cookies get independent crud stores — one visitor's edits never
+// appear in another's list — and a cookie-less first request is
+// issued a session cookie.
+func TestDemoStateIsolatedPerSession(t *testing.T) {
+	srv := serve(t)
+	demoReq := func(method, path, cookie string, form string) (*http.Response, string) {
+		t.Helper()
+		var body io.Reader
+		if form != "" {
+			body = strings.NewReader(form)
+		}
+		req, err := http.NewRequest(method, srv.URL+path, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if form != "" {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+		req.Header.Set("HX-Request", "true")
+		if cookie != "" {
+			req.AddCookie(&http.Cookie{Name: "ghtmx_demo", Value: cookie})
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp, string(data)
+	}
+
+	resp, _ := demoReq(http.MethodPost, "/todos", "visitor-a", "title=alice+private+task")
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("visitor A create = %d", resp.StatusCode)
+	}
+	_, bList := demoReq(http.MethodGet, "/todos", "visitor-b", "")
+	if strings.Contains(bList, "alice private task") {
+		t.Error("visitor B sees visitor A's todo — demo state is shared across sessions")
+	}
+	if !strings.Contains(bList, `class="empty"`) {
+		t.Error("visitor B's fresh session should be empty")
+	}
+	_, aList := demoReq(http.MethodGet, "/todos", "visitor-a", "")
+	if !strings.Contains(aList, "alice private task") {
+		t.Error("visitor A lost their own todo")
+	}
+
+	// A cookie-less demo request is minted a session.
+	resp, _ = demoReq(http.MethodGet, "/todos", "", "")
+	minted := false
+	for _, c := range resp.Cookies() {
+		if c.Name == "ghtmx_demo" && c.Value != "" {
+			minted = true
+		}
+	}
+	if !minted {
+		t.Error("first demo request did not receive a ghtmx_demo session cookie")
+	}
+	// Docs pages themselves never set the demo cookie.
+	resp, _ = get(t, srv, "/docs/syntax", false)
+	for _, c := range resp.Cookies() {
+		if c.Name == "ghtmx_demo" {
+			t.Error("a docs page set the demo session cookie")
+		}
 	}
 }
 
