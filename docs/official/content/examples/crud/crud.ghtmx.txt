@@ -188,10 +188,9 @@ fragment todoList(todos []Todo) {
 
 // The inline edit flow: the edit button swaps a row for this form, and
 // submitting swaps back the refreshed row. The fragment is rendered
-// only from the EditTodo handler (FR-034's handler-explicit path), so
-// generation reports GHTMX-W0101 for it — the reachability check sees
-// template references, not Go handler bodies. The warning is the
-// documented cost of a handler-only fragment.
+// only from the EditTodo handler (FR-034's handler-explicit path);
+// the reachability check sees the handler's todoEditRowFragment(...)
+// call, so a handler-only fragment generates warning-free.
 fragment todoEditRow(t Todo) {
 	<tr id={ "todo-" + t.ID }>
 		<td colspan="4">

@@ -22,6 +22,12 @@ type SetAnalysis struct {
 	files     map[string]*fileFacts
 	bound     map[string]bool // verb+" "+path
 	fragments map[string]*fileFragments
+	// goFragmentRefs holds fragment base names whose generated
+	// standalone entry points (<name>Fragment) are called from
+	// hand-written Go source; checkGraph treats them as rendered.
+	// Replaced wholesale by MarkGoFragmentRefs and never mutated
+	// afterwards, so snapshots may alias it.
+	goFragmentRefs map[string]bool
 }
 
 type fileFacts struct {
@@ -175,6 +181,17 @@ func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFact
 			collectAttrFacts(attr.Else, filePath, facts)
 		}
 	}
+}
+
+// MarkGoFragmentRefs replaces the set of fragment base names rendered
+// from hand-written Go source through their generated <name>Fragment
+// entry points (FR-034's handler-explicit path). The set comes from
+// route discovery's syntax-only package load and refreshes with every
+// rediscovery, so watch mode stays current.
+func (s *SetAnalysis) MarkGoFragmentRefs(refs map[string]bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.goFragmentRefs = refs
 }
 
 // MarkBound records that a route was bound from a template.

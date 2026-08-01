@@ -22,6 +22,47 @@ func graphDiags(t *testing.T, files map[string]struct{ pkg, src string }, id str
 	return out
 }
 
+// TestHandlerRenderedFragmentDoesNotWarn: a fragment whose generated
+// <name>Fragment entry point is called from hand-written Go source
+// (reported by route discovery via MarkGoFragmentRefs) counts as
+// rendered — FR-034's handler-explicit path is not an unused fragment.
+func TestHandlerRenderedFragmentDoesNotWarn(t *testing.T) {
+	files := map[string]struct{ pkg, src string }{
+		"app/rows.ghtmx": {"example.com/app", `package app
+
+fragment editRow(x string) {
+	<tr><td>{ x }</td></tr>
+}
+
+fragment stillOrphan(x string) {
+	<tr><td>{ x }</td></tr>
+}
+`},
+	}
+	sa := collectSet(t, files)
+	sa.MarkGoFragmentRefs(map[string]bool{"editRow": true})
+	sink := diag.NewSink(nil)
+	sa.Check(nil, sink)
+	var warned []string
+	for _, d := range sink.Diagnostics() {
+		if d.ID == diag.UnusedFragment {
+			warned = append(warned, d.Message)
+		}
+	}
+	if len(warned) != 1 || !strings.Contains(warned[0], "stillOrphan") {
+		t.Fatalf("only the genuinely unused fragment must warn, got %v", warned)
+	}
+	// A later rediscovery replacing the set must be honored.
+	sa.MarkGoFragmentRefs(map[string]bool{"editRow": true, "stillOrphan": true})
+	sink = diag.NewSink(nil)
+	sa.Check(nil, sink)
+	for _, d := range sink.Diagnostics() {
+		if d.ID == diag.UnusedFragment {
+			t.Fatalf("no fragment should warn after both are handler-rendered, got %s", d.Message)
+		}
+	}
+}
+
 func TestUnusedFragmentWarns(t *testing.T) {
 	diags := graphDiags(t, map[string]struct{ pkg, src string }{
 		"app/page.ghtmx": {"example.com/app", `package app
