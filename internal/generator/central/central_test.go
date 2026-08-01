@@ -37,6 +37,34 @@ func generate(t *testing.T, rs ...routes.Route) string {
 	return string(out)
 }
 
+// TestPositionShiftDoesNotChangeOutput: doc comments carry the
+// registration file but never its line/column, so a cosmetic edit
+// above a registration site (inserting blank lines) regenerates
+// byte-identical output instead of failing the ensure-generated gate
+// on an unrelated change.
+func TestPositionShiftDoesNotChangeOutput(t *testing.T) {
+	at := func(line uint32) []routes.Route {
+		return []routes.Route{
+			{Verb: routes.POST, Path: "/users", Handler: handler("example.com/app/handlers", "CreateUser"),
+				Pos: routes.Position{File: "app/routes.go", Line: line, Col: 2}},
+			{Verb: routes.GET, Path: "/users/{id}", Handler: handler("example.com/app/handlers", "GetUser"),
+				Params: []routes.RouteParam{{Name: "id"}},
+				Pos:    routes.Position{File: "app/routes.go", Line: line + 1, Col: 2}},
+		}
+	}
+	before := generate(t, at(10)...)
+	after := generate(t, at(27)...) // 17 blank lines inserted above
+	if before != after {
+		t.Errorf("a pure line shift changed the generated output:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	if !strings.Contains(before, "(app/routes.go)") {
+		t.Errorf("doc comments must still name the registration file, got:\n%s", before)
+	}
+	if strings.Contains(before, "app/routes.go:") {
+		t.Errorf("doc comments must not embed line/column positions, got:\n%s", before)
+	}
+}
+
 func TestPathConstantForNonParameterisedRoute(t *testing.T) {
 	got := generate(t,
 		routes.Route{Verb: routes.POST, Path: "/users", Handler: handler("example.com/app/handlers", "CreateUser")},

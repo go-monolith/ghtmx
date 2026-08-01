@@ -11,26 +11,26 @@ import (
 	"net/http"
 )
 
-// DocPage builds the URL for GET /docs/{slug} -> github.com/go-monolith/ghtmx/docs/official/site.DocPage (site/handlers.go:28:2).
+// DocPage builds the URL for GET /docs/{slug} -> github.com/go-monolith/ghtmx/docs/official/site.DocPage (site/handlers.go).
 func DocPage(slug string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/docs/" + ghtmx.EscapePathSegment(slug))
 }
 
-// ExampleDetail builds the URL for GET /examples/{name} -> github.com/go-monolith/ghtmx/docs/official/site.ExampleDetail (site/handlers.go:30:2).
+// ExampleDetail builds the URL for GET /examples/{name} -> github.com/go-monolith/ghtmx/docs/official/site.ExampleDetail (site/handlers.go).
 func ExampleDetail(name string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/examples/" + ghtmx.EscapePathSegment(name))
 }
 
-// ExamplesIndexPath is the path of GET /examples -> github.com/go-monolith/ghtmx/docs/official/site.ExamplesIndex (site/handlers.go:29:2).
+// ExamplesIndexPath is the path of GET /examples -> github.com/go-monolith/ghtmx/docs/official/site.ExamplesIndex (site/handlers.go).
 const ExamplesIndexPath = "/examples"
 
-// GettingStartedPath is the path of GET /getting-started -> github.com/go-monolith/ghtmx/docs/official/site.GettingStarted (site/handlers.go:26:2).
+// GettingStartedPath is the path of GET /getting-started -> github.com/go-monolith/ghtmx/docs/official/site.GettingStarted (site/handlers.go).
 const GettingStartedPath = "/getting-started"
 
-// HomePath is the path of GET / -> github.com/go-monolith/ghtmx/docs/official/site.Home (site/handlers.go:25:2).
+// HomePath is the path of GET / -> github.com/go-monolith/ghtmx/docs/official/site.Home (site/handlers.go).
 const HomePath = "/"
 
-// SyntaxSection builds the URL for GET /docs/syntax/{section} -> github.com/go-monolith/ghtmx/docs/official/site.SyntaxSection (site/handlers.go:27:2).
+// SyntaxSection builds the URL for GET /docs/syntax/{section} -> github.com/go-monolith/ghtmx/docs/official/site.SyntaxSection (site/handlers.go).
 func SyntaxSection(section string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/docs/syntax/" + ghtmx.EscapePathSegment(section))
 }
