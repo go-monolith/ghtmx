@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-01",
+  "machine": "Intel(R) Xeon(R) CPU @ 2.20GHz, 4 vCPU, linux/amd64, go1.26",
+  "estimator": "allocs/b_op are the gated 5% figures (deterministic); ns_op and ratio come as one paired set from the workload's fastest round (ratio = ns_op over the adjacent stdlib mini-renderer calibration of that round), logged as a trend and gated only at the 10x catastrophe backstop",
+  "calibration_ns_op": 55130,
+  "revision_justification": "Initial DATA-007 baseline at fork completion: first recording of the corpus figures, measured alongside the one-time templ fork-time reference below.",
+  "templ_reference": {
+    "commit": "04abee5364c6fab2bde8c00d215fdcb630ad6a94",
+    "version": "v0.3.1020",
+    "procedure": "fixed -benchtime 2000x, minimum of 5 runs — a different estimator than the gate's, so the ghtmx ns/op column in BASELINE.md's reference table differs from the figures below; only same-procedure columns compare",
+    "note": "One-time fork-time reference, informational only: the CI gate compares ghtmx against the ghtmx baseline above, never against templ. Bindings and nested layouts have no measured upstream equivalent.",
+    "benchmarks": {
+      "BenchmarkPage": { "ns_op": 570530, "b_op": 72581, "allocs_op": 1210 },
+      "BenchmarkFragmentInline": { "ns_op": 328012, "b_op": 40933, "allocs_op": 905 },
+      "BenchmarkFragmentStandalone": { "ns_op": 3881, "b_op": 353, "allocs_op": 10 }
+    }
+  },
+  "benchmarks": {
+    "BenchmarkPage": { "ns_op": 331108, "ratio": 6.0059, "b_op": 72575, "allocs_op": 1210 },
+    "BenchmarkFragmentInline": { "ns_op": 142723, "ratio": 2.5888, "b_op": 29724, "allocs_op": 705 },
+    "BenchmarkFragmentStandalone": { "ns_op": 2029, "ratio": 0.0368, "b_op": 352, "allocs_op": 10 },
+    "BenchmarkNestedLayout": { "ns_op": 247847, "ratio": 4.4957, "b_op": 65548, "allocs_op": 1115 },
+    "BenchmarkBindings": { "ns_op": 87626, "ratio": 1.5894, "b_op": 15159, "allocs_op": 305 }
+  }
+}

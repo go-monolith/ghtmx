@@ -1,0 +1,71 @@
+package conformance
+
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+// The NFR-007 rendering conformance corpus: one template per supported
+// output context, driven by conformance_test.go with hostile inputs and
+// exact expected HTML.
+
+templ TextContext(s string) {
+	<p>{ s }</p>
+}
+
+templ AttributeContext(s string) {
+	<div title={ s }>x</div>
+}
+
+templ URLContext(s string) {
+	<a href={ ghtmx.URL(s) }>link</a>
+}
+
+// GetItem is generated from the route examples/hx-bindings registers;
+// that example carries a matching coupling note. Renaming the handler
+// there breaks this mandatory FR-023 case.
+templ RouteBindingContext(id string) {
+	<button hx-get={ ghtmxgen.GetItem(id) } hx-target="#detail">load</button>
+}
+
+templ JSContext(s string) {
+	<button onClick={ ghtmx.JSFuncCall("alert", s) }>go</button>
+}
+
+templ JSONScriptContext(data any) {
+	@ghtmx.JSONScript("conformance-data", data)
+}
+
+templ ScriptElementContext(s string) {
+	<script>
+		var a = {{ s }};
+		var b = "{{ s }}";
+	</script>
+}
+
+templ StyleAttributeContext(v string) {
+	<button style={ v }>x</button>
+}
+
+templ SpreadAttributesContext(attrs ghtmx.Attributes) {
+	<div { attrs... }>x</div>
+}
+
+css conformanceColor(value string) {
+	color: { value };
+}
+
+templ CSSContext(value string) {
+	<div class={ conformanceColor(value) }>styled</div>
+}
+
+templ ItemsPage(rows []string) {
+	<ul id="items">
+		for _, row := range rows {
+			fragment ConformanceRow(row string) {
+				<li>{ row }</li>
+			}
+		}
+	</ul>
+}
+
+templ StyleMapContext(m map[string]string) {
+	<button style={ m }>x</button>
+}

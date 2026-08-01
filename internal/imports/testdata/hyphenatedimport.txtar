@@ -1,0 +1,16 @@
+-- fmt.ghtmx --
+package test
+
+import "github.com/go-monolith/ghtmx/cmd/ghtmx/testproject/css-classes"
+
+templ Hello() {
+	{ cssclasses.Header }
+}
+-- fmt.ghtmx --
+package test
+
+import "github.com/go-monolith/ghtmx/cmd/ghtmx/testproject/css-classes"
+
+templ Hello() {
+	{ cssclasses.Header }
+}

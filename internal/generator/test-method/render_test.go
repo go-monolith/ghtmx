@@ -1,0 +1,30 @@
+package testmethod
+
+import (
+	_ "embed"
+	"os"
+	"testing"
+
+	"github.com/go-monolith/ghtmx/internal/htmldiff"
+)
+
+//go:embed expected.html
+var expected string
+
+func Test(t *testing.T) {
+	d := Data{
+		message: "You can implement methods on a type.",
+	}
+	component := d.Method()
+
+	actual, diff, err := htmldiff.Diff(component, expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff != "" {
+		if err := os.WriteFile("actual.html", []byte(actual), 0644); err != nil {
+			t.Errorf("failed to write actual.html: %v", err)
+		}
+		t.Error(diff)
+	}
+}

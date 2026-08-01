@@ -1,0 +1,149 @@
+package testspreadattributes
+
+import (
+	_ "embed"
+	"testing"
+
+	"os"
+
+	"github.com/go-monolith/ghtmx"
+	"github.com/go-monolith/ghtmx/internal/htmldiff"
+)
+
+//go:embed expected.html
+var expected string
+
+func Test(t *testing.T) {
+	component := BasicTemplate(ghtmx.Attributes{
+		// Should render as `bool` as the value is true, and the conditional render is also true.
+		"bool": ghtmx.KV(true, true),
+		// Should not render, as the conditional render value is false.
+		"bool-disabled": ghtmx.KV(true, false),
+		// Should render non-nil string values.
+		"data-attr": ptr("value"),
+		// Should render non-nil boolean values that evaluate to true.
+		"data-attr-bool": ptr(true),
+		// Should render as `dateId="my-custom-id"`.
+		"dateId": "my-custom-id",
+		// Should render as `hx-get="/page"`.
+		"hx-get": "/page",
+		// Should render as `id="test"`.
+		"id": "test",
+		// Should not render a nil string pointer.
+		"key": nilPtr[string](),
+		// Should not render a nil boolean value.
+		"boolkey": nilPtr[bool](),
+		// Should not render, as the attribute value, and the conditional render value is false.
+		"no-bool": ghtmx.KV(false, false),
+		// Should not render, as the conditional render value is false.
+		"no-text": ghtmx.KV("empty", false),
+		// Should render as `nonshare`, as the value is true.
+		"nonshade": true,
+		// Should not render, as the value is false.
+		"shade": false,
+		// Should render text="lorem" as the value is true.
+		"text": ghtmx.KV("lorem", true),
+		// Optional attribute based on result of func() bool.
+		"optional-from-func-false": func() bool { return false },
+		// Optional attribute based on result of func() bool.
+		"optional-from-func-true": func() bool { return true },
+	})
+
+	actual, diff, err := htmldiff.Diff(component, expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff != "" {
+		if err := os.WriteFile("actual.html", []byte(actual), 0644); err != nil {
+			t.Errorf("failed to write actual.html: %v", err)
+		}
+		t.Error(diff)
+	}
+}
+
+//go:embed expected_ordered_attributes.html
+var expectedOrderedAttributes string
+
+func TestOrderedAttributes(t *testing.T) {
+	component := BasicTemplateOrdered(ghtmx.OrderedAttributes{
+		// Should render as `bool` as the value is true, and the conditional render is also true.
+		{Key: "bool", Value: ghtmx.KV(true, true)},
+		// Should not render, as the conditional render value is false.
+		{Key: "bool-disabled", Value: ghtmx.KV(true, false)},
+		// Should render non-nil string values.
+		{Key: "data-attr", Value: ptr("value")},
+		// Should render non-nil boolean values that evaluate to true.
+		{Key: "data-attr-bool", Value: ptr(true)},
+		// Should render as `dateId="my-custom-id"`.
+		{Key: "dateId", Value: "my-custom-id"},
+		// Should render as `hx-get="/page"`.
+		{Key: "hx-get", Value: "/page"},
+		// Should render as `id="test"`.
+		{Key: "id", Value: "test"},
+		// Should not render a nil string pointer.
+		{Key: "key", Value: nilPtr[string]()},
+		// Should not render a nil boolean value.
+		{Key: "boolkey", Value: nilPtr[bool]()},
+		// Should not render, as the attribute value, and the conditional render value is false.
+		{Key: "no-bool", Value: ghtmx.KV(false, false)},
+		// Should not render, as the conditional render value is false.
+		{Key: "no-text", Value: ghtmx.KV("empty", false)},
+		// Should render as `nonshare`, as the value is true.
+		{Key: "nonshade", Value: true},
+		// Should not render, as the value is false.
+		{Key: "shade", Value: false},
+		// Should render text="lorem" as the value is true.
+		{Key: "text", Value: ghtmx.KV("lorem", true)},
+		// Optional attribute based on result of func() bool.
+		{Key: "optional-from-func-false", Value: func() bool { return false }},
+		// Optional attribute based on result of func() bool.
+		{Key: "optional-from-func-true", Value: func() bool { return true }},
+	})
+
+	actual, diff, err := htmldiff.Diff(component, expectedOrderedAttributes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff != "" {
+		if err := os.WriteFile("actual.html", []byte(actual), 0644); err != nil {
+			t.Errorf("failed to write actual.html: %v", err)
+		}
+		t.Error(diff)
+	}
+}
+
+func nilPtr[T any]() *T {
+	return nil
+}
+
+func ptr[T any](x T) *T {
+	return &x
+}
+
+//go:embed expected_numeric_attributes.html
+var expectedNumericAttributes string
+
+func TestNumericAttributeTypes(t *testing.T) {
+	t.Parallel()
+	component := BasicTemplate(ghtmx.Attributes{
+		"int-value":     42,
+		"float-value":   3.14,
+		"uint-value":    uint(100),
+		"int64-value":   int64(9223372036854775807),
+		"complex-value": complex(1, 2),
+		"string-value":  "text",
+		"bool-true":     true,
+		"bool-false":    false,
+	})
+
+	actual, diff, err := htmldiff.Diff(component, expectedNumericAttributes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff != "" {
+		if err := os.WriteFile("actual.html", []byte(actual), 0644); err != nil {
+			t.Errorf("failed to write actual.html: %v", err)
+		}
+		t.Error(diff)
+	}
+}

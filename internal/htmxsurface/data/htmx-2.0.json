@@ -1,0 +1,363 @@
+{
+  "family": "2.0",
+  "versions": [
+    "2.0.0",
+    "2.0.1",
+    "2.0.2",
+    "2.0.3",
+    "2.0.4",
+    "2.0.5",
+    "2.0.6",
+    "2.0.7",
+    "2.0.8",
+    "2.0.9",
+    "2.0.10"
+  ],
+  "attributes": {
+    "hx-get": {
+      "kind": "url",
+      "verb": "GET"
+    },
+    "hx-post": {
+      "kind": "url",
+      "verb": "POST"
+    },
+    "hx-put": {
+      "kind": "url",
+      "verb": "PUT"
+    },
+    "hx-patch": {
+      "kind": "url",
+      "verb": "PATCH"
+    },
+    "hx-delete": {
+      "kind": "url",
+      "verb": "DELETE"
+    },
+    "hx-on": {
+      "kind": "on",
+      "prefix": true
+    },
+    "hx-push-url": {
+      "kind": "bool-or-url",
+      "inherited": true
+    },
+    "hx-select": {
+      "kind": "selector",
+      "inherited": true
+    },
+    "hx-select-oob": {
+      "kind": "selector-list",
+      "inherited": true
+    },
+    "hx-swap": {
+      "kind": "swap",
+      "inherited": true
+    },
+    "hx-swap-oob": {
+      "kind": "swap-oob"
+    },
+    "hx-target": {
+      "kind": "extended-selector",
+      "inherited": true
+    },
+    "hx-trigger": {
+      "kind": "trigger"
+    },
+    "hx-vals": {
+      "kind": "json",
+      "inherited": true
+    },
+    "hx-boost": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ],
+      "inherited": true
+    },
+    "hx-confirm": {
+      "kind": "string",
+      "inherited": true
+    },
+    "hx-disable": {
+      "kind": "flag",
+      "inherited": true
+    },
+    "hx-disabled-elt": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "extraKeywords": [
+        {
+          "value": "inherit",
+          "introduced": "2.0.5"
+        }
+      ]
+    },
+    "hx-disinherit": {
+      "kind": "attr-list"
+    },
+    "hx-encoding": {
+      "kind": "enum",
+      "values": [
+        "multipart/form-data"
+      ],
+      "inherited": true
+    },
+    "hx-ext": {
+      "kind": "ext-list",
+      "inherited": true
+    },
+    "hx-headers": {
+      "kind": "json",
+      "inherited": true
+    },
+    "hx-history": {
+      "kind": "enum",
+      "values": [
+        "false",
+        "true"
+      ]
+    },
+    "hx-history-elt": {
+      "kind": "flag"
+    },
+    "hx-include": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "extraKeywords": [
+        {
+          "value": "inherit",
+          "introduced": "2.0.5"
+        }
+      ]
+    },
+    "hx-indicator": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "extraKeywords": [
+        {
+          "value": "inherit",
+          "introduced": "2.0.5"
+        }
+      ]
+    },
+    "hx-inherit": {
+      "kind": "attr-list"
+    },
+    "hx-params": {
+      "kind": "params",
+      "inherited": true
+    },
+    "hx-preserve": {
+      "kind": "flag"
+    },
+    "hx-prompt": {
+      "kind": "string",
+      "inherited": true
+    },
+    "hx-replace-url": {
+      "kind": "bool-or-url",
+      "inherited": true
+    },
+    "hx-request": {
+      "kind": "request",
+      "inherited": true
+    },
+    "hx-sync": {
+      "kind": "sync",
+      "inherited": true
+    },
+    "hx-validate": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ]
+    },
+    "hx-vars": {
+      "kind": "json",
+      "inherited": true,
+      "deprecated": "use hx-vals instead"
+    }
+  },
+  "swapStyles": [
+    "innerHTML",
+    "outerHTML",
+    "textContent",
+    "beforebegin",
+    "afterbegin",
+    "beforeend",
+    "afterend",
+    "delete",
+    "none"
+  ],
+  "swapModifiers": {
+    "transition": "bool",
+    "swap": "timing",
+    "settle": "timing",
+    "ignoreTitle": "flag-or-bool",
+    "scroll": "scroll-spec",
+    "show": "show-spec",
+    "focus-scroll": "bool"
+  },
+  "triggerModifiers": [
+    "once",
+    "changed",
+    "consume",
+    "delay",
+    "throttle",
+    "from",
+    "target",
+    "queue",
+    "root",
+    "threshold"
+  ],
+  "triggerQueueValues": [
+    "first",
+    "last",
+    "all",
+    "none"
+  ],
+  "triggerSpecialEvents": [
+    "load",
+    "revealed",
+    "intersect",
+    "every"
+  ],
+  "syncStrategies": [
+    "drop",
+    "abort",
+    "replace",
+    "queue",
+    "queue first",
+    "queue last",
+    "queue all"
+  ],
+  "conflicts": [
+    {
+      "attrs": [
+        "hx-get",
+        "hx-post",
+        "hx-put",
+        "hx-patch",
+        "hx-delete"
+      ],
+      "atMostOne": true,
+      "message": "an element can issue only one htmx request; use a single verb attribute"
+    },
+    {
+      "attrs": [
+        "hx-vals",
+        "hx-vars"
+      ],
+      "message": "hx-vars is deprecated and conflicts with hx-vals; use hx-vals only"
+    },
+    {
+      "attrs": [
+        "hx-inherit",
+        "hx-disinherit"
+      ],
+      "message": "hx-inherit and hx-disinherit are mutually exclusive on one element"
+    }
+  ],
+  "requestHeaders": [
+    "HX-Boosted",
+    "HX-Current-URL",
+    "HX-History-Restore-Request",
+    "HX-Prompt",
+    "HX-Request",
+    "HX-Target",
+    "HX-Trigger",
+    "HX-Trigger-Name"
+  ],
+  "responseHeaders": {
+    "HX-Location": {
+      "kind": "url-or-json"
+    },
+    "HX-Push-Url": {
+      "kind": "bool-or-url"
+    },
+    "HX-Redirect": {
+      "kind": "url"
+    },
+    "HX-Refresh": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ]
+    },
+    "HX-Replace-Url": {
+      "kind": "bool-or-url"
+    },
+    "HX-Reswap": {
+      "kind": "swap"
+    },
+    "HX-Retarget": {
+      "kind": "selector"
+    },
+    "HX-Reselect": {
+      "kind": "selector"
+    },
+    "HX-Trigger": {
+      "kind": "trigger-events"
+    },
+    "HX-Trigger-After-Settle": {
+      "kind": "trigger-events"
+    },
+    "HX-Trigger-After-Swap": {
+      "kind": "trigger-events"
+    }
+  },
+  "htmxEvents": [
+    "abort",
+    "after-on-load",
+    "after-process-node",
+    "after-request",
+    "after-settle",
+    "after-swap",
+    "before-cleanup-element",
+    "before-on-load",
+    "before-process-node",
+    "before-request",
+    "before-send",
+    "before-swap",
+    "before-transition",
+    "config-request",
+    "confirm",
+    "history-cache-error",
+    "history-cache-miss",
+    "history-cache-miss-error",
+    "history-cache-miss-load",
+    "history-restore",
+    "before-history-save",
+    "load",
+    "no-sse-source-error",
+    "on-load-error",
+    "oob-after-swap",
+    "oob-before-swap",
+    "oob-error-no-target",
+    "prompt",
+    "pushed-into-history",
+    "replaced-in-history",
+    "response-error",
+    "send-abort",
+    "send-error",
+    "sse-error",
+    "sse-open",
+    "swap-error",
+    "target-error",
+    "timeout",
+    "validation:validate",
+    "validation:failed",
+    "validation:halted",
+    "xhr:abort",
+    "xhr:loadend",
+    "xhr:loadstart",
+    "xhr:progress"
+  ],
+  "extensionAttributePrefixes": [
+    "hx-target-"
+  ]
+}

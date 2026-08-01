@@ -1,0 +1,20 @@
+-- fmt.ghtmx --
+package test
+
+func test() {
+  // Do nothing.
+}
+
+templ Hello() {
+	<div>Hello</div>
+}
+-- fmt.ghtmx --
+package test
+
+func test() {
+	// Do nothing.
+}
+
+templ Hello() {
+	<div>Hello</div>
+}

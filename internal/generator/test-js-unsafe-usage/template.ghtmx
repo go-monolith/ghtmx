@@ -1,0 +1,6 @@
+package testjsunsafeusage
+
+templ TestComponent() {
+	<button onClick={ ghtmx.JSUnsafeFuncCall("anythingILike('blah')") }>Click me</button>
+	@ghtmx.JSUnsafeFuncCall("// Arbitrary JS code")
+}

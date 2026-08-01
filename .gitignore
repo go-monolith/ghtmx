@@ -30,3 +30,14 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Local logs and editor artifacts
+*.log
+actual.html
+actual_css.html
+
+# WASM fixture native build artifact
+internal/wasmcheck/fixture/fixture
+
+# Documentation site output
+dist/

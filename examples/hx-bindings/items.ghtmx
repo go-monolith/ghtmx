@@ -1,0 +1,16 @@
+package main
+
+import (
+	"github.com/go-monolith/ghtmx/examples/hx-bindings/handlers"
+	"github.com/go-monolith/ghtmx/ghtmxgen"
+)
+
+templ itemList(ids []string) {
+	<div id="items">
+		<button hx-get={ handlers.ListItems } hx-target="#items">Refresh</button>
+		for _, id := range ids {
+			<a hx-get={ ghtmxgen.GetItem(id) } hx-target="#detail">{ id }</a>
+		}
+		<div id="detail"></div>
+	</div>
+}

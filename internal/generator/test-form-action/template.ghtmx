@@ -1,0 +1,17 @@
+package testahref
+
+templ render() {
+	<form action="javascript:alert('unaffected');">Ignored</form>
+	<form action={ ghtmx.URL("javascript:alert('should be sanitized')") }>Sanitized</form>
+	<form action={ ghtmx.SafeURL("javascript:alert('should not be sanitized')") }>Unsanitized</form>
+	<form action={ safeUrl("javascript:alert('should not be sanitized')") }>with error unsanitized</form>
+	<form action={ stringUrl("javascript:alert('should be sanitized')") }>with error sanitized</form>
+}
+
+func safeUrl(s string) (ghtmx.SafeURL, error) {
+	return ghtmx.SafeURL(s), nil
+}
+
+func stringUrl(s string) (string, error) {
+	return s, nil
+}

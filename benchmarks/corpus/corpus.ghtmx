@@ -1,0 +1,75 @@
+package corpus
+
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+// The three DATA-007 workloads. Sizes are chosen by the benchmarks; the
+// templates stay deterministic (no map iteration) so figures compare
+// across runs.
+
+templ PageWorkload(title string, items []Item) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>{ title }</title>
+			<meta charset="utf-8"/>
+		</head>
+		<body>
+			<nav>
+				<a href="/">home</a>
+				<a href="/items">items</a>
+			</nav>
+			<main>
+				<h1>{ title }</h1>
+				<table id="items">
+					for _, it := range items {
+						<tr id={ "item-" + it.ID }>
+							<td>{ it.Name }</td>
+							<td>{ it.Description }</td>
+							<td class={ it.Class }>{ it.Price }</td>
+						</tr>
+					}
+				</table>
+			</main>
+		</body>
+	</html>
+}
+
+templ FragmentWorkload(items []Item) {
+	<ul id="rows">
+		for _, it := range items {
+			fragment BenchRow(it Item) {
+				<li id={ "row-" + it.ID }><span>{ it.Name }</span> { it.Description }</li>
+			}
+		}
+	</ul>
+}
+
+templ Layout(title string) {
+	<section class="layout">
+		<header><h2>{ title }</h2></header>
+		<div class="content">
+			{ children... }
+		</div>
+	</section>
+}
+
+templ NestedWorkload(items []Item) {
+	@Layout("Catalogue") {
+		<ul>
+			for _, it := range items {
+				@Layout(it.Name) {
+					<li>{ it.Description }</li>
+				}
+			}
+		</ul>
+	}
+}
+
+templ BindingWorkload(items []Item) {
+	<div id="bindings">
+		<button hx-post={ BenchCreate } hx-target="#rows">create</button>
+		for _, it := range items {
+			<a hx-get={ ghtmxgen.BenchItem(it.ID) } hx-target="#detail">{ it.Name }</a>
+		}
+	</div>
+}

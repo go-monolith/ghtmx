@@ -1,0 +1,631 @@
+package parser
+
+import (
+	"testing"
+
+	"github.com/a-h/parse"
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestTemplElementExpressionParser(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected *TemplElementExpression
+	}{
+		{
+			name:  "templelement: simple",
+			input: `@Other(p.Test)` + "\n",
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: "Other(p.Test)",
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 14,
+							Line:  0,
+							Col:   14,
+						},
+					},
+				},
+				TrailingSpace: SpaceVertical,
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 14, Line: 0, Col: 14},
+				},
+			},
+		},
+		{
+			name:  "templelement: simple with underscore",
+			input: `@Other_Component(p.Test)` + "\n",
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: "Other_Component(p.Test)",
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 24,
+							Line:  0,
+							Col:   24,
+						},
+					},
+				},
+				TrailingSpace: SpaceVertical,
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 24, Line: 0, Col: 24},
+				},
+			},
+		},
+		{
+			name: "templelement: simple multiline call",
+			input: `@Other_Component(
+				p.Test,
+				"something" + "else",
+			)` + "\n",
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `Other_Component(
+				p.Test,
+				"something" + "else",
+			)`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 60,
+							Line:  3,
+							Col:   4,
+						},
+					},
+				},
+				TrailingSpace: SpaceVertical,
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 60, Line: 3, Col: 4},
+				},
+			},
+		},
+		{
+			name: "templelement: simple, block with text",
+			input: `@Other(p.Test) {
+	some words
+}`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: "Other(p.Test)",
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 14,
+							Line:  0,
+							Col:   14,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 16,
+							Line:  0,
+							Col:   16,
+						},
+						To: Position{
+							Index: 18,
+							Line:  1,
+							Col:   1,
+						},
+					},
+						Value: "\n\t"},
+					&Text{
+						Value: "some words",
+						Range: Range{
+							From: Position{Index: 18, Line: 1, Col: 1},
+							To:   Position{Index: 28, Line: 1, Col: 11},
+						},
+						TrailingSpace: SpaceVertical,
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 30, Line: 2, Col: 1},
+				},
+			},
+		},
+		{
+			name: "templelement: simple, block with anchor",
+			input: `@Other(p.Test){
+			<a href="someurl" />
+		}`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: "Other(p.Test)",
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 14,
+							Line:  0,
+							Col:   14,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 15,
+							Line:  0,
+							Col:   15,
+						},
+						To: Position{
+							Index: 19,
+							Line:  1,
+							Col:   3,
+						},
+					},
+						Value: "\n\t\t\t"},
+					&Element{
+						Name: "a",
+						NameRange: Range{
+							From: Position{Index: 20, Line: 1, Col: 4},
+							To:   Position{Index: 21, Line: 1, Col: 5},
+						},
+						Attributes: []Attribute{
+							&ConstantAttribute{
+								Value: "someurl",
+								Key: ConstantAttributeKey{
+									Name: "href",
+									NameRange: Range{
+										From: Position{Index: 22, Line: 1, Col: 6},
+										To:   Position{Index: 26, Line: 1, Col: 10},
+									},
+								},
+								ValueRange: Range{
+									From: Position{Index: 28, Line: 1, Col: 12},
+									To:   Position{Index: 35, Line: 1, Col: 19},
+								},
+								Range: Range{
+									From: Position{Index: 22, Line: 1, Col: 6},
+									To:   Position{Index: 36, Line: 1, Col: 20},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 19, Line: 1, Col: 3}, To: Position{Index: 39, Line: 1, Col: 23}},
+						Range: Range{
+							From: Position{Index: 19, Line: 1, Col: 3},
+							To:   Position{Index: 42, Line: 2, Col: 2},
+						},
+						SelfClosing: true,
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 43, Line: 2, Col: 3},
+				},
+			},
+		},
+		{
+			name: "templelement: simple, block with templelement as child",
+			input: `@Other(p.Test) {
+				@other2
+			}`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: "Other(p.Test)",
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 14,
+							Line:  0,
+							Col:   14,
+						},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 16,
+							Line:  0,
+							Col:   16,
+						},
+						To: Position{
+							Index: 21,
+							Line:  1,
+							Col:   4,
+						},
+					},
+						Value: "\n\t\t\t\t"},
+					&TemplElementExpression{
+						Expression: Expression{
+							Value: "other2",
+							Range: Range{
+								From: Position{22, 1, 5},
+								To:   Position{28, 1, 11},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						Range: Range{
+							From: Position{Index: 21, Line: 1, Col: 4},
+							To:   Position{Index: 28, Line: 1, Col: 11},
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 33, Line: 2, Col: 4},
+				},
+			},
+		},
+		{
+			name: "templelement: can parse the initial expression and leave the text",
+			input: `@Icon("home", Inline) Home</a>
+}`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `Icon("home", Inline)`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 21,
+							Line:  0,
+							Col:   21,
+						},
+					},
+				},
+				TrailingSpace: SpaceHorizontal,
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 21, Line: 0, Col: 21},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports the use of templ elements in other packages",
+			input: `@templates.Icon("home", Inline)`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates.Icon("home", Inline)`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 31,
+							Line:  0,
+							Col:   31,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 31, Line: 0, Col: 31},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports the use of params which contain braces and params",
+			input: `@templates.New(test{}, other())`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates.New(test{}, other())`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 31,
+							Line:  0,
+							Col:   31,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 31, Line: 0, Col: 31},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports a slice of functions",
+			input: `@templates[0]()`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates[0]()`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 15,
+							Line:  0,
+							Col:   15,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 15, Line: 0, Col: 15},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports a map of functions",
+			input: `@templates["key"]()`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates["key"]()`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 19,
+							Line:  0,
+							Col:   19,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 19, Line: 0, Col: 19},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports a slice of structs/interfaces",
+			input: `@templates[0].CreateTemplate()`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates[0].CreateTemplate()`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 30,
+							Line:  0,
+							Col:   30,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 30, Line: 0, Col: 30},
+				},
+			},
+		},
+		{
+			name:  "templelement: supports a slice of structs/interfaces",
+			input: `@templates[0].CreateTemplate()`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `templates[0].CreateTemplate()`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 30,
+							Line:  0,
+							Col:   30,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 30, Line: 0, Col: 30},
+				},
+			},
+		},
+		{
+			name:  "templelement: bare variables are read until the end of the token",
+			input: `@template</div>`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `template`,
+					Range: Range{
+						From: Position{
+							Index: 1,
+							Line:  0,
+							Col:   1,
+						},
+						To: Position{
+							Index: 9,
+							Line:  0,
+							Col:   9,
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 9, Line: 0, Col: 9},
+				},
+			},
+		},
+		{
+			name:  "templelement: struct literal method calls are supported",
+			input: `@layout.DefaultLayout{}.Compile()<div>`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `layout.DefaultLayout{}.Compile()`,
+					Range: Range{
+						From: Position{1, 0, 1},
+						To:   Position{33, 0, 33},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 33, Line: 0, Col: 33},
+				},
+			},
+		},
+		{
+			name: "templelement: struct literal method calls are supported, with child elements",
+			input: `@layout.DefaultLayout{}.Compile() {
+  <div>hello</div>
+}`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `layout.DefaultLayout{}.Compile()`,
+					Range: Range{
+						From: Position{1, 0, 1},
+						To:   Position{33, 0, 33},
+					},
+				},
+				Children: []Node{
+					&Whitespace{Range: Range{
+						From: Position{
+							Index: 35,
+							Line:  0,
+							Col:   35,
+						},
+						To: Position{
+							Index: 38,
+							Line:  1,
+							Col:   2,
+						},
+					},
+						Value: "\n  "},
+					&Element{
+						Name: "div",
+						NameRange: Range{
+							From: Position{Index: 39, Line: 1, Col: 3},
+							To:   Position{Index: 42, Line: 1, Col: 6},
+						},
+						Children: []Node{
+							&Text{
+								Value: "hello",
+								Range: Range{
+									From: Position{Index: 43, Line: 1, Col: 7},
+									To:   Position{Index: 48, Line: 1, Col: 12},
+								},
+							},
+						},
+						TrailingSpace: SpaceVertical,
+						OpenTagRange:  Range{From: Position{Index: 38, Line: 1, Col: 2}, To: Position{Index: 43, Line: 1, Col: 7}},
+						CloseTagRange: &Range{From: Position{Index: 48, Line: 1, Col: 12}, To: Position{Index: 54, Line: 1, Col: 18}},
+						Range: Range{
+							From: Position{Index: 38, Line: 1, Col: 2},
+							To:   Position{Index: 55, Line: 2, Col: 0},
+						},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 56, Line: 2, Col: 1},
+				},
+			},
+		},
+		{
+			name: "templelement: arguments can receive a slice of complex types",
+			input: `@tabs([]*TabData{
+  {Name: "A"},
+  {Name: "B"},
+})`,
+			expected: &TemplElementExpression{
+				Expression: Expression{
+					Value: `tabs([]*TabData{
+  {Name: "A"},
+  {Name: "B"},
+})`,
+					Range: Range{
+						From: Position{1, 0, 1},
+						To:   Position{50, 3, 2},
+					},
+				},
+				Range: Range{
+					From: Position{Index: 0, Line: 0, Col: 0},
+					To:   Position{Index: 50, Line: 3, Col: 2},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			input := parse.NewInput(tt.input)
+			actual, matched, err := templElementExpression.Parse(input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !matched {
+				t.Fatalf("unexpected failure for input %q", tt.input)
+			}
+			if diff := cmp.Diff(tt.expected, actual); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestTemplElementExpressionParserFailures(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name: "templelement: missing closing brace",
+			input: `@SplitRule(types.GroupMember{
+    UserID:   uuid.NewString(),
+    Username: "user me",
+}, []types.GroupMember{
+    {
+    UserID:   uuid.NewString(),
+    Username: "user 1",
+    },
+`,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			input := parse.NewInput(tt.input)
+			_, matched, err := templElementExpression.Parse(input)
+			if err == nil {
+				t.Fatalf("expected an error")
+			}
+			if !matched {
+				t.Fatalf("although we got an error, we did find a templ element, because the text started with @")
+			}
+		})
+	}
+}

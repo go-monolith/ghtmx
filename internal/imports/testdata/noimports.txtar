@@ -1,0 +1,12 @@
+-- fmt.ghtmx --
+package test
+
+templ Hello() {
+	<div>Hello</div>
+}
+-- fmt.ghtmx --
+package test
+
+templ Hello() {
+	<div>Hello</div>
+}

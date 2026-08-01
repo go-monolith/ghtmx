@@ -1,0 +1,82 @@
+{
+  "name": "ghtmx-vscode",
+  "displayName": "ghtmx",
+  "description": "ghtmx language support: syntax highlighting and language-server wiring (diagnostics, completion, hover, go to definition) for .ghtmx templates.",
+  "version": "0.1.0",
+  "publisher": "go-monolith",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/go-monolith/ghtmx",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ghtmx",
+        "aliases": ["ghtmx"],
+        "extensions": [".ghtmx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ghtmx",
+        "scopeName": "source.ghtmx",
+        "path": "./syntaxes/ghtmx.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.expression.go": "go",
+          "meta.embedded.expression.route-binding.go": "go",
+          "meta.embedded.block.css": "css",
+          "meta.embedded.block.js": "javascript"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "ghtmx",
+      "properties": {
+        "ghtmx.path": {
+          "type": "string",
+          "default": "ghtmx",
+          "description": "Path to the ghtmx binary. The default resolves from PATH."
+        },
+        "ghtmx.log": {
+          "type": "string",
+          "default": "",
+          "description": "File to write ghtmx language-server logs to."
+        },
+        "ghtmx.goplsLog": {
+          "type": "string",
+          "default": "",
+          "description": "File to write the proxied gopls logs to."
+        },
+        "ghtmx.goplsRPCTrace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Trace JSON-RPC between ghtmx and gopls into the gopls log."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^3.1.0",
+    "typescript": "^5.4.5"
+  }
+}
