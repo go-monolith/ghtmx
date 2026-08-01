@@ -12,6 +12,17 @@ name: Deploy docs
     paths:
       - "docs/official/**"
       - ".github/workflows/deploy-docs.yml"
+  # Merges through GitHub's asynchronous merge API deliver their push
+  # events late or not at all (observed on this repo: 14 minutes late,
+  # then never), which strands deploys. The merged-PR trigger fires
+  # reliably; the concurrency group serializes any duplicate with the
+  # push run, and deploys are idempotent.
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - "docs/official/**"
+      - ".github/workflows/deploy-docs.yml"
   workflow_dispatch:
 
 concurrency:
@@ -20,9 +31,15 @@ concurrency:
 
 jobs:
   deploy:
+    # A closed-but-unmerged PR must not deploy.
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # On a merged-PR event, build the merge commit that landed on
+          # main, not the PR branch head.
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
