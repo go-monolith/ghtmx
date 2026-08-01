@@ -134,6 +134,7 @@ func (s *SetAnalysis) checkGraph(sink *diag.Sink) {
 	for _, fn := range fileNames {
 		nodes = append(nodes, s.fragments[fn].nodes...)
 	}
+	goRefs := s.goFragmentRefs // replaced wholesale, never mutated: safe to alias
 	s.mu.Unlock()
 
 	key := func(pkgPath, name string) string { return pkgPath + "\x00" + name }
@@ -192,14 +193,18 @@ func (s *SetAnalysis) checkGraph(sink *diag.Sink) {
 	// edge check, not transitive reachability: there are no render roots —
 	// any template or fragment can be rendered from a Go handler — so a
 	// fragment referenced only by dead templates still counts as used.
+	// Handler-rendered fragments count too: a Go-source call to the
+	// generated <name>Fragment entry point (collected by route
+	// discovery's package load, name-based across packages) marks the
+	// fragment as used.
 	for _, k := range keys {
 		n := declared[k]
-		if n.kind != "fragment" || incoming[k] {
+		if n.kind != "fragment" || incoming[k] || goRefs[n.name] {
 			continue
 		}
 		sink.Add(diag.UnusedFragment, n.pos,
-			fmt.Sprintf("fragment %q is never rendered or bound from any template", n.name),
-			fmt.Sprintf("reference it with @%s(...), or silence GHTMX-W0101 if it is rendered only from handlers", n.name))
+			fmt.Sprintf("fragment %q is never rendered or bound from any template or handler", n.name),
+			fmt.Sprintf("reference it with @%s(...) in a template or render %sFragment(...) from a handler", n.name, n.name))
 	}
 
 	// GHTMX-E0306: reference cycles. Iterative three-color depth-first

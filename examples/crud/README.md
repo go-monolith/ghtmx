@@ -37,7 +37,8 @@ at the next `ghtmx generate`, which watch mode and CI keep in the loop.
 
 ## Known-informational diagnostics
 
-Generation reports two warnings by design: `GHTMX-W0101` for
-`todoEditRow` (rendered only from a handler — the reachability check
-sees template references, not Go bodies) and `GHTMX-W0104` for the
+Generation reports one warning by design: `GHTMX-W0104` for the
 `GET /` page route (a full-page route is navigated to, not bound).
+The handler-only `todoEditRow` fragment generates warning-free — the
+reachability check counts the handler's `todoEditRowFragment(...)`
+call as rendering.
