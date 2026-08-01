@@ -256,6 +256,44 @@ func TestEmptyStateRendered(t *testing.T) {
 	}
 }
 
+// TestStoreCapsEnforced: the public-demo bounds — overlong titles and
+// a full store are rejected with 422 on every mutating path.
+func TestStoreCapsEnforced(t *testing.T) {
+	srv := serve(t)
+	longTitle := strings.Repeat("x", maxTitleLen+1)
+
+	resp, _ := do(t, srv, http.MethodPost, "/todos", url.Values{"title": {longTitle}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("creating with a %d-char title = %d, want 422", maxTitleLen+1, resp.StatusCode)
+	}
+
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Rename me"}}, true)
+	resp, _ = do(t, srv, http.MethodPut, "/todos/1/title", url.Values{"title": {longTitle}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("renaming to a %d-char title = %d, want 422", maxTitleLen+1, resp.StatusCode)
+	}
+	if _, row := do(t, srv, http.MethodGet, "/todos", nil, true); !strings.Contains(row, "Rename me") {
+		t.Error("a rejected rename must leave the original title in place")
+	}
+
+	for i := 2; i <= maxTodos; i++ {
+		resp, _ := do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"filler"}}, true)
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("create #%d = %d, want 201", i, resp.StatusCode)
+		}
+	}
+	resp, _ = do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"one too many"}}, true)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("create #%d = %d, want 422 once the store is full", maxTodos+1, resp.StatusCode)
+	}
+	// Deleting one reopens capacity.
+	do(t, srv, http.MethodDelete, "/todos/1", nil, true)
+	resp, _ = do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"fits again"}}, true)
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("create after a delete = %d, want 201", resp.StatusCode)
+	}
+}
+
 // TestZeroHandWrittenGlue: the acceptance guarantee, self-enforced —
 // no constant hx-verb URLs in the template, no hand-written HX-Trigger
 // or htmx script tag in the Go source.
