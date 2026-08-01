@@ -32,7 +32,7 @@ func openHtmxFixture(ctx context.Context, t *testing.T, appDir string, server pr
 	if err != nil {
 		t.Fatalf("failed to read fixture: %v", err)
 	}
-	docURI = "file://" + appDir + "/htmx.ghtmx"
+	docURI = string(uri.File(appDir + "/htmx.ghtmx"))
 	err = server.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        uri.URI(docURI),
@@ -343,7 +343,7 @@ func TestGhtmxDefinitionProtocol(t *testing.T) {
 		},
 		{
 			name:       "component reference opens the declaring template",
-			docURI:     "file://" + appDir + "/remoteparent.ghtmx",
+			docURI:     string(uri.File(appDir + "/remoteparent.ghtmx")),
 			position:   protocol.Position{Line: 3, Character: 3}, // @Remote
 			wantSuffix: "remotechild.ghtmx",
 			wantLine:   2, // templ Remote() {

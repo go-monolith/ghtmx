@@ -426,8 +426,16 @@ func setupWithLogLevel(gzipEncoding bool, logW io.Writer, allowRunError bool, lo
 		if cmdErr := wg.Wait(); cmdErr != nil && !allowRunError {
 			t.Errorf("failed to run generate cmd: %v", cmdErr)
 		}
-		if err = os.RemoveAll(appDir); err != nil {
-			t.Fatalf("failed to remove test dir %q: %v", appDir, err)
+		// Windows releases the killed child's file handles asynchronously,
+		// so the first removal attempts can fail with a sharing violation.
+		for attempt := 0; ; attempt++ {
+			if err = os.RemoveAll(appDir); err == nil {
+				break
+			}
+			if attempt >= 20 {
+				t.Fatalf("failed to remove test dir %q: %v", appDir, err)
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 	}
 	return args, teardown, err
@@ -471,8 +479,16 @@ func TestGenerateReturnsErrors(t *testing.T) {
 		t.Fatalf("failed to create test project: %v", err)
 	}
 	defer func() {
-		if err = os.RemoveAll(appDir); err != nil {
-			t.Fatalf("failed to remove test dir %q: %v", appDir, err)
+		// Windows releases the killed child's file handles asynchronously,
+		// so the first removal attempts can fail with a sharing violation.
+		for attempt := 0; ; attempt++ {
+			if err = os.RemoveAll(appDir); err == nil {
+				break
+			}
+			if attempt >= 20 {
+				t.Fatalf("failed to remove test dir %q: %v", appDir, err)
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 	}()
 

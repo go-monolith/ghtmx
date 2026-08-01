@@ -453,9 +453,11 @@ func (h *FSEventHandler) generate(ctx context.Context, fileName string) (result 
 	if err != nil {
 		return GenerateResult{}, nil, fmt.Errorf("failed to get absolute path for %q: %w", fileName, err)
 	}
-	relFilePath, err := filepath.Rel(h.dir, absFilePath)
-	if err != nil {
-		return GenerateResult{}, nil, fmt.Errorf("failed to get relative path for %q: %w", fileName, err)
+	// A file on another Windows drive cannot be made relative; the name is
+	// only used in error messages and cache keys, so fall back to absolute.
+	relFilePath := absFilePath
+	if rel, err := filepath.Rel(h.dir, absFilePath); err == nil {
+		relFilePath = rel
 	}
 	// Convert Windows file paths to Unix-style for consistency.
 	relFilePath = filepath.ToSlash(relFilePath)

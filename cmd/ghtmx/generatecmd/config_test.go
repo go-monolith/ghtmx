@@ -38,6 +38,11 @@ func ghtmxModuleRoot(t testing.TB) string {
 	if err != nil {
 		t.Fatalf("cannot locate the ghtmx go.mod: %v", err)
 	}
+	// WalkUp returns the filesystem root rather than an error when no
+	// go.mod exists; verify so a bad replace path fails here, not later.
+	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
+		t.Fatalf("no go.mod at resolved module root %s: %v", root, err)
+	}
 	return root
 }
 
