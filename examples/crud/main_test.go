@@ -66,7 +66,7 @@ func TestFullPageServesEverything(t *testing.T) {
 		`<script src="https://cdn.jsdelivr.net/npm/htmx.org@`,
 		`0 of 0 done`,
 		`hx-post="/todos"`,
-		`hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body"`,
+		`hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body, todos-bulk-changed from:body"`,
 		`<table id="todo-list">`,
 	} {
 		if !strings.Contains(body, want) {
@@ -187,6 +187,72 @@ func TestBoundURLsComeFromBindings(t *testing.T) {
 		if !strings.Contains(page, want) {
 			t.Errorf("page must contain the bound URL %q", want)
 		}
+	}
+}
+
+// TestToggleAllAndClearCompleted: the bulk routes flip and purge the
+// whole list, each announcing itself through one merged event.
+func TestToggleAllAndClearCompleted(t *testing.T) {
+	srv := serve(t)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"One"}}, true)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Two"}}, true)
+
+	resp, body := do(t, srv, http.MethodPut, "/todos/toggle-all", nil, true)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("toggle-all status = %d", resp.StatusCode)
+	}
+	if got, want := resp.Header.Get("HX-Trigger"), `{"todos-bulk-changed":{"count":2}}`; got != want {
+		t.Errorf("HX-Trigger = %q, want %q", got, want)
+	}
+	if strings.Count(body, `class="done"`) != 2 {
+		t.Errorf("toggle-all must render every row done, got %q", body)
+	}
+
+	// All done → toggling again reopens everything.
+	_, body = do(t, srv, http.MethodPut, "/todos/toggle-all", nil, true)
+	if strings.Contains(body, `class="done"`) {
+		t.Errorf("second toggle-all must reopen every row, got %q", body)
+	}
+
+	do(t, srv, http.MethodPut, "/todos/1", nil, true) // complete one
+	resp, body = do(t, srv, http.MethodDelete, "/todos/completed", nil, true)
+	if got, want := resp.Header.Get("HX-Trigger"), `{"todos-bulk-changed":{"count":1}}`; got != want {
+		t.Errorf("HX-Trigger = %q, want %q", got, want)
+	}
+	if strings.Contains(body, "One") || !strings.Contains(body, "Two") {
+		t.Errorf("clear-completed must remove only done todos, got %q", body)
+	}
+}
+
+// TestFilteredList: the filter buttons call the same bound /todos
+// route with hx-vals; the server narrows the returned list.
+func TestFilteredList(t *testing.T) {
+	srv := serve(t)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Open item"}}, true)
+	do(t, srv, http.MethodPost, "/todos", url.Values{"title": {"Done item"}}, true)
+	do(t, srv, http.MethodPut, "/todos/2", nil, true)
+
+	_, active := do(t, srv, http.MethodGet, "/todos?filter=active", nil, true)
+	if !strings.Contains(active, "Open item") || strings.Contains(active, "Done item") {
+		t.Errorf("active filter must return only open todos, got %q", active)
+	}
+	_, completed := do(t, srv, http.MethodGet, "/todos?filter=completed", nil, true)
+	if strings.Contains(completed, "Open item") || !strings.Contains(completed, "Done item") {
+		t.Errorf("completed filter must return only done todos, got %q", completed)
+	}
+	_, all := do(t, srv, http.MethodGet, "/todos", nil, true)
+	if !strings.Contains(all, "Open item") || !strings.Contains(all, "Done item") {
+		t.Errorf("unfiltered list must return everything, got %q", all)
+	}
+}
+
+// TestEmptyStateRendered: an empty store shows the empty row inside
+// the list fragment (so the byte-identity contract still holds).
+func TestEmptyStateRendered(t *testing.T) {
+	srv := serve(t)
+	_, body := do(t, srv, http.MethodGet, "/todos", nil, true)
+	if !strings.Contains(body, `class="empty"`) {
+		t.Errorf("empty list must render the empty state, got %q", body)
 	}
 }
 

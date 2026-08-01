@@ -83,6 +83,45 @@ func (s *store) remove(id string) bool {
 	return true
 }
 
+// toggleAll implements the TodoMVC rule: if any todo is still
+// active, everything becomes done; if all are done, everything
+// reopens. Returns how many rows changed.
+func (s *store) toggleAll() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	allDone := true
+	for _, t := range s.todos {
+		if !t.Done {
+			allDone = false
+			break
+		}
+	}
+	changed := 0
+	for id, t := range s.todos {
+		if t.Done == !allDone {
+			continue
+		}
+		t.Done = !allDone
+		s.todos[id] = t
+		changed++
+	}
+	return changed
+}
+
+// clearCompleted removes every done todo, returning how many.
+func (s *store) clearCompleted() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	removed := 0
+	for id, t := range s.todos {
+		if t.Done {
+			delete(s.todos, id)
+			removed++
+		}
+	}
+	return removed
+}
+
 func (s *store) list() []Todo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -170,14 +209,59 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// filterTodos narrows a list to the ?filter= view; anything but
+// "active" or "completed" means everything.
+func filterTodos(list []Todo, filter string) []Todo {
+	if filter != "active" && filter != "completed" {
+		return list
+	}
+	wantDone := filter == "completed"
+	out := make([]Todo, 0, len(list))
+	for _, t := range list {
+		if t.Done == wantDone {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // ListTodos is the FR-035 demonstration: a browser navigating to
 // /todos gets the full page, an htmx refresh gets the bare list — the
-// adapter selects the mode from the request.
+// adapter selects the mode from the request. The filter buttons call
+// the same bound route with hx-vals, so the view narrows without any
+// hand-written URL.
 func ListTodos(w http.ResponseWriter, r *http.Request) {
 	list, total, done := todos.snapshot()
+	list = filterTodos(list, r.FormValue("filter"))
 	err := nethttp.Render(w, r,
 		nethttp.WithPage(todoPage(list, total, done), todoListFragment(list)))
 	if err != nil {
+		log.Printf("render list: %v", err)
+	}
+}
+
+// ToggleAllTodos flips the whole list at once and announces the bulk
+// change through one merged event.
+func ToggleAllTodos(w http.ResponseWriter, r *http.Request) {
+	changed := todos.toggleAll()
+	if err := ghtmxgen.EmitTodosBulkChanged(w, ghtmxgen.TodosBulkChangedPayload{Count: changed}); err != nil {
+		log.Printf("emit todos-bulk-changed: %v", err)
+	}
+	list, _, _ := todos.snapshot()
+	if err := nethttp.Render(w, r, todoListFragment(list)); err != nil {
+		log.Printf("render list: %v", err)
+	}
+}
+
+// ClearCompleted deletes every done todo and returns the refreshed
+// list.
+func ClearCompleted(w http.ResponseWriter, r *http.Request) {
+	removed := todos.clearCompleted()
+	if err := ghtmxgen.EmitTodosBulkChanged(w, ghtmxgen.TodosBulkChangedPayload{Count: removed}); err != nil {
+		log.Printf("emit todos-bulk-changed: %v", err)
+	}
+	list, _, _ := todos.snapshot()
+	if err := nethttp.Render(w, r, todoListFragment(list)); err != nil {
 		log.Printf("render list: %v", err)
 	}
 }
@@ -289,7 +373,9 @@ func Routes() *http.ServeMux {
 	mux.HandleFunc("GET /todos/{id}/edit", EditTodo)
 	mux.HandleFunc("PUT /todos/{id}/title", RenameTodo)
 	mux.HandleFunc("PUT /todos/{id}", ToggleTodo)
+	mux.HandleFunc("PUT /todos/toggle-all", ToggleAllTodos)
 	mux.HandleFunc("DELETE /todos/{id}", DeleteTodo)
+	mux.HandleFunc("DELETE /todos/completed", ClearCompleted)
 	mux.HandleFunc("GET /todos/stats", TodoStats)
 	return mux
 }

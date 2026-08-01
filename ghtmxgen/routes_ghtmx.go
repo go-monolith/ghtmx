@@ -19,15 +19,18 @@ func BenchItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/bench/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/crud.go:265:2).
+// ClearCompletedPath is the path of DELETE /todos/completed -> github.com/go-monolith/ghtmx/examples/crud.ClearCompleted (examples/crud/crud.go:378:2).
+const ClearCompletedPath = "/todos/completed"
+
+// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/crud.go:372:2).
 const CreateTodoPath = "/todos"
 
-// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/crud.go:269:2).
+// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/crud.go:377:2).
 func DeleteTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }
 
-// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/crud.go:266:2).
+// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/crud.go:373:2).
 func EditTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/edit")
 }
@@ -46,16 +49,16 @@ func GetItem(id string) ghtmx.SafeURL {
 // HomePath is the path of GET /hello -> github.com/go-monolith/ghtmx/examples/hello-world.home (examples/hello-world/helloworld.go:29:2).
 const HomePath = "/hello"
 
-// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/crud.go:263:2).
+// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/crud.go:370:2).
 const IndexPath = "/"
 
 // ListItemsPath is the path of GET /items -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.ListItems (examples/hx-bindings/hxbindings.go:42:2).
 const ListItemsPath = "/items"
 
-// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/crud.go:264:2).
+// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/crud.go:371:2).
 const ListTodosPath = "/todos"
 
-// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/crud.go:267:2).
+// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/crud.go:374:2).
 func RenameTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/title")
 }
@@ -70,10 +73,13 @@ func SaveItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/events/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/crud.go:270:2).
+// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/crud.go:379:2).
 const TodoStatsPath = "/todos/stats"
 
-// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/crud.go:268:2).
+// ToggleAllTodosPath is the path of PUT /todos/toggle-all -> github.com/go-monolith/ghtmx/examples/crud.ToggleAllTodos (examples/crud/crud.go:376:2).
+const ToggleAllTodosPath = "/todos/toggle-all"
+
+// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/crud.go:375:2).
 func ToggleTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }
@@ -218,6 +224,35 @@ func EmitTodoToggledAfterSettle(w http.ResponseWriter, p TodoToggledPayload) err
 // Declared at examples/crud/crud.ghtmx:16:1.
 func EmitTodoToggledAfterSwap(w http.ResponseWriter, p TodoToggledPayload) error {
 	return ghtmxruntime.AppendTriggerAfterSwap(w, "todo-toggled", p)
+}
+
+// TodosBulkChangedPayload is the payload of event "todos-bulk-changed" (declared at examples/crud/crud.ghtmx:20:1).
+type TodosBulkChangedPayload struct {
+	Count int `json:"count"`
+}
+
+// EmitTodosBulkChanged appends event "todos-bulk-changed" to the response's single HX-Trigger
+// header; multiple emissions in one response merge (FR-037). Call it
+// before writing the response status or body, from one goroutine.
+// Declared at examples/crud/crud.ghtmx:20:1.
+func EmitTodosBulkChanged(w http.ResponseWriter, p TodosBulkChangedPayload) error {
+	return ghtmxruntime.AppendTrigger(w, "todos-bulk-changed", p)
+}
+
+// EmitTodosBulkChangedAfterSettle appends event "todos-bulk-changed" to the response's single HX-Trigger-After-Settle
+// header; multiple emissions in one response merge (FR-037). Call it
+// before writing the response status or body, from one goroutine.
+// Declared at examples/crud/crud.ghtmx:20:1.
+func EmitTodosBulkChangedAfterSettle(w http.ResponseWriter, p TodosBulkChangedPayload) error {
+	return ghtmxruntime.AppendTriggerAfterSettle(w, "todos-bulk-changed", p)
+}
+
+// EmitTodosBulkChangedAfterSwap appends event "todos-bulk-changed" to the response's single HX-Trigger-After-Swap
+// header; multiple emissions in one response merge (FR-037). Call it
+// before writing the response status or body, from one goroutine.
+// Declared at examples/crud/crud.ghtmx:20:1.
+func EmitTodosBulkChangedAfterSwap(w http.ResponseWriter, p TodosBulkChangedPayload) error {
+	return ghtmxruntime.AppendTriggerAfterSwap(w, "todos-bulk-changed", p)
 }
 
 // HTMXScript renders the script tag for the configured htmx version

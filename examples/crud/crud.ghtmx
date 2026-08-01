@@ -17,44 +17,126 @@ event TodoToggled(id string, done bool)
 
 event TodoDeleted(id string)
 
+event TodosBulkChanged(count int) // toggle-all and clear-completed announce themselves once
+
 templ todoPage(todos []Todo, total int, done int) {
 	<!DOCTYPE html>
 	<html>
 		<head>
 			<title>ghtmx todos</title>
 			@ghtmxgen.HTMXScript()
+			<style>
+				:root { color-scheme: light dark; }
+				body {
+					font-family: system-ui, sans-serif; margin: 0; min-height: 100vh;
+					display: flex; justify-content: center; align-items: flex-start;
+					background: light-dark(#f5f5f5, #17181c); color: light-dark(#2b2b2b, #e6e6e6);
+				}
+				.todoapp {
+					width: min(34rem, 92vw); margin-top: 3rem; border-radius: .6rem;
+					background: light-dark(#ffffff, #22242a);
+					box-shadow: 0 8px 24px rgba(0, 0, 0, .12); padding: 1.5rem 1.75rem 1rem;
+				}
+				h1 { margin: 0 0 1rem; font-weight: 650; letter-spacing: .01em; }
+				form.new-todo { display: flex; gap: .6rem; margin-bottom: .4rem; }
+				form.new-todo input {
+					flex: 1; font-size: 1rem; padding: .55rem .8rem; border-radius: .45rem;
+					border: 1px solid light-dark(#d8d8d8, #3a3d46);
+					background: light-dark(#fafafa, #1b1d22); color: inherit;
+				}
+				form.new-todo button, .toolbar button {
+					font-size: .9rem; padding: .5rem .9rem; border-radius: .45rem; cursor: pointer;
+					border: 1px solid light-dark(#d8d8d8, #3a3d46);
+					background: light-dark(#f2f2f2, #2a2d34); color: inherit;
+				}
+				form.new-todo button:hover, .toolbar button:hover { border-color: #808891; }
+				table#todo-list { width: 100%; border-collapse: collapse; margin: .6rem 0; }
+				#todo-list td { padding: .45rem .3rem; border-bottom: 1px solid light-dark(#ececec, #2e3138); }
+				#todo-list tr:last-child td { border-bottom: none; }
+				#todo-list td:nth-child(2) { width: 100%; font-size: 1.02rem; }
+				td.done { text-decoration: line-through; opacity: .45; }
+				.check {
+					width: 1.7rem; height: 1.7rem; border-radius: 50%; cursor: pointer;
+					border: 1.5px solid light-dark(#c9c9c9, #4a4e58); background: none; color: #3fa860;
+					font-size: .95rem; line-height: 1;
+				}
+				.check:hover { border-color: #3fa860; }
+				.row-action {
+					border: none; background: none; cursor: pointer; color: inherit;
+					opacity: .4; font-size: .95rem; padding: .2rem .3rem;
+				}
+				.row-action:hover { opacity: 1; }
+				tr.empty td { text-align: center; opacity: .5; padding: 1.4rem 0; }
+				.toolbar {
+					display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
+					padding-top: .6rem; border-top: 1px solid light-dark(#ececec, #2e3138);
+				}
+				.toolbar .spacer { flex: 1; }
+				#todo-stats { font-size: .85rem; opacity: .75; padding: .55rem 0; }
+				form.edit-inline { display: flex; gap: .5rem; }
+				form.edit-inline input { flex: 1; padding: .35rem .6rem; border-radius: .4rem; border: 1px solid #808891; background: inherit; color: inherit; }
+			</style>
 		</head>
 		<body>
-			<h1>Todos</h1>
-			@statsPanel(total, done)
-			<form
-				hx-post={ CreateTodo }
-				hx-target="#todo-list"
-				hx-swap="outerHTML"
-			>
-				<input type="text" name="title" placeholder="What needs doing?" required/>
-				<button type="submit">Add</button>
-			</form>
-			<button
-				hx-get={ ListTodos }
-				hx-target="#todo-list"
-				hx-swap="outerHTML"
-			>refresh</button>
-			@todoList(todos)
+			<main class="todoapp">
+				<h1>Todos</h1>
+				@statsPanel(total, done)
+				<form
+					class="new-todo"
+					hx-post={ CreateTodo }
+					hx-target="#todo-list"
+					hx-swap="outerHTML"
+				>
+					<input type="text" name="title" placeholder="What needs doing?" maxlength="200" autofocus autocomplete="off" required/>
+					<button type="submit">Add</button>
+				</form>
+				@todoList(todos)
+				<div class="toolbar">
+					<button
+						hx-get={ ListTodos }
+						hx-target="#todo-list"
+						hx-swap="outerHTML"
+					>All</button>
+					<button
+						hx-get={ ListTodos }
+						hx-vals='{"filter": "active"}'
+						hx-target="#todo-list"
+						hx-swap="outerHTML"
+					>Active</button>
+					<button
+						hx-get={ ListTodos }
+						hx-vals='{"filter": "completed"}'
+						hx-target="#todo-list"
+						hx-swap="outerHTML"
+					>Completed</button>
+					<span class="spacer"></span>
+					<button
+						hx-put={ ToggleAllTodos }
+						hx-target="#todo-list"
+						hx-swap="outerHTML"
+					>Toggle all</button>
+					<button
+						hx-delete={ ClearCompleted }
+						hx-target="#todo-list"
+						hx-swap="outerHTML"
+					>Clear completed</button>
+				</div>
+			</main>
 		</body>
 	</html>
 }
 
 // statsPanel refreshes itself whenever any contract event fires
-// anywhere on the page.
+// anywhere on the page — including the bulk operations' single
+// merged announcement.
 fragment statsPanel(total int, done int) {
 	<div
 		id="todo-stats"
 		hx-get={ TodoStats }
-		hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body"
+		hx-trigger="todo-created from:body, todo-toggled from:body, todo-deleted from:body, todos-bulk-changed from:body"
 		hx-swap="outerHTML"
 	>
-		<span>{ itoa(done) } of { itoa(total) } done</span>
+		<span>{ itoa(done) } of { itoa(total) } done · { itoa(total - done) } left</span>
 	</div>
 }
 
@@ -62,12 +144,29 @@ fragment statsPanel(total int, done int) {
 // standalone entry point serves htmx refreshes byte-identically.
 fragment todoList(todos []Todo) {
 	<table id="todo-list">
+		if len(todos) == 0 {
+			<tr class="empty"><td colspan="4">Nothing here — add a todo above.</td></tr>
+		}
 		for _, t := range todos {
 			fragment todoRow(t Todo) {
 				<tr id={ "todo-" + t.ID }>
+					<td>
+						<button
+							class="check"
+							hx-put={ ghtmxgen.ToggleTodo(t.ID) }
+							hx-target={ "#todo-" + t.ID }
+							hx-swap="outerHTML"
+							title="toggle"
+						>
+							if t.Done {
+								✓
+							}
+						</button>
+					</td>
 					<td class={ doneClass(t.Done) }>{ t.Title }</td>
 					<td>
 						<button
+							class="row-action"
 							hx-get={ ghtmxgen.EditTodo(t.ID) }
 							hx-target={ "#todo-" + t.ID }
 							hx-swap="outerHTML"
@@ -75,17 +174,11 @@ fragment todoList(todos []Todo) {
 					</td>
 					<td>
 						<button
-							hx-put={ ghtmxgen.ToggleTodo(t.ID) }
-							hx-target={ "#todo-" + t.ID }
-							hx-swap="outerHTML"
-						>toggle</button>
-					</td>
-					<td>
-						<button
+							class="row-action"
 							hx-delete={ ghtmxgen.DeleteTodo(t.ID) }
 							hx-target={ "#todo-" + t.ID }
 							hx-swap="outerHTML"
-						>delete</button>
+						>✕</button>
 					</td>
 				</tr>
 			}
@@ -103,11 +196,12 @@ fragment todoEditRow(t Todo) {
 	<tr id={ "todo-" + t.ID }>
 		<td colspan="4">
 			<form
+				class="edit-inline"
 				hx-put={ ghtmxgen.RenameTodo(t.ID) }
 				hx-target={ "#todo-" + t.ID }
 				hx-swap="outerHTML"
 			>
-				<input type="text" name="title" value={ t.Title } required/>
+				<input type="text" name="title" value={ t.Title } maxlength="200" autofocus required/>
 				<button type="submit">Save</button>
 			</form>
 		</td>

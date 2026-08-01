@@ -47,7 +47,7 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "</head><body><h1>Todos</h1>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { color-scheme: light dark; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t\tbackground: light-dark(#f5f5f5, #17181c); color: light-dark(#2b2b2b, #e6e6e6);\n\t\t\t\t}\n\t\t\t\t.todoapp {\n\t\t\t\t\twidth: min(34rem, 92vw); margin-top: 3rem; border-radius: .6rem;\n\t\t\t\t\tbackground: light-dark(#ffffff, #22242a);\n\t\t\t\t\tbox-shadow: 0 8px 24px rgba(0, 0, 0, .12); padding: 1.5rem 1.75rem 1rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 1rem; font-weight: 650; letter-spacing: .01em; }\n\t\t\t\tform.new-todo { display: flex; gap: .6rem; margin-bottom: .4rem; }\n\t\t\t\tform.new-todo input {\n\t\t\t\t\tflex: 1; font-size: 1rem; padding: .55rem .8rem; border-radius: .45rem;\n\t\t\t\t\tborder: 1px solid light-dark(#d8d8d8, #3a3d46);\n\t\t\t\t\tbackground: light-dark(#fafafa, #1b1d22); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button, .toolbar button {\n\t\t\t\t\tfont-size: .9rem; padding: .5rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid light-dark(#d8d8d8, #3a3d46);\n\t\t\t\t\tbackground: light-dark(#f2f2f2, #2a2d34); color: inherit;\n\t\t\t\t}\n\t\t\t\tform.new-todo button:hover, .toolbar button:hover { border-color: #808891; }\n\t\t\t\ttable#todo-list { width: 100%; border-collapse: collapse; margin: .6rem 0; }\n\t\t\t\t#todo-list td { padding: .45rem .3rem; border-bottom: 1px solid light-dark(#ececec, #2e3138); }\n\t\t\t\t#todo-list tr:last-child td { border-bottom: none; }\n\t\t\t\t#todo-list td:nth-child(2) { width: 100%; font-size: 1.02rem; }\n\t\t\t\ttd.done { text-decoration: line-through; opacity: .45; }\n\t\t\t\t.check {\n\t\t\t\t\twidth: 1.7rem; height: 1.7rem; border-radius: 50%; cursor: pointer;\n\t\t\t\t\tborder: 1.5px solid light-dark(#c9c9c9, #4a4e58); background: none; color: #3fa860;\n\t\t\t\t\tfont-size: .95rem; line-height: 1;\n\t\t\t\t}\n\t\t\t\t.check:hover { border-color: #3fa860; }\n\t\t\t\t.row-action {\n\t\t\t\t\tborder: none; background: none; cursor: pointer; color: inherit;\n\t\t\t\t\topacity: .4; font-size: .95rem; padding: .2rem .3rem;\n\t\t\t\t}\n\t\t\t\t.row-action:hover { opacity: 1; }\n\t\t\t\ttr.empty td { text-align: center; opacity: .5; padding: 1.4rem 0; }\n\t\t\t\t.toolbar {\n\t\t\t\t\tdisplay: flex; gap: .5rem; align-items: center; flex-wrap: wrap;\n\t\t\t\t\tpadding-top: .6rem; border-top: 1px solid light-dark(#ececec, #2e3138);\n\t\t\t\t}\n\t\t\t\t.toolbar .spacer { flex: 1; }\n\t\t\t\t#todo-stats { font-size: .85rem; opacity: .75; padding: .55rem 0; }\n\t\t\t\tform.edit-inline { display: flex; gap: .5rem; }\n\t\t\t\tform.edit-inline input { flex: 1; padding: .35rem .6rem; border-radius: .4rem; border: 1px solid #808891; background: inherit; color: inherit; }\n\t\t\t</style></head><body><main class=\"todoapp\"><h1>Todos</h1>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -55,7 +55,7 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "<form hx-post=\"/todos\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\"><input type=\"text\" name=\"title\" placeholder=\"What needs doing?\" required> <button type=\"submit\">Add</button></form><button hx-get=\"/todos\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\">refresh</button>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "<form class=\"new-todo\" hx-post=\"/todos\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\"><input type=\"text\" name=\"title\" placeholder=\"What needs doing?\" maxlength=\"200\" autofocus autocomplete=\"off\" required> <button type=\"submit\">Add</button></form>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -63,7 +63,7 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "</body></html>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "<div class=\"toolbar\"><button hx-get=\"/todos\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\">All</button> <button hx-get=\"/todos\" hx-vals='{\"filter\": \"active\"}' hx-target=\"#todo-list\" hx-swap=\"outerHTML\">Active</button> <button hx-get=\"/todos\" hx-vals='{\"filter\": \"completed\"}' hx-target=\"#todo-list\" hx-swap=\"outerHTML\">Completed</button> <span class=\"spacer\"></span> <button hx-put=\"/todos/toggle-all\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\">Toggle all</button> <button hx-delete=\"/todos/completed\" hx-target=\"#todo-list\" hx-swap=\"outerHTML\">Clear completed</button></div></main></body></html>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -72,7 +72,8 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 }
 
 // statsPanel refreshes itself whenever any contract event fires
-// anywhere on the page.
+// anywhere on the page — including the bulk operations' single
+// merged announcement.
 // ghtmxFragmentBody_statsPanel is the shared body of fragment statsPanel: both entry
 // points and every declaration site execute it, so the render modes cannot
 // diverge.
@@ -92,14 +93,14 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "<div id=\"todo-stats\" hx-get=\"/todos/stats\" hx-trigger=\"todo-created from:body, todo-toggled from:body, todo-deleted from:body\" hx-swap=\"outerHTML\"><span>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "<div id=\"todo-stats\" hx-get=\"/todos/stats\" hx-trigger=\"todo-created from:body, todo-toggled from:body, todo-deleted from:body, todos-bulk-changed from:body\" hx-swap=\"outerHTML\"><span>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
 	var ghtmx_7f3b9d1a_Var2 string
 	ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(done))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 57, Col: 20}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 20}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -112,13 +113,26 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 	var ghtmx_7f3b9d1a_Var3 string
 	ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(total))
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 57, Col: 39}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 39}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, " done</span></div>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, " done · ")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var4 string
+	ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(itoa(total - done))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 139, Col: 70}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var4))
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, " left</span></div>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -160,9 +174,15 @@ func ghtmxFragmentBody_todoList(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "<table id=\"todo-list\">")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<table id=\"todo-list\">")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
+	}
+	if len(todos) == 0 {
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "<tr class=\"empty\"><td colspan=\"4\">Nothing here — add a todo above.</td></tr>")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
 	}
 	for _, t := range todos {
 		ghtmx_7f3b9d1a_Err = ghtmxFragmentBody_todoRow(ghtmxruntime.GeneratedComponentInput{Context: ctx, Writer: ghtmx_7f3b9d1a_Buffer}, t)
@@ -170,7 +190,7 @@ func ghtmxFragmentBody_todoList(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 			return ghtmx_7f3b9d1a_Err
 		}
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "</table>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "</table>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -210,121 +230,131 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "<tr id=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<tr id=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var4 string
-	ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
+	var ghtmx_7f3b9d1a_Var5 string
+	ghtmx_7f3b9d1a_Var5, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 67, Col: 27}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 152, Col: 27}
 	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var4)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "\">")
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var5)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var5 = []any{doneClass(t.Done)}
-	ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var5...)
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "\"><td><button class=\"check\" hx-put=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<td class=\"")
+	var ghtmx_7f3b9d1a_Var6 ghtmx.SafeURL = ghtmxgen.ToggleTodo(t.ID)
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var6)))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var6 string
-	ghtmx_7f3b9d1a_Var6, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var5).String())
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 1, Col: 0}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var6)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "\">")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\" hx-target=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
 	var ghtmx_7f3b9d1a_Var7 string
-	ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(t.Title)
+	ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 68, Col: 46}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 157, Col: 34}
 	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var7))
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "</td><td><button hx-get=\"")
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var7)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var8 ghtmx.SafeURL = ghtmxgen.EditTodo(t.ID)
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var8)))
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "\" hx-swap=\"outerHTML\" title=\"toggle\">")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "\" hx-target=\"")
+	if t.Done {
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "✓")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "</button></td>")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var8 = []any{doneClass(t.Done)}
+	ghtmx_7f3b9d1a_Err = ghtmx.RenderCSSItems(ctx, ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Var8...)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "<td class=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
 	var ghtmx_7f3b9d1a_Var9 string
-	ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
+	ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSSClasses(ghtmx_7f3b9d1a_Var8).String())
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 72, Col: 34}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 1, Col: 0}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var9)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "\" hx-swap=\"outerHTML\">edit</button></td><td><button hx-put=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\">")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var10 ghtmx.SafeURL = ghtmxgen.ToggleTodo(t.ID)
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var10)))
+	var ghtmx_7f3b9d1a_Var10 string
+	ghtmx_7f3b9d1a_Var10, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(t.Title)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 166, Col: 46}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var10))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "\" hx-target=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 20, "</td><td><button class=\"row-action\" hx-get=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var11 string
-	ghtmx_7f3b9d1a_Var11, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 79, Col: 34}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var11)
+	var ghtmx_7f3b9d1a_Var11 ghtmx.SafeURL = ghtmxgen.EditTodo(t.ID)
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var11)))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "\" hx-swap=\"outerHTML\">toggle</button></td><td><button hx-delete=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 21, "\" hx-target=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var12 ghtmx.SafeURL = ghtmxgen.DeleteTodo(t.ID)
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var12)))
+	var ghtmx_7f3b9d1a_Var12 string
+	ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 171, Col: 34}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var12)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\" hx-target=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 22, "\" hx-swap=\"outerHTML\">edit</button></td><td><button class=\"row-action\" hx-delete=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var13 string
-	ghtmx_7f3b9d1a_Var13, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 86, Col: 34}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var13)
+	var ghtmx_7f3b9d1a_Var13 ghtmx.SafeURL = ghtmxgen.DeleteTodo(t.ID)
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var13)))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 20, "\" hx-swap=\"outerHTML\">delete</button></td></tr>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 23, "\" hx-target=\"")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var14 string
+	ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 179, Col: 34}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var14)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 24, "\" hx-swap=\"outerHTML\">✕</button></td></tr>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -370,55 +400,55 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	}
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 21, "<tr id=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 25, "<tr id=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var14 string
-	ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
+	var ghtmx_7f3b9d1a_Var15 string
+	ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 103, Col: 24}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 196, Col: 24}
 	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var14)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 22, "\"><td colspan=\"4\"><form hx-put=\"")
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var15)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var15 ghtmx.SafeURL = ghtmxgen.RenameTodo(t.ID)
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var15)))
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 26, "\"><td colspan=\"4\"><form class=\"edit-inline\" hx-put=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 23, "\" hx-target=\"")
+	var ghtmx_7f3b9d1a_Var16 ghtmx.SafeURL = ghtmxgen.RenameTodo(t.ID)
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var16)))
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	var ghtmx_7f3b9d1a_Var16 string
-	ghtmx_7f3b9d1a_Var16, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 107, Col: 31}
-	}
-	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var16)
-	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx_7f3b9d1a_Err
-	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 24, "\" hx-swap=\"outerHTML\"><input type=\"text\" name=\"title\" value=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 27, "\" hx-target=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
 	var ghtmx_7f3b9d1a_Var17 string
-	ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(t.Title)
+	ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 110, Col: 51}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 201, Col: 31}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var17)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 25, "\" required> <button type=\"submit\">Save</button></form></td></tr>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 28, "\" hx-swap=\"outerHTML\"><input type=\"text\" name=\"title\" value=\"")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	var ghtmx_7f3b9d1a_Var18 string
+	ghtmx_7f3b9d1a_Var18, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(t.Title)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 204, Col: 51}
+	}
+	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var18)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 29, "\" maxlength=\"200\" autofocus required> <button type=\"submit\">Save</button></form></td></tr>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -442,9 +472,11 @@ func todoEditRowFragment(t Todo) ghtmx.Fragment {
 // Handlers bound from hx-* attributes: the references keep imports
 // used and the symbols compile-checked.
 var (
+	_ = ClearCompleted
 	_ = CreateTodo
 	_ = ListTodos
 	_ = TodoStats
+	_ = ToggleAllTodos
 )
 
 var _ = ghtmxruntime.GeneratedTemplate
