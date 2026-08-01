@@ -50,7 +50,8 @@ type Event struct {
 	// "(id string, name string)"; "()" for payload-less events.
 	Params string
 	// DeclaredAt is the declaration site for doc comments, already
-	// module-relative.
+	// module-relative and FILE ONLY — line/column would churn the
+	// committed output when edits shift the declaration.
 	DeclaredAt string
 }
 

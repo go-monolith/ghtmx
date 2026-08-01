@@ -35,7 +35,7 @@ func SyntaxSection(section string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/docs/syntax/" + ghtmx.EscapePathSegment(section))
 }
 
-// DocViewedPayload is the payload of event "doc-viewed" (declared at site/layout.ghtmx:8:1).
+// DocViewedPayload is the payload of event "doc-viewed" (declared at site/layout.ghtmx).
 type DocViewedPayload struct {
 	Slug string `json:"slug"`
 }
@@ -43,7 +43,7 @@ type DocViewedPayload struct {
 // EmitDocViewed appends event "doc-viewed" to the response's single HX-Trigger
 // header; multiple emissions in one response merge (FR-037). Call it
 // before writing the response status or body, from one goroutine.
-// Declared at site/layout.ghtmx:8:1.
+// Declared at site/layout.ghtmx.
 func EmitDocViewed(w http.ResponseWriter, p DocViewedPayload) error {
 	return ghtmxruntime.AppendTrigger(w, "doc-viewed", p)
 }
@@ -51,7 +51,7 @@ func EmitDocViewed(w http.ResponseWriter, p DocViewedPayload) error {
 // EmitDocViewedAfterSettle appends event "doc-viewed" to the response's single HX-Trigger-After-Settle
 // header; multiple emissions in one response merge (FR-037). Call it
 // before writing the response status or body, from one goroutine.
-// Declared at site/layout.ghtmx:8:1.
+// Declared at site/layout.ghtmx.
 func EmitDocViewedAfterSettle(w http.ResponseWriter, p DocViewedPayload) error {
 	return ghtmxruntime.AppendTriggerAfterSettle(w, "doc-viewed", p)
 }
@@ -59,7 +59,7 @@ func EmitDocViewedAfterSettle(w http.ResponseWriter, p DocViewedPayload) error {
 // EmitDocViewedAfterSwap appends event "doc-viewed" to the response's single HX-Trigger-After-Swap
 // header; multiple emissions in one response merge (FR-037). Call it
 // before writing the response status or body, from one goroutine.
-// Declared at site/layout.ghtmx:8:1.
+// Declared at site/layout.ghtmx.
 func EmitDocViewedAfterSwap(w http.ResponseWriter, p DocViewedPayload) error {
 	return ghtmxruntime.AppendTriggerAfterSwap(w, "doc-viewed", p)
 }
