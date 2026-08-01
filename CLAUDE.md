@@ -1,9 +1,8 @@
 # CLAUDE.md
 
 - Never push directly to `main` — it is branch-protected (all 11 CI
-  checks required, admins included). Make changes on a feature branch,
-  open a pull request, and put `@CharlieHelps please review` in the PR
-  description.
+  checks required, admins included). Make changes on a feature branch
+  and open a pull request.
 - Merge only when the PR's CI checks are green.
 - Pushing needs HTTPS with the gh credential helper — this container
   has no SSH key. If pushes fail over SSH:

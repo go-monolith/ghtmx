@@ -10,9 +10,7 @@ administrators.
 
 1. Branch from `main` (`feat/...`, `fix/...`, or similar).
 2. Push the branch and open a pull request against `main`.
-3. Request a review by writing `@CharlieHelps please review` in the
-   pull request description (or a comment).
-4. Merge only when CI is green and the review is addressed.
+3. Merge only when CI is green and any review feedback is addressed.
 
 ## Pushing from the dev container
 
