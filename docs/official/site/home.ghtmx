@@ -1,0 +1,41 @@
+package site
+
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// homeBody is the landing content: a hero, the three language
+// pillars, a code sample, and the site-only index.md rendered below.
+fragment homeBody(intro string) {
+	<article id="home" class="home">
+		<div class="hero">
+			<h1 class="hero-title">ghtmx <span class="hero-accent">— build HTML with Go and htmx</span></h1>
+			<p class="hero-tagline">A templ-compatible template engine that makes htmx a compile-checked language concept: every URL, fragment, and server event in your templates is verified against your Go code at build time.</p>
+			<p class="hero-actions">
+				<a class="btn btn-primary" href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Get started</a>
+				<a class="btn" href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Browse examples</a>
+				<a class="btn" href="https://github.com/go-monolith/ghtmx" target="_blank" rel="noopener">GitHub</a>
+			</p>
+		</div>
+		<div class="features">
+			<div class="feature">
+				<h3>Route-aware bindings</h3>
+				<p>Every hx-get and hx-post URL resolves against a real Go route at build time — rename a route and the build breaks at every binding site.</p>
+			</div>
+			<div class="feature">
+				<h3>Compile-time fragments</h3>
+				<p><code>fragment</code> blocks render inline in a page and standalone for htmx swaps, byte-identically — no drift between full pages and partial updates.</p>
+			</div>
+			<div class="feature">
+				<h3>Typed server events</h3>
+				<p><code>event</code> declarations generate the only HX-Trigger emitters, with typed payloads shared by handlers and templates.</p>
+			</div>
+		</div>
+		<pre class="hero-code"><code class="language-templ">{ heroCode }</code></pre>
+		@ghtmx.Raw(intro)
+	</article>
+}
+
+templ homePage(intro string) {
+	@shell("home") {
+		@homeBody(intro)
+	}
+}

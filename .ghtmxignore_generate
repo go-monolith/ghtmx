@@ -3,3 +3,8 @@
 # table (go tooling hides testdata dirs) and collide with the examples'
 # event namespace. Its generated pairs are maintained as fixtures.
 cmd/ghtmx/testproject/testdata
+
+# The official docs site is a nested module with its own routes,
+# config, and central package; it is generated separately with
+# -path docs/official (see ci.yml ensure-generated).
+docs/official

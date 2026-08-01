@@ -1,0 +1,36 @@
+package main
+
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+// ItemRow is declared once and referenced by two pages. The compiler emits
+// one shared body plus two entry points over it: ItemRow (inline component)
+// and ItemRowFragment (standalone render for htmx swaps) — FR-030, FR-031.
+fragment ItemRow(id string, name string) {
+	<tr id={ "item-" + id }>
+		<td>{ name }</td>
+		<td>
+			<a hx-get={ ghtmxgen.RowDetail(id) } hx-target={ "#item-" + id } hx-swap="outerHTML">refresh</a>
+		</td>
+	</tr>
+}
+
+templ listPage(items []Item) {
+	<table id="items">
+		<tbody>
+			for _, it := range items {
+				@ItemRow(it.ID, it.Name)
+			}
+		</tbody>
+	</table>
+	<button hx-get={ fragmentsHome } hx-target="#items" hx-select="#items" hx-swap="outerHTML">Reload</button>
+}
+
+templ soloPage(it Item) {
+	<div id="solo">
+		<table>
+			<tbody>
+				@ItemRow(it.ID, it.Name)
+			</tbody>
+		</table>
+	</div>
+}
