@@ -1,0 +1,16 @@
+package site
+
+// docBody carries one rendered reference document. The HTML comes
+// from goldmark over repository-owned markdown, so injecting it raw
+// is safe by construction.
+fragment docBody(body string) {
+	<article id="doc">
+		@ghtmx.Raw(body)
+	</article>
+}
+
+templ docPage(active string, body string) {
+	@shell(active) {
+		@docBody(body)
+	}
+}

@@ -1,0 +1,22 @@
+package main
+
+import "github.com/go-monolith/ghtmx/ghtmxgen"
+
+templ page(name string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<title>ghtmx walking skeleton</title>
+			@ghtmxgen.HTMXScript()
+		</head>
+		<body>
+			@greeting(name)
+			<p>This page travelled the full path from .ghtmx source to bytes in your browser.</p>
+		</body>
+	</html>
+}
+
+templ greeting(name string) {
+	<h1>Hello, { name }!</h1>
+}

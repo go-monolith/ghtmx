@@ -1,0 +1,55 @@
+package site
+
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// The site's own event contract: every reference-document view is
+// announced through a generated HX-Trigger emitter, and the footer
+// listens for it — the same pattern examples/events demonstrates.
+event DocViewed(slug string)
+
+// shell is the page chrome: the htmx script from the pinned helper,
+// the sidebar bound to real routes (symbol bindings for zero-param
+// routes, ghtmxgen constructors for parameterised ones), and the
+// content region every fragment swaps into.
+templ shell(active string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>ghtmx — compile-checked htmx for Go</title>
+			@ghtmxgen.HTMXScript()
+			<style>
+				:root { color-scheme: light dark; }
+				body { font-family: system-ui, sans-serif; margin: 0; display: flex; min-height: 100vh; }
+				nav { min-width: 14rem; padding: 1.5rem 1rem; border-right: 1px solid #8884; }
+				nav a { display: block; padding: .3rem .5rem; text-decoration: none; color: inherit; border-radius: .3rem; }
+				nav a.active, nav a:hover { background: #8882; }
+				nav a.brand { font-weight: 700; margin-bottom: 1rem; }
+				main { padding: 2rem 3rem; max-width: 52rem; overflow-x: auto; flex: 1; }
+				pre { padding: 1rem; background: #8881; overflow-x: auto; border-radius: .4rem; }
+				code { font-family: ui-monospace, monospace; }
+				table { border-collapse: collapse; }
+				td, th { border: 1px solid #8884; padding: .4rem .6rem; text-align: left; vertical-align: top; }
+				h1, h2 { border-bottom: 1px solid #8884; padding-bottom: .3rem; }
+				footer { position: fixed; bottom: 0; right: 0; padding: .3rem .8rem; font-size: .8rem; opacity: .6; }
+				.hero a { display: inline-block; margin-right: 1rem; padding: .5rem 1rem; border: 1px solid #8884; border-radius: .4rem; text-decoration: none; color: inherit; }
+				.example-card { margin-bottom: 1.5rem; }
+			</style>
+		</head>
+		<body hx-on:doc-viewed="document.getElementById('last-viewed').textContent = event.detail.slug">
+			<nav>
+				<a class={ navClass("brand", active == "home") } href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">ghtmx</a>
+				<a class={ navClass("", active == "getting-started") } href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Getting started</a>
+				for _, d := range Docs {
+					<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
+				}
+				<a class={ navClass("", active == "examples") } href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Examples</a>
+			</nav>
+			<main id="content">
+				{ children... }
+			</main>
+			<footer>last viewed: <span id="last-viewed">—</span></footer>
+		</body>
+	</html>
+}

@@ -1,0 +1,12 @@
+# Cloudflare Workers deployment for the official ghtmx docs site.
+# Deploy-only tooling: the Go build never touches this file (the
+# constitution's no-Node rule applies to the build pipeline; wrangler
+# is used only to ship the already-built wasm). See README.md.
+name = "ghtmx-docs"
+main = "./build/worker.mjs"
+compatibility_date = "2026-08-01"
+
+[build]
+# Unix shell only; the workers-assets-gen pin must stay in lockstep
+# with go.mod's syumai/workers version.
+command = "go run github.com/syumai/workers/cmd/workers-assets-gen@v0.33.0 -mode=go -o ./build && GOOS=js GOARCH=wasm go build -ldflags='-s -w' -trimpath -o ./build/app.wasm ."

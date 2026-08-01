@@ -1,0 +1,21 @@
+package site
+
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// homeBody is the landing content: the site-only index.md plus a hero
+// whose links are bound to real routes.
+fragment homeBody(intro string) {
+	<article id="home">
+		@ghtmx.Raw(intro)
+		<p class="hero">
+			<a href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Get started</a>
+			<a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Browse the examples</a>
+		</p>
+	</article>
+}
+
+templ homePage(intro string) {
+	@shell("home") {
+		@homeBody(intro)
+	}
+}
