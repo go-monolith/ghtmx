@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-monolith/ghtmx/internal/generator/central"
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
+	"github.com/go-monolith/ghtmx/internal/lsp/uri"
 	"github.com/go-monolith/ghtmx/internal/routes"
 )
 
@@ -278,12 +279,18 @@ func TestLspLocationForms(t *testing.T) {
 		wantURI   string
 		want      lsp.Position
 	}{
-		{"plain path", "/x/events.ghtmx", 3, 1, "file:///x/events.ghtmx", lsp.Position{Line: 2, Character: 0}},
+		// Plain paths pass through uri.File, which absolutizes (adding a
+		// drive on Windows) — an empty wantURI means "whatever uri.File
+		// produces for this path"; the assertion under test is the position.
+		{"plain path", "/x/events.ghtmx", 3, 1, "", lsp.Position{Line: 2, Character: 0}},
 		{"uri form preserved", "file:///x/events.ghtmx", 3, 1, "file:///x/events.ghtmx", lsp.Position{Line: 2, Character: 0}},
-		{"unset guards to zero", "/x/events.ghtmx", 0, 0, "file:///x/events.ghtmx", lsp.Position{}},
+		{"unset guards to zero", "/x/events.ghtmx", 0, 0, "", lsp.Position{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantURI == "" {
+				tt.wantURI = string(uri.File(tt.file))
+			}
 			loc := lspLocation(tt.file, tt.line, tt.col)
 			if string(loc.URI) != tt.wantURI || loc.Range.Start != tt.want {
 				t.Errorf("lspLocation(%q, %d, %d) = %s %+v; want %s %+v",

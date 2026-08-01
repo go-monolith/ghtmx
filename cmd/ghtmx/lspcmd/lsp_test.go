@@ -51,7 +51,7 @@ func TestCompletion(t *testing.T) {
 	}
 	err = server.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
-			URI:        uri.URI("file://" + appDir + "/templates.ghtmx"),
+			URI:        uri.File(appDir + "/templates.ghtmx"),
 			LanguageID: "templ",
 			Version:    1,
 			Text:       string(templFile),
@@ -118,7 +118,7 @@ func TestCompletion(t *testing.T) {
 			err = server.DidChange(ctx, &protocol.DidChangeTextDocumentParams{
 				TextDocument: protocol.VersionedTextDocumentIdentifier{
 					TextDocumentIdentifier: protocol.TextDocumentIdentifier{
-						URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+						URI: uri.File(appDir + "/templates.ghtmx"),
 					},
 					Version: int32(i + 2),
 				},
@@ -145,7 +145,7 @@ func TestCompletion(t *testing.T) {
 					},
 					TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 						TextDocument: protocol.TextDocumentIdentifier{
-							URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+							URI: uri.File(appDir + "/templates.ghtmx"),
 						},
 						// Positions are zero indexed.
 						Position: protocol.Position{
@@ -199,7 +199,7 @@ func TestHover(t *testing.T) {
 	}
 	err = server.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
-			URI:        uri.URI("file://" + appDir + "/templates.ghtmx"),
+			URI:        uri.File(appDir + "/templates.ghtmx"),
 			LanguageID: "templ",
 			Version:    1,
 			Text:       string(templFile),
@@ -270,7 +270,7 @@ func TestHover(t *testing.T) {
 			err = server.DidChange(ctx, &protocol.DidChangeTextDocumentParams{
 				TextDocument: protocol.VersionedTextDocumentIdentifier{
 					TextDocumentIdentifier: protocol.TextDocumentIdentifier{
-						URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+						URI: uri.File(appDir + "/templates.ghtmx"),
 					},
 					Version: int32(i + 2),
 				},
@@ -297,7 +297,7 @@ func TestHover(t *testing.T) {
 				actual, err := server.Hover(ctx, &protocol.HoverParams{
 					TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 						TextDocument: protocol.TextDocumentIdentifier{
-							URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+							URI: uri.File(appDir + "/templates.ghtmx"),
 						},
 						// Positions are zero indexed.
 						Position: protocol.Position{
@@ -362,7 +362,7 @@ func TestReferences(t *testing.T) {
 				expectedReference := []protocol.Location{
 					{
 						// This is the usage of the templ function in the main.go file.
-						URI: uri.URI("file://" + appDir + "/main.go"),
+						URI: uri.File(appDir + "/main.go"),
 						Range: protocol.Range{
 							Start: protocol.Position{
 								Line:      uint32(17),
@@ -390,7 +390,7 @@ func TestReferences(t *testing.T) {
 				expectedReference := []protocol.Location{
 					{
 						// This is the usage of the struct in the templates.ghtmx file.
-						URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+						URI: uri.File(appDir + "/templates.ghtmx"),
 						Range: protocol.Range{
 							Start: protocol.Position{
 								Line:      uint32(24),
@@ -417,7 +417,7 @@ func TestReferences(t *testing.T) {
 			assert: func(t *testing.T, actual []protocol.Location) (msg string, ok bool) {
 				expectedReference := []protocol.Location{
 					{
-						URI: uri.URI("file://" + appDir + "/remoteparent.ghtmx"),
+						URI: uri.File(appDir + "/remoteparent.ghtmx"),
 						Range: protocol.Range{
 							Start: protocol.Position{
 								Line:      uint32(3),
@@ -430,7 +430,7 @@ func TestReferences(t *testing.T) {
 						},
 					},
 					{
-						URI: uri.URI("file://" + appDir + "/remoteparent.ghtmx"),
+						URI: uri.File(appDir + "/remoteparent.ghtmx"),
 						Range: protocol.Range{
 							Start: protocol.Position{
 								Line:      uint32(7),
@@ -464,7 +464,7 @@ func TestReferences(t *testing.T) {
 				actual, err := server.References(ctx, &protocol.ReferenceParams{
 					TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 						TextDocument: protocol.TextDocumentIdentifier{
-							URI: uri.URI("file://" + appDir + test.filename),
+							URI: uri.File(appDir + test.filename),
 						},
 						// Positions are zero indexed.
 						Position: protocol.Position{
@@ -517,7 +517,7 @@ func TestCodeAction(t *testing.T) {
 	}
 	err = server.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
-			URI:        uri.URI("file://" + appDir + "/templates.ghtmx"),
+			URI:        uri.File(appDir + "/templates.ghtmx"),
 			LanguageID: "templ",
 			Version:    1,
 			Text:       string(templFile),
@@ -563,7 +563,7 @@ func TestCodeAction(t *testing.T) {
 			err = server.DidChange(ctx, &protocol.DidChangeTextDocumentParams{
 				TextDocument: protocol.VersionedTextDocumentIdentifier{
 					TextDocumentIdentifier: protocol.TextDocumentIdentifier{
-						URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+						URI: uri.File(appDir + "/templates.ghtmx"),
 					},
 					Version: int32(i + 2),
 				},
@@ -589,7 +589,7 @@ func TestCodeAction(t *testing.T) {
 				}
 				actual, err := server.CodeAction(ctx, &protocol.CodeActionParams{
 					TextDocument: protocol.TextDocumentIdentifier{
-						URI: uri.URI("file://" + appDir + "/templates.ghtmx"),
+						URI: uri.File(appDir + "/templates.ghtmx"),
 					},
 					Range: protocol.Range{
 						Start: protocol.Position{
@@ -645,7 +645,7 @@ func TestDocumentSymbol(t *testing.T) {
 		expect []protocol.SymbolInformationOrDocumentSymbol
 	}{
 		{
-			uri: "file://" + appDir + "/templates.ghtmx",
+			uri: string(uri.File(appDir + "/templates.ghtmx")),
 			expect: []protocol.SymbolInformationOrDocumentSymbol{
 				{
 					SymbolInformation: &protocol.SymbolInformation{
@@ -698,7 +698,7 @@ func TestDocumentSymbol(t *testing.T) {
 			},
 		},
 		{
-			uri: "file://" + appDir + "/remoteparent.ghtmx",
+			uri: string(uri.File(appDir + "/remoteparent.ghtmx")),
 			expect: []protocol.SymbolInformationOrDocumentSymbol{
 				{
 					SymbolInformation: &protocol.SymbolInformation{
@@ -797,7 +797,7 @@ func TestFormatting(t *testing.T) {
 			}
 			err = server.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 				TextDocument: protocol.TextDocumentItem{
-					URI:        uri.URI("file://" + appDir + "/formatting.ghtmx"),
+					URI:        uri.File(appDir + "/formatting.ghtmx"),
 					LanguageID: "templ",
 					Version:    1,
 					Text:       string(templFile),
@@ -812,7 +812,7 @@ func TestFormatting(t *testing.T) {
 			for range 3 {
 				edits, err = server.Formatting(ctx, &protocol.DocumentFormattingParams{
 					TextDocument: protocol.TextDocumentIdentifier{
-						URI: uri.URI("file://" + appDir + "/formatting.ghtmx"),
+						URI: uri.File(appDir + "/formatting.ghtmx"),
 					},
 				})
 				if err != nil {
@@ -1093,7 +1093,7 @@ func Setup(ctx context.Context, log *slog.Logger, args Arguments) (clientCtx con
 		},
 		WorkspaceFolders: []protocol.WorkspaceFolder{
 			{
-				URI:  "file://" + appDir,
+				URI:  string(uri.File(appDir)),
 				Name: "templ-test",
 			},
 		},
@@ -1147,7 +1147,7 @@ func TestLiveDiagnostics(t *testing.T) {
 	defer cancel()
 
 	recorder := client.(TestClient).diagnostics
-	docURI := "file://" + appDir + "/diagme.ghtmx"
+	docURI := string(uri.File(appDir + "/diagme.ghtmx"))
 
 	broken := "package testproject\n\ntempl Bad() {\n\t<div hx-pots=\"/x\"></div>\n}\n"
 	if err := os.WriteFile(appDir+"/diagme.ghtmx", []byte(broken), 0o644); err != nil {

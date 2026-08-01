@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"strings"
 )
@@ -80,9 +81,11 @@ func (p Patterns) Matches(path string) bool {
 	for _, pattern := range p {
 		pattern = filepath.ToSlash(pattern)
 		// Check progressively longer directory prefixes, then the full path.
+		// path.Match, not filepath.Match: both sides are slash-normalized,
+		// and filepath.Match on Windows would let * cross the / boundary.
 		for i := range parts {
 			prefix := strings.Join(parts[:i+1], "/")
-			if matched, _ := filepath.Match(pattern, prefix); matched {
+			if matched, _ := pathpkg.Match(pattern, prefix); matched {
 				return true
 			}
 		}
