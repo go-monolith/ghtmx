@@ -139,9 +139,10 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 	}
 
 	discoveryStart := time.Now()
-	table, modRoot, modulePath, discoveryErrors, _ := cmd.discoverRoutes()
+	table, fragRefs, modRoot, modulePath, discoveryErrors, _ := cmd.discoverRoutes()
 	discoveryDuration := time.Since(discoveryStart)
 	setAnalysis := analyzer.NewSetAnalysis()
+	setAnalysis.MarkGoFragmentRefs(fragRefs)
 	constructors, nameConflicts := central.Naming(table)
 	for _, group := range nameConflicts {
 		discoveryErrors++
@@ -194,11 +195,12 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 			// Diagnostic-level errors are legitimate long-lived states and
 			// are already logged; only a structural load failure keeps the
 			// previous table.
-			newTable, _, _, _, loadFailed := cmd.discoverRoutes()
+			newTable, newFragRefs, _, _, _, loadFailed := cmd.discoverRoutes()
 			if loadFailed {
 				cmd.Log.Warn("Keeping the previous route table until discovery recovers")
 				return
 			}
+			setAnalysis.MarkGoFragmentRefs(newFragRefs)
 			routeMu.Lock()
 			changed := build.RoutesChanged(table, newTable)
 			if changed {
@@ -657,11 +659,11 @@ func (cmd Generate) handleEvents(ctx context.Context, events chan fsnotify.Event
 // registrations) are reported through the handler error path when bindings
 // reference them; they are logged here so they are visible even when no
 // binding does.
-func (cmd *Generate) discoverRoutes() (table *routes.Table, modRoot, modulePath string, errorCount int, loadFailed bool) {
+func (cmd *Generate) discoverRoutes() (table *routes.Table, fragRefs map[string]bool, modRoot, modulePath string, errorCount int, loadFailed bool) {
 	modRoot, err := modcheck.WalkUp(cmd.Args.Path)
 	if err != nil {
 		cmd.Log.Debug("route discovery skipped: no go.mod found", slog.Any("error", err))
-		return routes.NewTable(), "", "", 0, false
+		return routes.NewTable(), nil, "", "", 0, false
 	}
 	if data, err := os.ReadFile(filepath.Join(modRoot, "go.mod")); err == nil {
 		if mf, err := modfile.ParseLax("go.mod", data, nil); err == nil && mf.Module != nil {
@@ -674,9 +676,12 @@ func (cmd *Generate) discoverRoutes() (table *routes.Table, modRoot, modulePath 
 		// Structural failure (loadFailed), distinct from diagnostic-level
 		// errors: the caller must not treat the empty table as truth.
 		cmd.Log.Warn("route discovery failed; hx-* bindings will not resolve", slog.Any("error", err))
-		return routes.NewTable(), modRoot, modulePath, 0, true
+		return routes.NewTable(), nil, modRoot, modulePath, 0, true
 	}
 	table = routes.Discover(pkgs, sink)
+	// The loaded ASTs also reveal handler-rendered fragments: calls to
+	// generated <name>Fragment entry points suppress GHTMX-W0101.
+	fragRefs = routes.FragmentEntryRefs(pkgs)
 	for _, d := range sink.Diagnostics() {
 		if d.Severity == diag.Error {
 			errorCount++
@@ -685,7 +690,7 @@ func (cmd *Generate) discoverRoutes() (table *routes.Table, modRoot, modulePath 
 		}
 		cmd.Log.Warn(d.String())
 	}
-	return table, modRoot, modulePath, errorCount, false
+	return table, fragRefs, modRoot, modulePath, errorCount, false
 }
 
 // centralEvents converts the whole-set event registry into central

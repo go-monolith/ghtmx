@@ -377,10 +377,9 @@ func todoRowFragment(t Todo) ghtmx.Fragment {
 
 // The inline edit flow: the edit button swaps a row for this form, and
 // submitting swaps back the refreshed row. The fragment is rendered
-// only from the EditTodo handler (FR-034's handler-explicit path), so
-// generation reports GHTMX-W0101 for it — the reachability check sees
-// template references, not Go handler bodies. The warning is the
-// documented cost of a handler-only fragment.
+// only from the EditTodo handler (FR-034's handler-explicit path);
+// the reachability check sees the handler's todoEditRowFragment(...)
+// call, so a handler-only fragment generates warning-free.
 // ghtmxFragmentBody_todoEditRow is the shared body of fragment todoEditRow: both entry
 // points and every declaration site execute it, so the render modes cannot
 // diverge.
@@ -407,7 +406,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var15 string
 	ghtmx_7f3b9d1a_Var15, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 196, Col: 24}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 195, Col: 24}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var15)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -429,7 +428,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var17 string
 	ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#todo-" + t.ID)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 201, Col: 31}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 200, Col: 31}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var17)
 	if ghtmx_7f3b9d1a_Err != nil {
@@ -442,7 +441,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	var ghtmx_7f3b9d1a_Var18 string
 	ghtmx_7f3b9d1a_Var18, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(t.Title)
 	if ghtmx_7f3b9d1a_Err != nil {
-		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 204, Col: 51}
+		return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/crud/crud.ghtmx`, Line: 203, Col: 51}
 	}
 	_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var18)
 	if ghtmx_7f3b9d1a_Err != nil {
