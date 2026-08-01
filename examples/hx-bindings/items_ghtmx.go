@@ -33,12 +33,12 @@ func itemList(ids []string) ghtmx.Component {
 			ghtmx_7f3b9d1a_Var1 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<div id=\"items\"><button hx-get=\"/items\" hx-target=\"#items\">Refresh</button> ")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<div id=\"items\"><div class=\"toolbar\"><button hx-get=\"/items\" hx-target=\"#items\">Refresh</button></div><div class=\"pills\">")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 		for _, id := range ids {
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<a hx-get=\"")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<a class=\"pill\" hx-get=\"")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
@@ -54,7 +54,7 @@ func itemList(ids []string) ghtmx.Component {
 			var ghtmx_7f3b9d1a_Var3 string
 			ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(id)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hx-bindings/items.ghtmx`, Line: 12, Col: 62}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hx-bindings/items.ghtmx`, Line: 15, Col: 76}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -65,7 +65,7 @@ func itemList(ids []string) ghtmx.Component {
 				return ghtmx_7f3b9d1a_Err
 			}
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "<div id=\"detail\"></div></div>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "</div><div id=\"detail\" class=\"detail\">Select an item — its URL was built by a generated, escaping constructor.</div></div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -95,7 +95,7 @@ func itemsPage(ids []string) ghtmx.Component {
 			ghtmx_7f3b9d1a_Var4 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 6, "<!doctype html><html><head><title>hx-bindings</title>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 6, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>hx-bindings</title>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -103,7 +103,7 @@ func itemsPage(ids []string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, "</head><body><h1>Route bindings</h1>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, "<style>\n\t\t\t\t:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; color-scheme: light dark; }\n\t\t\t\t@media (prefers-color-scheme: dark) {\n\t\t\t\t\t:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; }\n\t\t\t\t}\n\t\t\t\t* { box-sizing: border-box; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tbackground: var(--bg); color: var(--text);\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t}\n\t\t\t\t.app {\n\t\t\t\t\twidth: min(36rem, 92vw); margin: 3rem 0; padding: 1.6rem 1.8rem;\n\t\t\t\t\tbackground: var(--surface); border: 1px solid var(--border);\n\t\t\t\t\tborder-radius: .6rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .1);\n\t\t\t\t}\n\t\t\t\t.badge {\n\t\t\t\t\tdisplay: inline-block; font-size: .72rem; font-weight: 600;\n\t\t\t\t\tcolor: var(--primary); border: 1px solid var(--primary);\n\t\t\t\t\tborder-radius: 999px; padding: .1rem .6rem; margin-bottom: .8rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 .4rem; font-size: 1.5rem; }\n\t\t\t\t.tagline { margin: 0 0 1.2rem; color: var(--muted); font-size: .95rem; }\n\t\t\t\tbutton, a.action {\n\t\t\t\t\tfont-size: .9rem; padding: .45rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t\ttext-decoration: none; display: inline-block;\n\t\t\t\t}\n\t\t\t\tbutton:hover, a.action:hover { border-color: var(--primary); color: var(--primary); }\n\t\t\t\ttable { width: 100%; border-collapse: collapse; margin: .6rem 0 1rem; }\n\t\t\t\ttd { padding: .5rem .3rem; border-bottom: 1px solid var(--border); }\n\t\t\t\ttr:last-child td { border-bottom: none; }\n\t\t\t\ttd:last-child { text-align: right; }\n\t\t\t\t.toolbar { margin-bottom: 1rem; }\n\t\t\t\t.pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }\n\t\t\t\t.pill {\n\t\t\t\t\tpadding: .35rem .9rem; border: 1px solid var(--border); border-radius: 999px;\n\t\t\t\t\tcursor: pointer; font-size: .92rem;\n\t\t\t\t}\n\t\t\t\t.pill:hover { border-color: var(--primary); color: var(--primary); }\n\t\t\t\t.detail {\n\t\t\t\t\tpadding: .8rem 1rem; border: 1px dashed var(--border); border-radius: .45rem;\n\t\t\t\t\tcolor: var(--muted); font-size: .92rem; min-height: 2.8rem;\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"app\"><span class=\"badge\">ghtmx example</span><h1>Route bindings</h1><p class=\"tagline\">Every URL below is resolved against a real Go route at build time — the refresh button by handler symbol, each item by a typed constructor.</p>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -111,7 +111,7 @@ func itemsPage(ids []string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "</body></html>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 8, "</main></body></html>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -148,13 +148,13 @@ func itemDetail(id string) ghtmx.Component {
 		var ghtmx_7f3b9d1a_Var6 string
 		ghtmx_7f3b9d1a_Var6, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(id)
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hx-bindings/items.ghtmx`, Line: 35, Col: 24}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hx-bindings/items.ghtmx`, Line: 90, Col: 24}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var6))
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "</strong></span>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 10, "</strong> — fetched from a constructor-built, percent-escaped URL</span>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
