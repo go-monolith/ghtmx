@@ -6,6 +6,14 @@ name = "ghtmx-docs"
 main = "./build/worker.mjs"
 compatibility_date = "2026-08-01"
 
+# The site's home. custom_domain has Cloudflare create and manage the
+# DNS record and certificate for the hostname (the zone lives on the
+# same account; the deploy token can manage its DNS). The default
+# workers.dev URL stays available alongside it.
+routes = [
+  { pattern = "ghtmx.0xgosu.dev", custom_domain = true }
+]
+
 [build]
 # Unix shell only; the workers-assets-gen pin must stay in lockstep
 # with go.mod's syumai/workers version.
