@@ -1,12 +1,15 @@
 package site
 
-// docBody carries one rendered reference document plus its "On this
-// page" contents and reading-order pager. The HTML comes from
-// goldmark over repository-owned markdown, so injecting it raw is
-// safe by construction.
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// docBody carries one rendered reference document plus breadcrumbs,
+// its "On this page" contents, and the reading-order pager. The HTML
+// comes from goldmark over repository-owned markdown, so injecting it
+// raw is safe by construction.
 fragment docBody(p PageView) {
 	<div class="doc-row" id="doc">
 		<article class="doc-article">
+			@breadcrumbs(p)
 			@ghtmx.Raw(p.Body)
 			@pager(p.Prev, p.Next)
 		</article>
@@ -26,6 +29,20 @@ fragment docBody(p PageView) {
 	</div>
 }
 
+// breadcrumbs is the Docs / category / page trail; section sub-pages
+// link back to their category overview.
+templ breadcrumbs(p PageView) {
+	<div class="breadcrumbs">
+		<span>Docs</span>
+		if p.Category != "" {
+			<span class="crumb-sep">/</span>
+			<a href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ p.Category }</a>
+		}
+		<span class="crumb-sep">/</span>
+		<span class="crumb-here">{ p.Title }</span>
+	</div>
+}
+
 // pager renders the previous/next reading-order links.
 templ pager(prev NavLink, next NavLink) {
 	<div class="pager">
@@ -41,5 +58,30 @@ templ pager(prev NavLink, next NavLink) {
 templ docPage(p PageView) {
 	@shell(p.Active) {
 		@docBody(p)
+	}
+}
+
+// syntaxIndexBody is the "Syntax and usage" category overview: the
+// specification's preamble followed by a card per section sub-page.
+fragment syntaxIndexBody(p PageView, sections []DocSection) {
+	<div class="doc-row" id="doc">
+		<article class="doc-article">
+			@breadcrumbs(p)
+			@ghtmx.Raw(p.Body)
+			<div class="example-grid">
+				for _, s := range sections {
+					<div class="example-card">
+						<h2><a href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ s.Title }</a></h2>
+					</div>
+				}
+			</div>
+			@pager(p.Prev, p.Next)
+		</article>
+	</div>
+}
+
+templ syntaxIndexPage(p PageView, sections []DocSection) {
+	@shell(p.Active) {
+		@syntaxIndexBody(p, sections)
 	}
 }

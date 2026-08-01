@@ -132,6 +132,18 @@ templ shell(active string) {
 				}
 				.sidebar a:hover { background: var(--inline-code-bg); color: var(--text); text-decoration: none; }
 				.sidebar a.active { color: var(--primary); background: var(--primary-contrast-bg); font-weight: 600; }
+				.sidebar-cat summary {
+					cursor: pointer; padding: .32rem .5rem; border-radius: .4rem;
+					color: var(--text-secondary); font-size: .92rem; list-style: none;
+				}
+				.sidebar-cat summary::before { content: "›"; display: inline-block; margin-right: .4rem; transition: transform .15s; }
+				.sidebar-cat[open] summary::before { transform: rotate(90deg); }
+				.sidebar-cat summary:hover { background: var(--inline-code-bg); color: var(--text); }
+				.sidebar-cat a { padding-left: 1.4rem; }
+
+				.breadcrumbs { font-size: .82rem; color: var(--text-secondary); margin-bottom: 1rem; }
+				.breadcrumbs .crumb-sep { margin: 0 .35rem; opacity: .6; }
+				.breadcrumbs .crumb-here { color: var(--text); font-weight: 600; }
 
 				main#content { flex: 1; min-width: 0; padding: 2rem 2.5rem 4rem; }
 				.doc-row { display: flex; gap: 2.5rem; align-items: flex-start; }
@@ -266,7 +278,17 @@ templ shell(active string) {
 					</div>
 					<div class="sidebar-group">
 						<div class="sidebar-label">Language</div>
-						for _, d := range LanguageDocs {
+						<details class="sidebar-cat" open?={ inSyntax(active) }>
+							<summary>Syntax and usage</summary>
+							<a class={ navClass("", active == "syntax") } href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Overview</a>
+							for _, s := range syntaxNav() {
+								<a class={ navClass("", active == "syntax/"+s.ID) } href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ s.Title }</a>
+							}
+						</details>
+					</div>
+					<div class="sidebar-group">
+						<div class="sidebar-label">Reference</div>
+						for _, d := range ReferenceDocs {
 							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
 						}
 					</div>
@@ -307,6 +329,11 @@ templ shell(active string) {
 					var path = location.pathname;
 					document.querySelectorAll(".sidebar a").forEach(function (a) {
 						a.classList.toggle("active", a.getAttribute("href") === path);
+					});
+					document.querySelectorAll(".sidebar details").forEach(function (d) {
+						if (d.querySelector("a.active")) {
+							d.open = true;
+						}
 					});
 				}
 				document.addEventListener("DOMContentLoaded", function () {

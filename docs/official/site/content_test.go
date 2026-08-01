@@ -45,11 +45,12 @@ func TestRewriteLinks(t *testing.T) {
 }
 
 // TestDocGroupsPartitionDocs: every document in Docs must appear in
-// exactly one sidebar group, or it silently vanishes from the sidebar
-// and the pager while staying routable.
+// exactly one sidebar group (syntax renders as its own category), or
+// it silently vanishes from the sidebar and the pager while staying
+// routable.
 func TestDocGroupsPartitionDocs(t *testing.T) {
-	grouped := map[string]int{}
-	for _, d := range append(append([]Doc{}, LanguageDocs...), ProjectDocs...) {
+	grouped := map[string]int{"syntax": 1}
+	for _, d := range append(append([]Doc{}, ReferenceDocs...), ProjectDocs...) {
 		grouped[d.Slug]++
 	}
 	for _, d := range Docs {
@@ -60,6 +61,34 @@ func TestDocGroupsPartitionDocs(t *testing.T) {
 	}
 	for slug := range grouped {
 		t.Errorf("sidebar group lists unknown doc %s", slug)
+	}
+}
+
+// TestSyntaxSections: the specification splits into one sub-page per
+// H2 section, resolvable by ID, with a non-empty preamble.
+func TestSyntaxSections(t *testing.T) {
+	sections, intro, err := SyntaxSections()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sections) < 10 {
+		t.Fatalf("only %d syntax sections; the specification has 15 H2 sections", len(sections))
+	}
+	if intro == "" {
+		t.Error("syntax preamble is empty")
+	}
+	if sections[0].ID != "file-structure" {
+		t.Errorf("first section = %q, want file-structure", sections[0].ID)
+	}
+	s, ok := SyntaxSectionByID("fragments-ghtmx")
+	if !ok {
+		t.Fatal("fragments-ghtmx section not found")
+	}
+	if !strings.Contains(s.Body, "<h1>") || !strings.Contains(s.Title, "Fragments") {
+		t.Errorf("section body/title malformed: title=%q", s.Title)
+	}
+	if _, ok := SyntaxSectionByID("nope"); ok {
+		t.Error("unknown section ID resolved")
 	}
 }
 

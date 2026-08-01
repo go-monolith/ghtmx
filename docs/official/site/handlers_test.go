@@ -36,11 +36,19 @@ func get(t *testing.T, srv *httptest.Server, path string, htmx bool) (*http.Resp
 	return resp, string(data)
 }
 
-// navRoutes is every route the sidebar and index pages link to.
+// navRoutes is every route the sidebar and index pages link to,
+// including one page per syntax section.
 func navRoutes() []string {
 	routes := []string{"/", "/getting-started", "/examples"}
 	for _, d := range Docs {
 		routes = append(routes, "/docs/"+d.Slug)
+	}
+	sections, _, err := SyntaxSections()
+	if err != nil {
+		panic(err)
+	}
+	for _, s := range sections {
+		routes = append(routes, "/docs/syntax/"+s.ID)
 	}
 	for _, e := range Examples {
 		routes = append(routes, "/examples/"+e.Name)
@@ -144,17 +152,57 @@ func TestExampleDetailShowsSource(t *testing.T) {
 // this page" contents (from real headings) and reading-order pager.
 func TestDocPageHasTOCAndPager(t *testing.T) {
 	srv := serve(t)
-	_, body := get(t, srv, "/docs/syntax", false)
+	_, body := get(t, srv, "/docs/diagnostics", false)
 	for _, marker := range []string{
 		"On this page",
 		`class="toc"`,
-		`href="#fragments-ghtmx"`,
+		`href="#errors"`,
+		`href="#warnings"`,
 		`class="pager"`,
 		"Previous", "Next",
 	} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("/docs/syntax: missing %q", marker)
+			t.Errorf("/docs/diagnostics: missing %q", marker)
 		}
+	}
+}
+
+// TestSyntaxCategoryPages: the category overview lists every section
+// as a sub-page, and a section page carries breadcrumbs back to the
+// category plus its own pager.
+func TestSyntaxCategoryPages(t *testing.T) {
+	srv := serve(t)
+	_, index := get(t, srv, "/docs/syntax", false)
+	sections, _, err := SyntaxSections()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range sections {
+		if !strings.Contains(index, `href="/docs/syntax/`+s.ID+`"`) {
+			t.Errorf("syntax overview missing link to section %s", s.ID)
+		}
+	}
+	resp, section := get(t, srv, "/docs/syntax/attributes", false)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /docs/syntax/attributes = %d", resp.StatusCode)
+	}
+	for _, marker := range []string{
+		`class="breadcrumbs"`,
+		"Syntax and usage",
+		"<h1>Attributes</h1>",
+		`class="pager"`,
+	} {
+		if !strings.Contains(section, marker) {
+			t.Errorf("/docs/syntax/attributes: missing %q", marker)
+		}
+	}
+	resp, _ = get(t, srv, "/docs/syntax/nope", false)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /docs/syntax/nope = %d, want 404", resp.StatusCode)
+	}
+	// The sidebar sub-menu is expanded on section pages.
+	if !strings.Contains(section, "<details class=\"sidebar-cat\" open") {
+		t.Error("sidebar syntax category is not expanded on a section page")
 	}
 }
 

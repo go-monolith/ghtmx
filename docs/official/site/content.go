@@ -30,16 +30,19 @@ type Doc struct {
 	File  string // file name under content/docs
 }
 
-// Docs is the reference navigation, in display order. index.md and
+// Docs is the reference routing table. index.md and
 // getting-started.md are served by their own routes, not listed here.
 var Docs = []Doc{
 	{Slug: "overview", Title: "Overview", File: "README.md"},
-	{Slug: "syntax", Title: "Syntax", File: "SYNTAX.md"},
+	{Slug: "syntax", Title: "Syntax and usage", File: "SYNTAX.md"},
 	{Slug: "diagnostics", Title: "Diagnostics", File: "DIAGNOSTICS.md"},
 	{Slug: "config", Title: "Configuration", File: "CONFIG.md"},
 	{Slug: "build-targets", Title: "Build targets", File: "build-targets.md"},
+	{Slug: "editors", Title: "Editor support", File: "editors.md"},
 	{Slug: "conformance", Title: "templ conformance", File: "CONFORMANCE.md"},
 	{Slug: "baseline", Title: "Fork baseline", File: "TEMPL_SYNTAX_BASELINE.md"},
+	{Slug: "contributing", Title: "Contributing", File: "CONTRIBUTING.md"},
+	{Slug: "releasing", Title: "Releasing", File: "RELEASING.md"},
 	{Slug: "changelog", Title: "Changelog", File: "CHANGELOG.md"},
 }
 
@@ -58,20 +61,24 @@ type NavLink struct {
 }
 
 // PageView is everything a reference-document page needs: the
-// rendered body, its table of contents, and its pager neighbours.
+// rendered body, breadcrumbs, table of contents, and pager
+// neighbours.
 type PageView struct {
-	Active string
-	Body   string
-	TOC    []TOCEntry
-	Prev   NavLink
-	Next   NavLink
+	Active   string
+	Title    string
+	Category string // breadcrumb parent for sectioned sub-pages
+	Body     string
+	TOC      []TOCEntry
+	Prev     NavLink
+	Next     NavLink
 }
 
 // NewPageView assembles the view for one document slug.
-func NewPageView(active, body string) PageView {
+func NewPageView(active, title, body string) PageView {
 	prev, next := pagerFor(active)
 	return PageView{
 		Active: active,
+		Title:  title,
 		Body:   body,
 		TOC:    extractTOC(body),
 		Prev:   prev,
@@ -114,20 +121,26 @@ func tocClass(level int) string {
 }
 
 // pagerOrder is the reading order the previous/next pager follows —
-// the same top-to-bottom order as the sidebar.
+// the same top-to-bottom order as the sidebar, with the syntax
+// sub-pages inlined after their category overview.
 func pagerOrder() []NavLink {
 	order := []NavLink{
 		{Title: "Introduction", Href: "/"},
 		{Title: "Getting started", Href: "/getting-started"},
+		{Title: "Syntax and usage", Href: "/docs/syntax"},
 	}
-	for _, d := range append(append([]Doc{}, LanguageDocs...), ProjectDocs...) {
+	for _, s := range syntaxNav() {
+		order = append(order, NavLink{Title: s.Title, Href: "/docs/syntax/" + s.ID})
+	}
+	for _, d := range append(append([]Doc{}, ReferenceDocs...), ProjectDocs...) {
 		order = append(order, NavLink{Title: d.Title, Href: "/docs/" + d.Slug})
 	}
 	return append(order, NavLink{Title: "Examples", Href: "/examples"})
 }
 
 // pagerFor returns the neighbours of a page in reading order. The
-// active key is "home", "examples", or a document slug.
+// active key is "home", "examples", a document slug, or
+// "syntax/<section>".
 func pagerFor(active string) (prev, next NavLink) {
 	href := "/docs/" + active
 	switch active {
@@ -152,10 +165,10 @@ func pagerFor(active string) (prev, next NavLink) {
 	return NavLink{}, NavLink{}
 }
 
-// Sidebar groups: the Language and Project categories partition Docs
-// for display, and the pager follows the grouped order. Docs remains
-// the routing table; TestDocGroupsPartitionDocs keeps the partition
-// complete.
+// Sidebar groups: Reference and Project partition Docs (minus the
+// syntax category, which renders as a collapsible sub-menu), and the
+// pager follows the grouped order. Docs remains the routing table;
+// TestDocGroupsPartitionDocs keeps the partition complete.
 func docsBySlug(slugs ...string) []Doc {
 	var out []Doc
 	for _, slug := range slugs {
@@ -167,9 +180,85 @@ func docsBySlug(slugs ...string) []Doc {
 }
 
 var (
-	LanguageDocs = docsBySlug("syntax", "diagnostics", "config")
-	ProjectDocs  = docsBySlug("overview", "build-targets", "conformance", "baseline", "changelog")
+	ReferenceDocs = docsBySlug("diagnostics", "config", "build-targets", "editors")
+	ProjectDocs   = docsBySlug("overview", "conformance", "baseline", "contributing", "releasing", "changelog")
 )
+
+// DocSection is one H2 slice of a sectioned document, served as its
+// own sub-page (the templ.guide "Syntax and usage" category shape).
+type DocSection struct {
+	ID    string
+	Title string
+	Body  string // section HTML with the heading promoted to h1
+}
+
+var h2Pattern = regexp.MustCompile(`<h2 id="([^"]+)"[^>]*>(?s:(.*?))</h2>`)
+
+var syntaxOnce sync.Once
+var syntaxSections []DocSection
+var syntaxIntro string
+var syntaxErr error
+
+// SyntaxSections splits the rendered SYNTAX.md into its H2 sections.
+// The split happens over the single-source render, so sub-pages can
+// never drift from the specification.
+func SyntaxSections() ([]DocSection, string, error) {
+	syntaxOnce.Do(func() {
+		html, err := renderMarkdown("docs/SYNTAX.md")
+		if err != nil {
+			syntaxErr = err
+			return
+		}
+		locs := h2Pattern.FindAllStringSubmatchIndex(html, -1)
+		if len(locs) == 0 {
+			syntaxIntro = html
+			return
+		}
+		syntaxIntro = html[:locs[0][0]]
+		for i, loc := range locs {
+			end := len(html)
+			if i+1 < len(locs) {
+				end = locs[i+1][0]
+			}
+			id := html[loc[2]:loc[3]]
+			rawTitle := html[loc[4]:loc[5]]
+			title := strings.TrimSpace(stdhtml.UnescapeString(tagPattern.ReplaceAllString(rawTitle, "")))
+			body := "<h1>" + rawTitle + "</h1>" + html[loc[1]:end]
+			syntaxSections = append(syntaxSections, DocSection{ID: id, Title: title, Body: body})
+		}
+	})
+	return syntaxSections, syntaxIntro, syntaxErr
+}
+
+// SyntaxSectionByID returns one syntax sub-page.
+func SyntaxSectionByID(id string) (DocSection, bool) {
+	sections, _, err := SyntaxSections()
+	if err != nil {
+		return DocSection{}, false
+	}
+	for _, s := range sections {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return DocSection{}, false
+}
+
+// syntaxNav is the sidebar's section list; a render failure degrades
+// to an empty sub-menu rather than a broken shell.
+func syntaxNav() []DocSection {
+	sections, _, err := SyntaxSections()
+	if err != nil {
+		return nil
+	}
+	return sections
+}
+
+// inSyntax reports whether the active key belongs to the syntax
+// category, which keeps its sidebar sub-menu expanded.
+func inSyntax(active string) bool {
+	return active == "syntax" || strings.HasPrefix(active, "syntax/")
+}
 
 // heroCode is the landing-page sample: the hello-world example's
 // template, close to templ syntax but with a bound route.

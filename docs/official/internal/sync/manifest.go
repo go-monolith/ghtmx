@@ -21,18 +21,26 @@ type Entry struct {
 }
 
 // referenceDocs are the single-source markdown files presented on the
-// site, relative to the repo root. Copies keep their base names.
-var referenceDocs = []string{
-	"README.md",
-	"SYNTAX.md",
-	"DIAGNOSTICS.md",
-	"CONFIG.md",
-	"CONFORMANCE.md",
-	"TEMPL_SYNTAX_BASELINE.md",
-	"CHANGELOG.md",
-	"docs/site/index.md",
-	"docs/site/getting-started.md",
-	"docs/site/build-targets.md",
+// site: repo-root-relative source → file name under content/docs.
+// Distinct destination names disambiguate colliding base names
+// (editors/README.md vs the root README.md).
+var referenceDocs = []struct {
+	Src string
+	Dst string
+}{
+	{"README.md", "README.md"},
+	{"SYNTAX.md", "SYNTAX.md"},
+	{"DIAGNOSTICS.md", "DIAGNOSTICS.md"},
+	{"CONFIG.md", "CONFIG.md"},
+	{"CONFORMANCE.md", "CONFORMANCE.md"},
+	{"TEMPL_SYNTAX_BASELINE.md", "TEMPL_SYNTAX_BASELINE.md"},
+	{"CHANGELOG.md", "CHANGELOG.md"},
+	{"CONTRIBUTING.md", "CONTRIBUTING.md"},
+	{"RELEASING.md", "RELEASING.md"},
+	{"editors/README.md", "editors.md"},
+	{"docs/site/index.md", "index.md"},
+	{"docs/site/getting-started.md", "getting-started.md"},
+	{"docs/site/build-targets.md", "build-targets.md"},
 }
 
 // exampleDirs are the example applications shown on the site,
@@ -94,10 +102,10 @@ func Entries() ([]Entry, error) {
 	content := filepath.Join(mod, "content")
 
 	var entries []Entry
-	for _, rel := range referenceDocs {
+	for _, doc := range referenceDocs {
 		entries = append(entries, Entry{
-			Src: filepath.Join(repo, filepath.FromSlash(rel)),
-			Dst: filepath.Join(content, "docs", filepath.Base(rel)),
+			Src: filepath.Join(repo, filepath.FromSlash(doc.Src)),
+			Dst: filepath.Join(content, "docs", doc.Dst),
 		})
 	}
 

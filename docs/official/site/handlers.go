@@ -19,6 +19,7 @@ func NewRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", Home)
 	r.Get("/getting-started", GettingStarted)
+	r.Get("/docs/syntax/{section}", SyntaxSection)
 	r.Get("/docs/{slug}", DocPage)
 	r.Get("/examples", ExamplesIndex)
 	r.Get("/examples/{name}", ExampleDetail)
@@ -52,13 +53,14 @@ func GettingStarted(w http.ResponseWriter, r *http.Request) {
 		serverError(w, r, err)
 		return
 	}
-	pv := NewPageView("getting-started", body)
+	pv := NewPageView("getting-started", "Getting started", body)
 	render(w, r, chiadapter.WithPage(docPage(pv), docBodyFragment(pv)))
 }
 
 // DocPage serves one reference document and announces the view through
 // the DocViewed event contract (headers must be set before the render
-// writes the response).
+// writes the response). The syntax document renders as a category
+// overview whose sections are individual sub-pages.
 func DocPage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	d, ok := DocBySlug(slug)
@@ -66,17 +68,46 @@ func DocPage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	body, err := DocHTML(d)
-	if err != nil {
-		serverError(w, r, err)
-		return
-	}
 	if ghtmx.IsHTMXRequest(r) {
 		if err := ghtmxgen.EmitDocViewed(w, ghtmxgen.DocViewedPayload{Slug: slug}); err != nil {
 			log.Printf("emit doc-viewed: %v", err)
 		}
 	}
-	pv := NewPageView(slug, body)
+	if slug == "syntax" {
+		sections, intro, err := SyntaxSections()
+		if err != nil {
+			serverError(w, r, err)
+			return
+		}
+		pv := NewPageView("syntax", d.Title, intro)
+		render(w, r, chiadapter.WithPage(syntaxIndexPage(pv, sections), syntaxIndexBodyFragment(pv, sections)))
+		return
+	}
+	body, err := DocHTML(d)
+	if err != nil {
+		serverError(w, r, err)
+		return
+	}
+	pv := NewPageView(slug, d.Title, body)
+	render(w, r, chiadapter.WithPage(docPage(pv), docBodyFragment(pv)))
+}
+
+// SyntaxSection serves one H2 slice of the syntax specification as
+// its own page.
+func SyntaxSection(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "section")
+	s, ok := SyntaxSectionByID(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if ghtmx.IsHTMXRequest(r) {
+		if err := ghtmxgen.EmitDocViewed(w, ghtmxgen.DocViewedPayload{Slug: "syntax/" + id}); err != nil {
+			log.Printf("emit doc-viewed: %v", err)
+		}
+	}
+	pv := NewPageView("syntax/"+id, s.Title, s.Body)
+	pv.Category = "Syntax and usage"
 	render(w, r, chiadapter.WithPage(docPage(pv), docBodyFragment(pv)))
 }
 

@@ -7,10 +7,12 @@ package site
 import "github.com/go-monolith/ghtmx"
 import ghtmxruntime "github.com/go-monolith/ghtmx/runtime"
 
-// docBody carries one rendered reference document plus its "On this
-// page" contents and reading-order pager. The HTML comes from
-// goldmark over repository-owned markdown, so injecting it raw is
-// safe by construction.
+import "github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+
+// docBody carries one rendered reference document plus breadcrumbs,
+// its "On this page" contents, and the reading-order pager. The HTML
+// comes from goldmark over repository-owned markdown, so injecting it
+// raw is safe by construction.
 // ghtmxFragmentBody_docBody is the shared body of fragment docBody: both entry
 // points and every declaration site execute it, so the render modes cannot
 // diverge.
@@ -31,6 +33,10 @@ func ghtmxFragmentBody_docBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<div class=\"doc-row\" id=\"doc\"><article class=\"doc-article\">")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = breadcrumbs(p).Render(ctx, ghtmx_7f3b9d1a_Buffer)
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -81,7 +87,7 @@ func ghtmxFragmentBody_docBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 			var ghtmx_7f3b9d1a_Var3 ghtmx.SafeURL
 			ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.SafeURL("#" + e.ID))
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 21, Col: 73}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 24, Col: 73}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -94,7 +100,7 @@ func ghtmxFragmentBody_docBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 			var ghtmx_7f3b9d1a_Var4 string
 			ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Text)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 21, Col: 84}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 24, Col: 84}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var4))
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -131,8 +137,9 @@ func docBodyFragment(p PageView) ghtmx.Fragment {
 	})
 }
 
-// pager renders the previous/next reading-order links.
-func pager(prev NavLink, next NavLink) ghtmx.Component {
+// breadcrumbs is the Docs / category / page trail; section sub-pages
+// link back to their category overview.
+func breadcrumbs(p PageView) ghtmx.Component {
 	return ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 		ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
@@ -153,75 +160,163 @@ func pager(prev NavLink, next NavLink) ghtmx.Component {
 			ghtmx_7f3b9d1a_Var5 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "<div class=\"pager\">")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 11, "<div class=\"breadcrumbs\"><span>Docs</span> ")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		if prev.Href != "" {
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<a class=\"pager-link\" href=\"")
+		if p.Category != "" {
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<span class=\"crumb-sep\">/</span> <a href=\"")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
 			var ghtmx_7f3b9d1a_Var6 ghtmx.SafeURL
-			ghtmx_7f3b9d1a_Var6, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(prev.Href))
+			ghtmx_7f3b9d1a_Var6, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.DocPage("syntax"))
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 33, Col: 52}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 39, Col: 39}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var6))
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "\"><span class=\"pager-dir\">Previous</span><span class=\"pager-title\">« ")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 13, "\" hx-get=\"")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			var ghtmx_7f3b9d1a_Var7 string
-			ghtmx_7f3b9d1a_Var7, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(prev.Title)
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 33, Col: 135}
-			}
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var7))
+			var ghtmx_7f3b9d1a_Var7 ghtmx.SafeURL = ghtmxgen.DocPage("syntax")
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var7)))
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "</span></a> ")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-		}
-		if next.Href != "" {
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "<a class=\"pager-link pager-next\" href=\"")
+			var ghtmx_7f3b9d1a_Var8 string
+			ghtmx_7f3b9d1a_Var8, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(p.Category)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			var ghtmx_7f3b9d1a_Var8 ghtmx.SafeURL
-			ghtmx_7f3b9d1a_Var8, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(next.Href))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 36, Col: 63}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 39, Col: 152}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var8))
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "\"><span class=\"pager-dir\">Next</span><span class=\"pager-title\">")
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			var ghtmx_7f3b9d1a_Var9 string
-			ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(next.Title)
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 36, Col: 139}
-			}
-			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var9))
-			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx_7f3b9d1a_Err
-			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, " »</span></a>")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 15, "</a> ")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "</div>")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 16, "<span class=\"crumb-sep\">/</span> <span class=\"crumb-here\">")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var9 string
+		ghtmx_7f3b9d1a_Var9, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(p.Title)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 42, Col: 36}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var9))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 17, "</span></div>")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		return nil
+	})
+}
+
+// pager renders the previous/next reading-order links.
+func pager(prev NavLink, next NavLink) ghtmx.Component {
+	return ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
+		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
+			return ghtmx_7f3b9d1a_CtxErr
+		}
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		if !ghtmx_7f3b9d1a_IsBuffer {
+			defer func() {
+				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
+				if ghtmx_7f3b9d1a_Err == nil {
+					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
+				}
+			}()
+		}
+		ctx = ghtmx.InitializeContext(ctx)
+		ghtmx_7f3b9d1a_Var10 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var10 == nil {
+			ghtmx_7f3b9d1a_Var10 = ghtmx.NopComponent
+		}
+		ctx = ghtmx.ClearChildren(ctx)
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 18, "<div class=\"pager\">")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		if prev.Href != "" {
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "<a class=\"pager-link\" href=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var11 ghtmx.SafeURL
+			ghtmx_7f3b9d1a_Var11, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(prev.Href))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 50, Col: 52}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var11))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 20, "\"><span class=\"pager-dir\">Previous</span><span class=\"pager-title\">« ")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var12 string
+			ghtmx_7f3b9d1a_Var12, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(prev.Title)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 50, Col: 135}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var12))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 21, "</span></a> ")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+		}
+		if next.Href != "" {
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 22, "<a class=\"pager-link pager-next\" href=\"")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var13 ghtmx.SafeURL
+			ghtmx_7f3b9d1a_Var13, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(next.Href))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 53, Col: 63}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var13))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 23, "\"><span class=\"pager-dir\">Next</span><span class=\"pager-title\">")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			var ghtmx_7f3b9d1a_Var14 string
+			ghtmx_7f3b9d1a_Var14, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(next.Title)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 53, Col: 139}
+			}
+			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var14))
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 24, " »</span></a>")
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 25, "</div>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -245,12 +340,12 @@ func docPage(p PageView) ghtmx.Component {
 			}()
 		}
 		ctx = ghtmx.InitializeContext(ctx)
-		ghtmx_7f3b9d1a_Var10 := ghtmx.GetChildren(ctx)
-		if ghtmx_7f3b9d1a_Var10 == nil {
-			ghtmx_7f3b9d1a_Var10 = ghtmx.NopComponent
+		ghtmx_7f3b9d1a_Var15 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var15 == nil {
+			ghtmx_7f3b9d1a_Var15 = ghtmx.NopComponent
 		}
 		ctx = ghtmx.ClearChildren(ctx)
-		ghtmx_7f3b9d1a_Var11 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_Var16 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
 			if !ghtmx_7f3b9d1a_IsBuffer {
@@ -268,7 +363,161 @@ func docPage(p PageView) ghtmx.Component {
 			}
 			return nil
 		})
-		ghtmx_7f3b9d1a_Err = shell(p.Active).Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var11), ghtmx_7f3b9d1a_Buffer)
+		ghtmx_7f3b9d1a_Err = shell(p.Active).Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var16), ghtmx_7f3b9d1a_Buffer)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		return nil
+	})
+}
+
+// syntaxIndexBody is the "Syntax and usage" category overview: the
+// specification's preamble followed by a card per section sub-page.
+// ghtmxFragmentBody_syntaxIndexBody is the shared body of fragment syntaxIndexBody: both entry
+// points and every declaration site execute it, so the render modes cannot
+// diverge.
+func ghtmxFragmentBody_syntaxIndexBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput, p PageView, sections []DocSection) (ghtmx_7f3b9d1a_Err error) {
+	ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
+	if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
+		return ghtmx_7f3b9d1a_CtxErr
+	}
+	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+	if !ghtmx_7f3b9d1a_IsBuffer {
+		defer func() {
+			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
+			if ghtmx_7f3b9d1a_Err == nil {
+				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
+			}
+		}()
+	}
+	ctx = ghtmx.InitializeContext(ctx)
+	ctx = ghtmx.ClearChildren(ctx)
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 26, "<div class=\"doc-row\" id=\"doc\"><article class=\"doc-article\">")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = breadcrumbs(p).Render(ctx, ghtmx_7f3b9d1a_Buffer)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmx.Raw(p.Body).Render(ctx, ghtmx_7f3b9d1a_Buffer)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 27, "<div class=\"example-grid\">")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	for _, s := range sections {
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 28, "<div class=\"example-card\"><h2><a href=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var17 ghtmx.SafeURL
+		ghtmx_7f3b9d1a_Var17, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmxgen.SyntaxSection(s.ID))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 74, Col: 48}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var17))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 29, "\" hx-get=\"")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var18 ghtmx.SafeURL = ghtmxgen.SyntaxSection(s.ID)
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(string(ghtmx_7f3b9d1a_Var18)))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 30, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		var ghtmx_7f3b9d1a_Var19 string
+		ghtmx_7f3b9d1a_Var19, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(s.Title)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 74, Col: 160}
+		}
+		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var19))
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 31, "</a></h2></div>")
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 32, "</div>")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = pager(p.Prev, p.Next).Render(ctx, ghtmx_7f3b9d1a_Buffer)
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 33, "</article></div>")
+	if ghtmx_7f3b9d1a_Err != nil {
+		return ghtmx_7f3b9d1a_Err
+	}
+	return nil
+}
+
+// syntaxIndexBody renders the fragment inline as a component.
+func syntaxIndexBody(p PageView, sections []DocSection) ghtmx.Component {
+	return ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) error {
+		return ghtmxFragmentBody_syntaxIndexBody(ghtmx_7f3b9d1a_Input, p, sections)
+	})
+}
+
+// syntaxIndexBodyFragment renders only the fragment, for an htmx swap (FR-031).
+func syntaxIndexBodyFragment(p PageView, sections []DocSection) ghtmx.Fragment {
+	return ghtmxruntime.GeneratedFragment(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) error {
+		return ghtmxFragmentBody_syntaxIndexBody(ghtmx_7f3b9d1a_Input, p, sections)
+	})
+}
+
+func syntaxIndexPage(p PageView, sections []DocSection) ghtmx.Component {
+	return ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+		ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
+		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
+			return ghtmx_7f3b9d1a_CtxErr
+		}
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		if !ghtmx_7f3b9d1a_IsBuffer {
+			defer func() {
+				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
+				if ghtmx_7f3b9d1a_Err == nil {
+					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
+				}
+			}()
+		}
+		ctx = ghtmx.InitializeContext(ctx)
+		ghtmx_7f3b9d1a_Var20 := ghtmx.GetChildren(ctx)
+		if ghtmx_7f3b9d1a_Var20 == nil {
+			ghtmx_7f3b9d1a_Var20 = ghtmx.NopComponent
+		}
+		ctx = ghtmx.ClearChildren(ctx)
+		ghtmx_7f3b9d1a_Var21 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
+			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
+			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+			if !ghtmx_7f3b9d1a_IsBuffer {
+				defer func() {
+					ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
+					if ghtmx_7f3b9d1a_Err == nil {
+						ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
+					}
+				}()
+			}
+			ctx = ghtmx.InitializeContext(ctx)
+			ghtmx_7f3b9d1a_Err = syntaxIndexBody(p, sections).Render(ctx, ghtmx_7f3b9d1a_Buffer)
+			if ghtmx_7f3b9d1a_Err != nil {
+				return ghtmx_7f3b9d1a_Err
+			}
+			return nil
+		})
+		ghtmx_7f3b9d1a_Err = shell(p.Active).Render(ghtmx.WithChildren(ctx, ghtmx_7f3b9d1a_Var21), ghtmx_7f3b9d1a_Buffer)
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
