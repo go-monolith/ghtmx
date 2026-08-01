@@ -1120,8 +1120,18 @@ func Setup(ctx context.Context, log *slog.Logger, args Arguments) (clientCtx con
 			t.Errorf("failed to run lsp cmd: %v", err)
 		}
 
-		if err = os.RemoveAll(appDir); err != nil {
-			t.Errorf("failed to remove test dir %q: %v", appDir, err)
+		// Windows releases the stopped gopls child's file handles
+		// asynchronously, so the first removal attempts can fail with a
+		// sharing violation.
+		for attempt := 0; ; attempt++ {
+			if err = os.RemoveAll(appDir); err == nil {
+				break
+			}
+			if attempt >= 20 {
+				t.Errorf("failed to remove test dir %q: %v", appDir, err)
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
 		}
 	}
 	return ctx, appDir, client, server, teardown, err
