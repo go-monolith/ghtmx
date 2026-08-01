@@ -1,4 +1,4 @@
-package main
+package events
 
 // ghtmx.CSRFHeader needs no import: generated code always imports the
 // ghtmx runtime.

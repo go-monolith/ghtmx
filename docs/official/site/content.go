@@ -315,15 +315,18 @@ type Example struct {
 	Name        string // directory name and URL segment
 	Title       string
 	Description string
+	DemoPath    string // entry path of the live demo compiled into this binary
 }
 
-// Examples lists every example shipped in the repository.
+// Examples lists every example shipped in the repository. Each demo
+// is the real example package's router, mounted at its native paths
+// by NewRouter.
 var Examples = []Example{
-	{Name: "hello-world", Title: "Hello world", Description: "The walking skeleton: one template, one route, one rendered page."},
-	{Name: "hx-bindings", Title: "Route bindings", Description: "Symbol and constructor bindings: every htmx URL is resolved against a real Go route at build time."},
-	{Name: "fragments", Title: "Fragments", Description: "Compile-time fragments rendered inline in a page and standalone for htmx swaps, byte-identically."},
-	{Name: "events", Title: "Events", Description: "The server-driven event contract: declared events, generated HX-Trigger emitters, and CSRF headers."},
-	{Name: "crud", Title: "CRUD todos", Description: "The reference application: full CRUD with partial updates and zero hand-written htmx glue."},
+	{Name: "hello-world", Title: "Hello world", Description: "The walking skeleton: one template, one route, one rendered page.", DemoPath: "/hello"},
+	{Name: "hx-bindings", Title: "Route bindings", Description: "Symbol and constructor bindings: every htmx URL is resolved against a real Go route at build time.", DemoPath: "/items"},
+	{Name: "fragments", Title: "Fragments", Description: "Compile-time fragments rendered inline in a page and standalone for htmx swaps, byte-identically.", DemoPath: "/fragments"},
+	{Name: "events", Title: "Events", Description: "The server-driven event contract: declared events, generated HX-Trigger emitters, and CSRF headers.", DemoPath: "/events"},
+	{Name: "crud", Title: "CRUD todos", Description: "The reference application: full CRUD with partial updates and zero hand-written htmx glue.", DemoPath: "/todos"},
 }
 
 // ExampleByName returns the example for an /examples/{name} URL.
@@ -504,11 +507,24 @@ func ExampleFiles(name string) ([]SourceFile, string, error) {
 		return nil, "", err
 	}
 	sort.Slice(files, func(i, j int) bool {
-		ti, tj := strings.HasSuffix(files[i].Name, ".ghtmx"), strings.HasSuffix(files[j].Name, ".ghtmx")
-		if ti != tj {
-			return ti
+		ri, rj := sourceRank(files[i].Name), sourceRank(files[j].Name)
+		if ri != rj {
+			return ri < rj
 		}
 		return files[i].Name < files[j].Name
 	})
 	return files, readme, nil
+}
+
+// sourceRank orders an example's files for display: templates first,
+// then the package sources, with the thin cmd/ entry point last.
+func sourceRank(name string) int {
+	switch {
+	case strings.HasSuffix(name, ".ghtmx"):
+		return 0
+	case strings.HasPrefix(name, "cmd/"):
+		return 2
+	default:
+		return 1
+	}
 }

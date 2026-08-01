@@ -10,7 +10,7 @@
 // the committed generated code, so a rename breaks `go build`
 // immediately; constructor bindings break at the next `ghtmx generate`
 // (which watch and CI keep in the loop).
-package main
+package crud
 
 import (
 	"log"
@@ -41,13 +41,24 @@ func newStore() *store {
 	return &store{todos: map[string]Todo{}}
 }
 
-func (s *store) add(title string) Todo {
+// maxTodos and maxTitleLen bound the in-memory store: the app also
+// runs as a public live demo on the docs site, where an unbounded
+// store would be a memory-growth surface.
+const (
+	maxTodos    = 100
+	maxTitleLen = 200
+)
+
+func (s *store) add(title string) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if len(s.todos) >= maxTodos {
+		return Todo{}, false
+	}
 	s.next++
 	t := Todo{ID: strconv.Itoa(s.next), Title: title}
 	s.todos[t.ID] = t
-	return t
+	return t, true
 }
 
 func (s *store) toggle(id string) (Todo, bool) {
@@ -179,7 +190,15 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title is required", http.StatusUnprocessableEntity)
 		return
 	}
-	t := todos.add(title)
+	if len(title) > maxTitleLen {
+		http.Error(w, "title is too long", http.StatusUnprocessableEntity)
+		return
+	}
+	t, ok := todos.add(title)
+	if !ok {
+		http.Error(w, "the demo store is full — delete a todo first", http.StatusUnprocessableEntity)
+		return
+	}
 	if err := ghtmxgen.EmitTodoCreated(w, ghtmxgen.TodoCreatedPayload{Id: t.ID}); err != nil {
 		log.Printf("emit todo-created: %v", err)
 	}
@@ -224,6 +243,10 @@ func RenameTodo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "title is required", http.StatusUnprocessableEntity)
 		return
 	}
+	if len(title) > maxTitleLen {
+		http.Error(w, "title is too long", http.StatusUnprocessableEntity)
+		return
+	}
 	t, ok := todos.rename(r.PathValue("id"), title)
 	if !ok {
 		http.NotFound(w, r)
@@ -256,7 +279,9 @@ func TodoStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func routes() *http.ServeMux {
+// Routes builds the example's router; the official docs site mounts
+// it as a live demo.
+func Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", Index)
 	mux.HandleFunc("GET /todos", ListTodos)
@@ -267,9 +292,4 @@ func routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /todos/{id}", DeleteTodo)
 	mux.HandleFunc("GET /todos/stats", TodoStats)
 	return mux
-}
-
-func main() {
-	log.Println("todo app listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", routes()))
 }

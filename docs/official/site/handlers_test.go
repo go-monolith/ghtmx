@@ -251,6 +251,96 @@ func TestHistoryRestoreScopedToContent(t *testing.T) {
 	}
 }
 
+// TestLiveDemosServed: every example's real router is compiled into
+// the binary and serves at its native paths, and each example page
+// links to its demo.
+func TestLiveDemosServed(t *testing.T) {
+	srv := serve(t)
+	markers := map[string]string{
+		"hello-world": "Hello",
+		"hx-bindings": "hx-get",
+		"fragments":   "hx-get",
+		"events":      "hx-post",
+		"crud":        "Todos",
+	}
+	for _, e := range Examples {
+		if e.DemoPath == "" {
+			t.Errorf("example %s has no demo path", e.Name)
+			continue
+		}
+		marker, ok := markers[e.Name]
+		if !ok {
+			t.Errorf("example %s has no demo marker in this test — add one", e.Name)
+			continue
+		}
+		resp, body := get(t, srv, e.DemoPath, false)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET %s (%s demo) = %d, want 200", e.DemoPath, e.Name, resp.StatusCode)
+			continue
+		}
+		if !strings.Contains(body, marker) {
+			t.Errorf("demo %s: missing marker %q", e.DemoPath, marker)
+		}
+		_, detail := get(t, srv, "/examples/"+e.Name, false)
+		if !strings.Contains(detail, `href="`+e.DemoPath+`"`) {
+			t.Errorf("example page %s does not link its live demo %s", e.Name, e.DemoPath)
+		}
+	}
+	// The demo fallback must not swallow the docs' own 404s.
+	resp, _ := get(t, srv, "/todos/does/not/exist", false)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /todos/does/not/exist = %d, want 404", resp.StatusCode)
+	}
+	// Documented divergence: a method mismatch on a demo path is 404
+	// here (ServeMux.Handler reports no pattern for mismatches), where
+	// the standalone example would answer 405 + Allow.
+	req, err := http.NewRequest(http.MethodDelete, srv.URL+"/hello", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mm, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mm.Body.Close()
+	if mm.StatusCode != http.StatusNotFound {
+		t.Errorf("DELETE /hello = %d, want the documented 404", mm.StatusCode)
+	}
+}
+
+// TestCrudDemoRoundTrip: the crud demo is actually alive — creating a
+// todo through the real handler emits the contract event and returns
+// the refreshed list fragment. The created todo intentionally leaks
+// into crud's package-global store for the rest of the test binary;
+// no other test asserts that store's contents.
+func TestCrudDemoRoundTrip(t *testing.T) {
+	srv := serve(t)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/todos", strings.NewReader("title=demo+todo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /todos = %d, want 201", resp.StatusCode)
+	}
+	if !strings.Contains(resp.Header.Get("HX-Trigger"), "todo-created") {
+		t.Errorf("HX-Trigger = %q, want todo-created", resp.Header.Get("HX-Trigger"))
+	}
+	if !strings.Contains(string(data), "demo todo") {
+		t.Error("created todo missing from the returned list fragment")
+	}
+}
+
 // TestUnknownSlugs404: unknown documents and examples are not pages.
 func TestUnknownSlugs404(t *testing.T) {
 	srv := serve(t)

@@ -1,4 +1,4 @@
-package main
+package helloworld
 
 import "github.com/go-monolith/ghtmx/ghtmxgen"
 

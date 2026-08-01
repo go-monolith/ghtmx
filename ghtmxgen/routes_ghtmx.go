@@ -19,61 +19,61 @@ func BenchItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/bench/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/main.go:263:2).
+// CreateTodoPath is the path of POST /todos -> github.com/go-monolith/ghtmx/examples/crud.CreateTodo (examples/crud/crud.go:265:2).
 const CreateTodoPath = "/todos"
 
-// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/main.go:267:2).
+// DeleteTodo builds the URL for DELETE /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.DeleteTodo (examples/crud/crud.go:269:2).
 func DeleteTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }
 
-// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/main.go:264:2).
+// EditTodo builds the URL for GET /todos/{id}/edit -> github.com/go-monolith/ghtmx/examples/crud.EditTodo (examples/crud/crud.go:266:2).
 func EditTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/edit")
 }
 
-// EventsHomePath is the path of GET /events -> github.com/go-monolith/ghtmx/examples/events.eventsHome (examples/events/main.go:69:2).
+// EventsHomePath is the path of GET /events -> github.com/go-monolith/ghtmx/examples/events.eventsHome (examples/events/events.go:70:2).
 const EventsHomePath = "/events"
 
-// FragmentsHomePath is the path of GET /fragments -> github.com/go-monolith/ghtmx/examples/fragments.fragmentsHome (examples/fragments/main.go:55:2).
+// FragmentsHomePath is the path of GET /fragments -> github.com/go-monolith/ghtmx/examples/fragments.fragmentsHome (examples/fragments/fragments.go:55:2).
 const FragmentsHomePath = "/fragments"
 
-// GetItem builds the URL for GET /items/{id} -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.GetItem (examples/hx-bindings/main.go:22:2).
+// GetItem builds the URL for GET /items/{id} -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.GetItem (examples/hx-bindings/hxbindings.go:46:2).
 func GetItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// HomePath is the path of GET /hello -> github.com/go-monolith/ghtmx/examples/hello-world.home (examples/hello-world/main.go:29:2).
+// HomePath is the path of GET /hello -> github.com/go-monolith/ghtmx/examples/hello-world.home (examples/hello-world/helloworld.go:29:2).
 const HomePath = "/hello"
 
-// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/main.go:261:2).
+// IndexPath is the path of GET / -> github.com/go-monolith/ghtmx/examples/crud.Index (examples/crud/crud.go:263:2).
 const IndexPath = "/"
 
-// ListItemsPath is the path of GET /items -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.ListItems (examples/hx-bindings/main.go:18:2).
+// ListItemsPath is the path of GET /items -> github.com/go-monolith/ghtmx/examples/hx-bindings/handlers.ListItems (examples/hx-bindings/hxbindings.go:42:2).
 const ListItemsPath = "/items"
 
-// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/main.go:262:2).
+// ListTodosPath is the path of GET /todos -> github.com/go-monolith/ghtmx/examples/crud.ListTodos (examples/crud/crud.go:264:2).
 const ListTodosPath = "/todos"
 
-// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/main.go:265:2).
+// RenameTodo builds the URL for PUT /todos/{id}/title -> github.com/go-monolith/ghtmx/examples/crud.RenameTodo (examples/crud/crud.go:267:2).
 func RenameTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id) + "/title")
 }
 
-// RowDetail builds the URL for GET /fragments/rows/{id} -> github.com/go-monolith/ghtmx/examples/fragments.rowDetail (examples/fragments/main.go:56:2).
+// RowDetail builds the URL for GET /fragments/rows/{id} -> github.com/go-monolith/ghtmx/examples/fragments.rowDetail (examples/fragments/fragments.go:56:2).
 func RowDetail(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/fragments/rows/" + ghtmx.EscapePathSegment(id))
 }
 
-// SaveItem builds the URL for POST /events/items/{id} -> github.com/go-monolith/ghtmx/examples/events.saveItem (examples/events/main.go:70:2).
+// SaveItem builds the URL for POST /events/items/{id} -> github.com/go-monolith/ghtmx/examples/events.saveItem (examples/events/events.go:71:2).
 func SaveItem(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/events/items/" + ghtmx.EscapePathSegment(id))
 }
 
-// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/main.go:268:2).
+// TodoStatsPath is the path of GET /todos/stats -> github.com/go-monolith/ghtmx/examples/crud.TodoStats (examples/crud/crud.go:270:2).
 const TodoStatsPath = "/todos/stats"
 
-// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/main.go:266:2).
+// ToggleTodo builds the URL for PUT /todos/{id} -> github.com/go-monolith/ghtmx/examples/crud.ToggleTodo (examples/crud/crud.go:268:2).
 func ToggleTodo(id string) ghtmx.SafeURL {
 	return ghtmx.SafeURL("/todos/" + ghtmx.EscapePathSegment(id))
 }

@@ -13,6 +13,12 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- Live example demos on the documentation site: every `examples/*`
+  application is now an importable package with a thin `cmd/` main, and
+  the docs binary compiles the real routers in and serves them at their
+  native paths (`/todos`, `/items`, `/fragments`, `/events`, `/hello`).
+  Run examples standalone with `go run ./cmd` from the example directory
+  (previously `go run .`).
 - The official documentation site (`docs/official/`): a nested module that
   dogfoods the engine — chi routes with symbol and constructor bindings,
   compile-time fragments behind the chi adapter's `WithPage`, the

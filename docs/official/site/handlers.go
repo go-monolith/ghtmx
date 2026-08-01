@@ -9,6 +9,11 @@ import (
 	"github.com/go-monolith/ghtmx"
 	chiadapter "github.com/go-monolith/ghtmx/adapters/chi"
 	"github.com/go-monolith/ghtmx/docs/official/ghtmxgen"
+	"github.com/go-monolith/ghtmx/examples/crud"
+	"github.com/go-monolith/ghtmx/examples/events"
+	"github.com/go-monolith/ghtmx/examples/fragments"
+	helloworld "github.com/go-monolith/ghtmx/examples/hello-world"
+	hxbindings "github.com/go-monolith/ghtmx/examples/hx-bindings"
 )
 
 // NewRouter builds the site's chi router. Every route uses a named
@@ -23,6 +28,31 @@ func NewRouter() http.Handler {
 	r.Get("/docs/{slug}", DocPage)
 	r.Get("/examples", ExamplesIndex)
 	r.Get("/examples/{name}", ExampleDetail)
+
+	// Live demos: the real example applications, compiled into this
+	// binary and served at their native paths (route bindings bake
+	// absolute URLs, so the demos cannot be remounted under a prefix).
+	// The docs router matches first; crud's own "GET /{$}" is thereby
+	// shadowed by Home — /todos serves crud's full page instead.
+	// Known divergence: ServeMux.Handler reports no pattern on a
+	// method mismatch, so those requests get this router's 404 where
+	// the standalone example would answer 405 + Allow.
+	demos := []*http.ServeMux{
+		crud.Routes(),
+		helloworld.Routes(),
+		hxbindings.Routes(),
+		fragments.Routes(),
+		events.Routes(),
+	}
+	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+		for _, mux := range demos {
+			if _, pattern := mux.Handler(req); pattern != "" {
+				mux.ServeHTTP(w, req)
+				return
+			}
+		}
+		http.NotFound(w, req)
+	})
 	return r
 }
 

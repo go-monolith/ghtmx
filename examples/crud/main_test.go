@@ -1,4 +1,4 @@
-package main
+package crud
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func reset() { todos = newStore() }
 func serve(t *testing.T) *httptest.Server {
 	t.Helper()
 	reset()
-	srv := httptest.NewServer(routes())
+	srv := httptest.NewServer(Routes())
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -203,7 +203,7 @@ func TestZeroHandWrittenGlue(t *testing.T) {
 	if constantURL := regexp.MustCompile(`(data-)?hx-(get|post|put|patch|delete)="`); constantURL.Match(template) {
 		t.Error("the template hand-writes an hx-verb URL; every URL must come from a binding")
 	}
-	source, err := os.ReadFile("main.go")
+	source, err := os.ReadFile("crud.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,14 +232,14 @@ func TestRouteChangesBreakTheBuild(t *testing.T) {
 	setup := func(t *testing.T, mutate func(main string) string) string {
 		t.Helper()
 		dir := t.TempDir()
-		for _, name := range []string{"main.go", "crud.ghtmx"} {
+		for _, name := range []string{"crud.go", "crud.ghtmx"} {
 			data, err := os.ReadFile(name)
 			if err != nil {
 				t.Fatal(err)
 			}
 			content := string(data)
 			content = strings.ReplaceAll(content, "github.com/go-monolith/ghtmx/ghtmxgen", "example.com/crud/ghtmxgen")
-			if name == "main.go" && mutate != nil {
+			if name == "crud.go" && mutate != nil {
 				content = mutate(content)
 			}
 			if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
@@ -334,13 +334,13 @@ func TestRouteChangesBreakTheBuild(t *testing.T) {
 			t.Fatalf("%v\n%s", err, diagnostics)
 		}
 		tidy(t, dir)
-		data, err := os.ReadFile(filepath.Join(dir, "main.go"))
+		data, err := os.ReadFile(filepath.Join(dir, "crud.go"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		mutated := strings.ReplaceAll(string(data), "func CreateTodo(", "func MakeTodo(")
 		mutated = strings.ReplaceAll(mutated, `mux.HandleFunc("POST /todos", CreateTodo)`, `mux.HandleFunc("POST /todos", MakeTodo)`)
-		if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(mutated), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "crud.go"), []byte(mutated), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		out, err := build(t, dir)

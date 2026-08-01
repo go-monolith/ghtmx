@@ -5,13 +5,11 @@
 //
 // Run it with:
 //
-//	ghtmx generate && go run .
-package main
+//	ghtmx generate && go run ./cmd
+package helloworld
 
 import (
-	"fmt"
 	"net/http"
-	"os"
 )
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -24,17 +22,10 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
+// Routes builds the example's router; the official docs site mounts
+// it as a live demo.
+func Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /hello", home)
-
-	addr := "127.0.0.1:8080"
-	if v := os.Getenv("GHTMX_EXAMPLE_ADDR"); v != "" {
-		addr = v
-	}
-	fmt.Printf("Listening on http://%s\n", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return mux
 }

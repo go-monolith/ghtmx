@@ -6,7 +6,7 @@ every htmx interaction a partial update, with **zero hand-written htmx
 glue**. `TestZeroHandWrittenGlue` enforces that claim mechanically.
 
 ```bash
-go run .          # serves http://localhost:8080
+go run ./cmd      # serves http://localhost:8080
 go test .         # end-to-end suite incl. the break-the-build proofs
 ```
 
