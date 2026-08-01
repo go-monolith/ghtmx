@@ -37,6 +37,34 @@ func generate(t *testing.T, rs ...routes.Route) string {
 	return string(out)
 }
 
+// TestPositionShiftDoesNotChangeOutput: doc comments carry the
+// registration file but never its line/column, so a cosmetic edit
+// above a registration site (inserting blank lines) regenerates
+// byte-identical output instead of failing the ensure-generated gate
+// on an unrelated change.
+func TestPositionShiftDoesNotChangeOutput(t *testing.T) {
+	at := func(line uint32) []routes.Route {
+		return []routes.Route{
+			{Verb: routes.POST, Path: "/users", Handler: handler("example.com/app/handlers", "CreateUser"),
+				Pos: routes.Position{File: "app/routes.go", Line: line, Col: 2}},
+			{Verb: routes.GET, Path: "/users/{id}", Handler: handler("example.com/app/handlers", "GetUser"),
+				Params: []routes.RouteParam{{Name: "id"}},
+				Pos:    routes.Position{File: "app/routes.go", Line: line + 1, Col: 2}},
+		}
+	}
+	before := generate(t, at(10)...)
+	after := generate(t, at(27)...) // 17 blank lines inserted above
+	if before != after {
+		t.Errorf("a pure line shift changed the generated output:\n--- before\n%s\n--- after\n%s", before, after)
+	}
+	if !strings.Contains(before, "(app/routes.go)") {
+		t.Errorf("doc comments must still name the registration file, got:\n%s", before)
+	}
+	if strings.Contains(before, "app/routes.go:") {
+		t.Errorf("doc comments must not embed line/column positions, got:\n%s", before)
+	}
+}
+
 func TestPathConstantForNonParameterisedRoute(t *testing.T) {
 	got := generate(t,
 		routes.Route{Verb: routes.POST, Path: "/users", Handler: handler("example.com/app/handlers", "CreateUser")},
@@ -179,7 +207,7 @@ func TestEventEmitterWithPayload(t *testing.T) {
 		Name:       "UserCreated",
 		WireName:   "user-created",
 		Params:     "(id string, name string)",
-		DeclaredAt: "events.ghtmx:3:1",
+		DeclaredAt: "events.ghtmx",
 	}})
 	for _, want := range []string{
 		"type UserCreatedPayload struct {",
@@ -199,7 +227,7 @@ func TestEventEmitterPayloadLess(t *testing.T) {
 		Name:       "CartCleared",
 		WireName:   "cart-cleared",
 		Params:     "()",
-		DeclaredAt: "events.ghtmx:5:1",
+		DeclaredAt: "events.ghtmx",
 	}})
 	if !strings.Contains(out, "func EmitCartCleared(w http.ResponseWriter) error {") {
 		t.Errorf("payload-less emitter takes only the writer:\n%s", out)
@@ -225,7 +253,7 @@ func TestEventGroupedParamsExpand(t *testing.T) {
 
 func TestEventRouteSymbolCollision(t *testing.T) {
 	rs := routes.Route{Verb: "GET", Path: "/emit/{id}", Handler: handler("example.com/app", "emitUserCreated"), Params: []routes.RouteParam{{Name: "id"}}}
-	events := []Event{{Name: "UserCreated", WireName: "user-created", Params: "()", DeclaredAt: "events.ghtmx:3:1"}}
+	events := []Event{{Name: "UserCreated", WireName: "user-created", Params: "()", DeclaredAt: "events.ghtmx"}}
 
 	byName, _ := Naming(table(t, rs))
 	msgs := EventCollisions(byName, events)
@@ -273,8 +301,8 @@ func TestEventVersusEventSymbolCollision(t *testing.T) {
 	// payload-less "XPayload" generates the func EmitXPayload. Distinct
 	// wire names, so E0305 does not fire — the central check must.
 	events := []Event{
-		{Name: "EmitX", WireName: "emit-x", Params: "(id string)", DeclaredAt: "a.ghtmx:3:1"},
-		{Name: "XPayload", WireName: "x-payload", Params: "()", DeclaredAt: "b.ghtmx:3:1"},
+		{Name: "EmitX", WireName: "emit-x", Params: "(id string)", DeclaredAt: "a.ghtmx"},
+		{Name: "XPayload", WireName: "x-payload", Params: "()", DeclaredAt: "b.ghtmx"},
 	}
 	byName, _ := Naming(table(t))
 	msgs := EventCollisions(byName, events)
@@ -292,7 +320,7 @@ func TestEventVersusEventSymbolCollision(t *testing.T) {
 }
 
 func TestEventTimingVariantEmitters(t *testing.T) {
-	out := generateEvents(t, []Event{{Name: "ItemSaved", WireName: "item-saved", Params: "(id string)", DeclaredAt: "e.ghtmx:3:1"}})
+	out := generateEvents(t, []Event{{Name: "ItemSaved", WireName: "item-saved", Params: "(id string)", DeclaredAt: "e.ghtmx"}})
 	for _, want := range []string{
 		"func EmitItemSaved(w http.ResponseWriter, p ItemSavedPayload) error {",
 		"func EmitItemSavedAfterSettle(w http.ResponseWriter, p ItemSavedPayload) error {",

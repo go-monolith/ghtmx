@@ -690,14 +690,17 @@ func (cmd *Generate) discoverRoutes() (table *routes.Table, modRoot, modulePath 
 
 // centralEvents converts the whole-set event registry into central
 // emission input, with module-relative declaration sites (NFR-004).
+// Declaration sites carry the FILE only — like route doc comments,
+// a line/column would churn the committed output whenever an edit
+// above the declaration shifts it.
 func (cmd *Generate) centralEvents(sa *analyzer.SetAnalysis, modRoot string) []central.Event {
 	infos := sa.Events()
 	out := make([]central.Event, 0, len(infos))
 	for _, e := range infos {
-		declaredAt := fmt.Sprintf("%s:%d:%d", e.Pos.File, e.Pos.Line, e.Pos.Col)
+		declaredAt := e.Pos.File
 		if modRoot != "" {
 			if rel, err := filepath.Rel(modRoot, e.Pos.File); err == nil && !strings.HasPrefix(rel, "..") {
-				declaredAt = fmt.Sprintf("%s:%d:%d", rel, e.Pos.Line, e.Pos.Col)
+				declaredAt = filepath.ToSlash(rel)
 			}
 		}
 		out = append(out, central.Event{Name: e.Name, WireName: e.WireName, Params: e.Params, DeclaredAt: declaredAt})
