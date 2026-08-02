@@ -1,0 +1,15 @@
+approval_policy = "never"
+
+[features]
+apps = false
+
+[shell_environment_policy]
+include_only = [
+    "PATH",
+    "HOME",
+]
+web_search = "live"
+
+[windows]
+sandbox = "elevated"
+

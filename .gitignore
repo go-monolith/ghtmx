@@ -8,6 +8,23 @@
 *.so
 *.dylib
 
+# Build output. Compiled binaries always go here — `go build -o bin/…`.
+/bin/
+
+# Safety net: compiled binaries have no extension on Linux/macOS, so the
+# patterns above never match them. A bare `go build` writes its output to
+# the working directory, named after the package directory, which leaves
+# stray binaries at the repo root. Root-anchored so the same-named source
+# directories under examples/ stay tracked.
+/ghtmx
+/cmd
+/testprogram
+/crud
+/events
+/fragments
+/hello-world
+/hx-bindings
+
 # Test binary, built with `go test -c`
 *.test
 
