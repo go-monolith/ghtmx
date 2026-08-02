@@ -157,10 +157,16 @@ func getNodeWhitespace(nodes []TemplateFileNode, i int) string {
 	if i == len(nodes)-1 {
 		return "\n"
 	}
-	if _, nextIsTemplate := nodes[i+1].(*HTMLTemplate); nextIsTemplate {
-		if e, isGo := nodes[i].(*TemplateFileGoExpression); isGo && endsWithComment(e.Expression.Value) {
-			return "\n"
+	// A Go expression ending in a comment is documenting whatever comes
+	// next, so it stays attached unless the author separated the two
+	// with a blank line. Recomputing this instead of honouring what was
+	// written is how `ghtmx fmt` used to move a comment away from the
+	// `event` or `fragment` it documented, on every save.
+	if e, isGo := nodes[i].(*TemplateFileGoExpression); isGo && endsWithComment(e.Expression.Value) {
+		if e.BlankLineAfter {
+			return "\n\n"
 		}
+		return "\n"
 	}
 	return "\n\n"
 }
@@ -181,6 +187,12 @@ type TemplateFileNode interface {
 type TemplateFileGoExpression struct {
 	Expression    Expression
 	BeforePackage bool
+	// BlankLineAfter records that the author left an empty line between
+	// this expression and the next node. The formatter honours it rather
+	// than imposing its own spacing, so a comment written as
+	// documentation stays attached to the declaration it documents and
+	// one written as a section heading keeps its separation.
+	BlankLineAfter bool
 }
 
 func (exp *TemplateFileGoExpression) IsTemplateFileNode() bool { return true }

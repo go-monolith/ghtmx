@@ -199,8 +199,17 @@ outer:
 				pi.Seek(last)
 				// Take the code so far.
 				if code.Len() > 0 {
-					expr := NewExpression(strings.TrimSpace(code.String()), from, pi.Position())
-					tf.Nodes = append(tf.Nodes, &TemplateFileGoExpression{Expression: expr})
+					raw := code.String()
+					expr := NewExpression(strings.TrimSpace(raw), from, pi.Position())
+					// Whether the author left a blank line before the
+					// declaration that follows is theirs to decide, so it
+					// is recorded before TrimSpace discards it: a comment
+					// written against a declaration stays against it, and
+					// one written as a section heading keeps its gap.
+					tf.Nodes = append(tf.Nodes, &TemplateFileGoExpression{
+						Expression:     expr,
+						BlankLineAfter: endsWithBlankLine(raw),
+					})
 				}
 				// Carry on parsing.
 				break inner
@@ -225,4 +234,12 @@ outer:
 	}
 
 	return tf, true, nil
+}
+
+// endsWithBlankLine reports whether the raw source of a top-level Go
+// expression was followed by an empty line, which is how the author
+// separated it from whatever declaration comes next.
+func endsWithBlankLine(raw string) bool {
+	trimmed := strings.TrimRight(raw, " \t")
+	return strings.HasSuffix(trimmed, "\n\n") || strings.HasSuffix(trimmed, "\n\r\n")
 }

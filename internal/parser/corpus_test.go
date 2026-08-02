@@ -131,17 +131,7 @@ func TestCorpusIsAlreadyFormatted(t *testing.T) {
 // template that is not formatter-clean fails the test, and so does one
 // of these becoming clean, which is the signal that the underlying
 // import behaviour was fixed and the entry should go.
-var formatterRewrites = map[string]bool{
-	"benchmarks/corpus/corpus.ghtmx":    true,
-	"conformance/conformance.ghtmx":     true,
-	"docs/official/site/docs.ghtmx":     true,
-	"docs/official/site/examples.ghtmx": true,
-	"docs/official/site/home.ghtmx":     true,
-	"docs/official/site/layout.ghtmx":   true,
-	"examples/crud/crud.ghtmx":          true,
-	"examples/events/page.ghtmx":        true,
-	"examples/fragments/rows.ghtmx":     true,
-}
+var formatterRewrites = map[string]bool{}
 
 // TestFormattingIsIdempotent pins that a second pass changes nothing.
 // Without it the formatter could oscillate between two forms, and every
