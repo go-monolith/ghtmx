@@ -83,17 +83,8 @@ func TestSubcommandHelp(t *testing.T) {
 	// reports ErrHelp, a different path from -help. Both have to land on
 	// stdout with exit 0, or `ghtmx fmt -h | less` shows nothing and any
 	// wrapper treating non-zero as failure breaks.
-	//
-	// `generate` handles -help itself but not -h: it parses its own
-	// arguments in generatecmd.NewArguments, which treats the flag
-	// package's ErrHelp as a parse failure. Pre-existing, and left alone
-	// here rather than silently papered over.
 	for _, flagName := range []string{"-help", "-h"} {
-		subs := []string{"info", "generate", "fmt", "routes", "lsp"}
-		if flagName == "-h" {
-			subs = []string{"info", "fmt", "routes", "lsp"}
-		}
-		for _, sub := range subs {
+		for _, sub := range []string{"info", "generate", "fmt", "routes", "lsp"} {
 			t.Run(sub+flagName, func(t *testing.T) {
 				code, stdout, stderr := invoke(sub, flagName)
 
