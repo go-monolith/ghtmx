@@ -33,5 +33,35 @@ Before opening a pull request, run what CI runs:
 go build ./... && go test ./... && gofmt -l . && go vet ./...
 ```
 
+`go build ./...` type-checks every package without writing binaries, so
+it leaves no artifacts behind.
+
+## Build output
+
+Compiled binaries go in `bin/`, which is git-ignored. Always pass `-o`:
+
+```sh
+go build -o bin/ghtmx ./cmd/ghtmx
+go build -o bin/crud ./examples/crud/cmd
+```
+
+A bare `go build ./cmd/ghtmx` writes the binary into the current
+directory instead, and a Go binary has no file extension for the usual
+`*.exe`/`*.so` ignore rules to catch. That combination once put two 9 MB
+example binaries into the repo root and into git history; they have
+since been purged, and the root-anchored entries in `.gitignore` guard
+against a repeat.
+
+## Dev environment
+
+Checked-in tooling config, all optional to use:
+
+| File | Purpose |
+| --- | --- |
+| `.devcontainer/devcontainer.json` | Dev container image, mounts, and VS Code extensions |
+| `.mcp.json` | MCP servers available to agent sessions in this repo |
+| `.claude/settings.json` | Claude Code defaults for this repo |
+| `.codex/config.toml` | Codex CLI defaults for this repo |
+
 `CLAUDE.md` files and `rules/` in the home directory configure agent
-sessions; repo-level conventions live here.
+sessions too; repo-level conventions live here.
