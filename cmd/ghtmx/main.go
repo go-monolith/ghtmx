@@ -84,7 +84,10 @@ Args:
 `
 
 func infoCmd(stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("diagnose", flag.ExitOnError)
+	cmd := flag.NewFlagSet("diagnose", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	jsonFlag := cmd.Bool("json", false, "")
 	verboseFlag := cmd.Bool("v", false, "")
 	logLevelFlag := cmd.String("log-level", "info", "")
@@ -182,7 +185,10 @@ Args:
 `
 
 func fmtCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("fmt", flag.ExitOnError)
+	cmd := flag.NewFlagSet("fmt", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	helpFlag := cmd.Bool("help", false, "")
 	workerCountFlag := cmd.Int("w", runtime.NumCPU(), "")
 	verboseFlag := cmd.Bool("v", false, "")
@@ -234,7 +240,10 @@ Args:
 `
 
 func routesCmd(stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("routes", flag.ExitOnError)
+	cmd := flag.NewFlagSet("routes", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	jsonFlag := cmd.Bool("json", false, "")
 	dirFlag := cmd.String("dir", "", "")
 	verboseFlag := cmd.Bool("v", false, "")
@@ -288,7 +297,10 @@ Args:
 `
 
 func lspCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("lsp", flag.ExitOnError)
+	cmd := flag.NewFlagSet("lsp", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	logFlag := cmd.String("log", "", "")
 	goplsLog := cmd.String("goplsLog", "", "")
 	goplsRPCTrace := cmd.Bool("goplsRPCTrace", false, "")
