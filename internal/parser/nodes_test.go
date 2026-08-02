@@ -38,6 +38,7 @@ func nodeKinds() []Node {
 		&GoComment{Contents: "c"},
 		&RawElement{Name: "script"},
 		&ScriptElement{},
+		&Fallthrough{},
 	}
 }
 
@@ -253,6 +254,9 @@ func (v *recordingVisitor) VisitForExpression(*ForExpression) error {
 	return v.record("ForExpression")
 }
 func (v *recordingVisitor) VisitGoCode(*GoCode) error { return v.record("GoCode") }
+func (v *recordingVisitor) VisitFallthrough(*Fallthrough) error {
+	return v.record("Fallthrough")
+}
 func (v *recordingVisitor) VisitStringExpression(*StringExpression) error {
 	return v.record("StringExpression")
 }
