@@ -18,6 +18,11 @@
 # directories under examples/ stay tracked.
 /ghtmx
 /cmd
+# ...but /cmd above matches the source directory too, not just a stray
+# binary named after it, which silently makes every new file under
+# cmd/ unaddable. Re-include the directory: the entry above still
+# catches a root-level `cmd` binary, since a file cannot match this.
+!/cmd/
 /testprogram
 /crud
 /events
