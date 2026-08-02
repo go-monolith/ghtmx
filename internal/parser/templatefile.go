@@ -224,8 +224,12 @@ outer:
 			code.WriteString(newLine)
 			if _, isEOF, _ := parse.EOF[string]().Parse(pi); isEOF {
 				if code.Len() > 0 {
-					expr := NewExpression(strings.TrimSpace(code.String()), from, pi.Position())
-					tf.Nodes = append(tf.Nodes, &TemplateFileGoExpression{Expression: expr})
+					raw := code.String()
+					expr := NewExpression(strings.TrimSpace(raw), from, pi.Position())
+					tf.Nodes = append(tf.Nodes, &TemplateFileGoExpression{
+						Expression:     expr,
+						BlankLineAfter: endsWithBlankLine(raw),
+					})
 				}
 				// Stop parsing.
 				break outer
@@ -240,6 +244,15 @@ outer:
 // expression was followed by an empty line, which is how the author
 // separated it from whatever declaration comes next.
 func endsWithBlankLine(raw string) bool {
-	trimmed := strings.TrimRight(raw, " \t")
-	return strings.HasSuffix(trimmed, "\n\n") || strings.HasSuffix(trimmed, "\n\r\n")
+	// Inspect the last two lines rather than matching suffixes: a
+	// separator line holding spaces or tabs ("// c\n   \n") is still a
+	// blank line to the author, and suffix matching would miss it and
+	// glue the comment to the next declaration — the bug this whole
+	// field exists to prevent.
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	if len(lines) < 2 {
+		return false
+	}
+	return strings.TrimSpace(lines[len(lines)-1]) == "" &&
+		strings.TrimSpace(lines[len(lines)-2]) == ""
 }

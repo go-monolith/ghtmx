@@ -30,6 +30,9 @@ templ Page(title string) {
 // newProject scaffolds a module holding one template.
 func newProject(t *testing.T) string {
 	t.Helper()
+	// Keep the build cache inside the sandbox rather than writing into
+	// the developer's real ~/.cache/ghtmx.
+	t.Setenv("GHTMX_CACHE_DIR", t.TempDir())
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod":     "module example.com/app\n\ngo 1.25\n",

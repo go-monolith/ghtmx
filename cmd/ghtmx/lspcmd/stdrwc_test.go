@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/go-monolith/ghtmx/cmd/ghtmx/lspcmd/pls"
 )
 
 // stdrwc is the pipe the editor talks to the language server through, so
@@ -144,6 +146,17 @@ func TestRunReportsAnUnopenableLogFile(t *testing.T) {
 // there is no gopls to connect to, which is fine — the assertion is
 // about the log file existing.
 func TestRunCreatesTheLogFile(t *testing.T) {
+	// Run reaches pls.FindGopls, which calls os.Exit(1) when gopls is
+	// missing. That would kill the whole test binary with no test name
+	// and silently skip everything after it, so guard the way the other
+	// gopls-dependent tests in this package do.
+	if testing.Short() {
+		t.Skip("requires gopls")
+	}
+	if _, err := pls.FindGopls(); err != nil {
+		t.Skip("gopls is not installed")
+	}
+
 	logPath := filepath.Join(t.TempDir(), "lsp.log")
 
 	// stdin is empty, so the stream ends immediately and Run returns.

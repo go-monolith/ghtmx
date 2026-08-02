@@ -103,15 +103,13 @@ func TestSubcommandHelp(t *testing.T) {
 // change made reachable. With ExitOnError the flag package called
 // os.Exit(2) before any of this ran, so the CLI could never print its
 // own usage or return EX_USAGE for a typo'd flag.
-// `generate` is deliberately absent: it parses its own arguments in
-// generatecmd.NewArguments, with the flag package's output going to
-// stderr and the flag package's own auto-generated usage rather than the
-// hand-written text. So it prints "flag provided but not defined" and
-// its own listing where the other four print usageText and return 64.
-// That inconsistency is pre-existing and left alone here; the test below
-// pins the four that share a convention.
+// All five share the convention now: hand-written usage, the offending
+// flag named, no auto-generated flag listing, exit 64. `generate` gets
+// there by a different route — it parses its own arguments and reports
+// 64 through ArgumentError.Code — which is why it is included here
+// rather than carved out.
 func TestSubcommandRejectsAnUnknownFlag(t *testing.T) {
-	for _, sub := range []string{"info", "fmt", "routes", "lsp"} {
+	for _, sub := range []string{"info", "generate", "fmt", "routes", "lsp"} {
 		t.Run(sub, func(t *testing.T) {
 			code, stdout, stderr := invoke(sub, "-no-such-flag")
 

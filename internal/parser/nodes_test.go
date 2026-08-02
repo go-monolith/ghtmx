@@ -114,8 +114,9 @@ func TestEveryNodeDispatchesToTheVisitor(t *testing.T) {
 			if err := n.Visit(v); err != nil {
 				t.Fatalf("Visit returned %v", err)
 			}
-			if len(v.seen) == 0 {
-				t.Error("Visit reached no visitor method; this node is invisible to every walk")
+			if len(v.seen) != 1 || v.seen[0] != typeName(n) {
+				t.Errorf("Visit dispatched to %v, want %s — a node reported as the wrong kind is a rule that stops firing",
+					v.seen, typeName(n))
 			}
 		})
 	}
@@ -128,8 +129,8 @@ func TestEveryTemplateFileNodeDispatchesToTheVisitor(t *testing.T) {
 			if err := n.Visit(v); err != nil {
 				t.Fatalf("Visit returned %v", err)
 			}
-			if len(v.seen) == 0 {
-				t.Error("Visit reached no visitor method")
+			if len(v.seen) != 1 || v.seen[0] != typeName(n) {
+				t.Errorf("Visit dispatched to %v, want %s", v.seen, typeName(n))
 			}
 		})
 	}

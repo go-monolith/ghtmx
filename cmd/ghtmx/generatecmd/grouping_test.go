@@ -108,33 +108,55 @@ func TestGroupingReturnsAnErrorOnlyBatch(t *testing.T) {
 	}
 }
 
-// TestGroupingIgnoresEventsWithNothingObservable covers the other side
-// of that branch: a batch where nothing happened must not wake the
-// browser up.
-func TestGroupingIgnoresEventsWithNothingObservable(t *testing.T) {
+// TestGroupingHoldsBackAnUnobservableBatch pins the timeout branch that
+// resets to the long timer instead of returning: a batch where nothing
+// the browser can see happened must not trigger a reload. Asserting only
+// that the call eventually returns would pass with that branch inverted,
+// so this checks it is still waiting while the channel stays open.
+func TestGroupingHoldsBackAnUnobservableBatch(t *testing.T) {
 	cmd := testGenerate()
-	ch := make(chan *GenerationEvent, 4)
+	ch := make(chan *GenerationEvent)
+
+	type result struct {
+		grouped *GenerationEvent
+		updates int
+		ok      bool
+		err     error
+	}
+	done := make(chan result, 1)
+	go func() {
+		grouped, updates, ok, err := cmd.groupUntilNoMessagesReceivedFor100ms(ch)
+		done <- result{grouped, updates, ok, err}
+	}()
 
 	// GoSourceUpdated alone is not one of the flags the timeout branch
 	// treats as observable.
-	sendAndClose(ch, &GenerationEvent{GoSourceUpdated: true})
+	ch <- &GenerationEvent{GoSourceUpdated: true}
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		grouped, _, ok, err := cmd.groupUntilNoMessagesReceivedFor100ms(ch)
-		if err != nil {
-			t.Error(err)
-		}
-		// The channel closes, so the loop exits through the closed-channel
-		// path carrying whatever it had grouped.
-		if ok && grouped == nil {
-			t.Error("reported ok with no grouped event")
-		}
-	}()
-
+	// Well past the 100ms debounce: still no reload.
 	select {
-	case <-done:
+	case r := <-done:
+		t.Fatalf("an unobservable batch returned after the debounce: %+v", r.grouped)
+	case <-time.After(400 * time.Millisecond):
+	}
+
+	// Closing the channel is the shutdown signal; the held batch comes
+	// out then, carrying what it accumulated.
+	close(ch)
+	select {
+	case r := <-done:
+		if r.err != nil {
+			t.Fatalf("grouping returned %v", r.err)
+		}
+		if !r.ok || r.grouped == nil {
+			t.Fatal("the held batch was discarded on shutdown")
+		}
+		if !r.grouped.GoSourceUpdated {
+			t.Error("the accumulated flag was lost")
+		}
+		if r.updates != 0 {
+			t.Errorf("updates = %d, want 0 — nothing was written", r.updates)
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("grouping did not return after the channel closed")
 	}
@@ -173,8 +195,9 @@ func TestGroupingWaitsForQuietBeforeReturning(t *testing.T) {
 
 	go func() {
 		ch <- &GenerationEvent{GoFileWritten: true}
-		// Well inside the window: must be merged, not dropped or split.
-		time.Sleep(20 * time.Millisecond)
+		// Sent back to back: the ordering alone proves the merge, and
+		// leaving no gap keeps the batch from splitting on a loaded
+		// runner where a sleep could overrun the 100ms window.
 		ch <- &GenerationEvent{TemplFileTextUpdated: true}
 	}()
 

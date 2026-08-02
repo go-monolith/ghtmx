@@ -21,8 +21,14 @@ templ Page(title string) {
 `
 
 // project scaffolds a module with one template and returns its path.
+//
+// invokeIn uses t.Chdir, which is process-global: no test in this
+// package may call t.Parallel.
 func project(t *testing.T) string {
 	t.Helper()
+	// Keep the build cache inside the sandbox rather than writing into
+	// the developer's real ~/.cache/ghtmx.
+	t.Setenv("GHTMX_CACHE_DIR", t.TempDir())
 	dir := t.TempDir()
 	for name, content := range map[string]string{
 		"go.mod":     "module example.com/app\n\ngo 1.25\n",
@@ -80,17 +86,24 @@ func TestInfoCmdText(t *testing.T) {
 // exists as a separate flag.
 func TestInfoCmdVerboseAndLogLevel(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name      string
+		args      []string
+		wantDebug bool
 	}{
-		{"verbose", []string{"info", "-v"}},
-		{"log level", []string{"info", "-log-level", "error"}},
-		{"verbose overrides log level", []string{"info", "-v", "-log-level", "error"}},
+		{"verbose", []string{"info", "-v"}, true},
+		{"log level error", []string{"info", "-log-level", "error"}, false},
+		{"verbose overrides log level", []string{"info", "-v", "-log-level", "error"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if code, _, stderr := invokeIn(t, t.TempDir(), tt.args...); code != 0 {
-				t.Errorf("exit code = %d, want 0\nstderr: %s", code, stderr)
+			code, _, stderr := invokeIn(t, t.TempDir(), tt.args...)
+			if code != 0 {
+				t.Fatalf("exit code = %d, want 0\nstderr: %s", code, stderr)
+			}
+			// -v raises the level, so the platform record is emitted;
+			// at error level alone nothing routine reaches stderr.
+			if got := strings.Contains(stderr, "goarch"); got != tt.wantDebug {
+				t.Errorf("platform detail present = %v, want %v:\n%s", got, tt.wantDebug, stderr)
 			}
 		})
 	}
@@ -132,23 +145,47 @@ func TestGenerateCmd(t *testing.T) {
 	}
 }
 
-// TestGenerateCmdReportsFailureWithItsOwnCode pins the ErrorCode path:
-// generate returns a typed error carrying an exit code, and collapsing
-// it to a plain 1 would stop scripts telling a usage mistake from a
-// generation failure.
-func TestGenerateCmdReportsFailureWithItsOwnCode(t *testing.T) {
-	dir := project(t)
-	if err := os.WriteFile(filepath.Join(dir, "page.ghtmx"),
-		[]byte("package app\n\ntempl X() {\n\t<div>\n}\n"), 0o644); err != nil {
-		t.Fatal(err)
+// TestGenerateCmdExitCodes pins the ErrorCode path, which is how a
+// script tells a usage mistake from a generation failure. Only
+// *ArgumentError implements Code(), so a bad flag exits 64 while a
+// broken template takes the default 1 — asserting merely "non-zero"
+// would pass with the ErrorCode branch deleted outright.
+func TestGenerateCmdExitCodes(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(t *testing.T, dir string)
+		args     []string
+		wantCode int
+	}{
+		{
+			name:     "bad flag is a usage error",
+			args:     []string{"generate", "-no-such-flag"},
+			wantCode: 64,
+		},
+		{
+			name: "unparseable template is a generation failure",
+			setup: func(t *testing.T, dir string) {
+				if err := os.WriteFile(filepath.Join(dir, "page.ghtmx"),
+					[]byte("package app\n\ntempl X() {\n\t<div>\n}\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			args:     []string{"generate", "-include-version=false"},
+			wantCode: 1,
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := project(t)
+			if tt.setup != nil {
+				tt.setup(t, dir)
+			}
 
-	code, _, stderr := invokeIn(t, dir, "generate", "-include-version=false")
-	if code == 0 {
-		t.Fatal("generate succeeded on an unparseable template")
-	}
-	if !strings.Contains(stderr, "Command failed") {
-		t.Errorf("stderr does not report the failure:\n%s", stderr)
+			code, _, stderr := invokeIn(t, dir, tt.args...)
+			if code != tt.wantCode {
+				t.Errorf("exit code = %d, want %d\nstderr: %s", code, tt.wantCode, stderr)
+			}
+		})
 	}
 }
 
@@ -186,7 +223,10 @@ func TestFmtCmdStdin(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0\nstderr: %s", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), "templ Page()") {
-		t.Errorf("formatted output did not come back on stdout:\n%s", out.String())
+	// The input body is deliberately under-indented, so asserting on the
+	// reindentation proves formatting happened rather than stdin being
+	// echoed back unchanged.
+	if !strings.Contains(out.String(), "\n\t<div></div>\n") {
+		t.Errorf("stdout is not the reindented source:\n%s", out.String())
 	}
 }
