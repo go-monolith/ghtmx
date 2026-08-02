@@ -1352,7 +1352,16 @@ func (p *Server) Formatting(ctx context.Context, params *lsp.DocumentFormattingP
 		p.Log.Error("invalid uri", slog.String("uri", string(params.TextDocument.URI)))
 		return
 	}
-	d, _ := p.TemplSource.Get(string(templURI))
+	// A format request can arrive for a document the server is not
+	// holding — an editor formatting on save while didOpen is still in
+	// flight, or after a gopls restart. Dereferencing the nil Document
+	// here panicked, which takes the whole language server down rather
+	// than losing one format.
+	d, ok := p.TemplSource.Get(string(templURI))
+	if !ok {
+		p.Log.Info("formatting requested for a document that is not open", slog.String("uri", string(templURI)))
+		return nil, nil
+	}
 	template, ok, err := p.parseTemplate(ctx, templURI, d.String())
 	if err != nil {
 		p.Log.Error("parseTemplate failure", slog.Any("error", err))
