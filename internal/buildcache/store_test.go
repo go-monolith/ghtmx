@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -167,4 +168,81 @@ func TestSaltDistinguishesPartLists(t *testing.T) {
 	if bytes.Equal(Salt("a"), Salt()) {
 		t.Error("an empty part list collided with a non-empty one")
 	}
+}
+
+// TestOpenReportsAnUnusableDirectory pins the failure the caller has to
+// tolerate: generation must not fail because the cache cannot be
+// created, so Open reports and the caller continues with a nil store.
+func TestOpenReportsAnUnusableDirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	parent := t.TempDir()
+	if err := os.Chmod(parent, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+
+	if _, err := Open(filepath.Join(parent, "cache"), Salt("v1")); err == nil {
+		t.Error("Open succeeded under a read-only parent directory")
+	}
+}
+
+// TestPutReportsAnUnwritableStore covers the same tolerance on the write
+// side: a full disk or a revoked permission is reported for logging, not
+// treated as a generation failure.
+func TestPutReportsAnUnwritableStore(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	dir := filepath.Join(t.TempDir(), "cache")
+	store, err := Open(dir, Salt("v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	if err := store.Put(sha256.Sum256([]byte("key")), []byte("payload")); err == nil {
+		t.Error("Put succeeded into a read-only cache directory")
+	}
+}
+
+func TestDefaultDir(t *testing.T) {
+	t.Run("honours the override", func(t *testing.T) {
+		base := t.TempDir()
+		t.Setenv("GHTMX_CACHE_DIR", base)
+
+		dir, ok := DefaultDir("/project")
+		if !ok {
+			t.Fatal("DefaultDir reported not-ok with an override set")
+		}
+		if !strings.HasPrefix(dir, base) {
+			t.Errorf("dir = %q, want it under the override %q", dir, base)
+		}
+	})
+
+	t.Run("separates modules", func(t *testing.T) {
+		t.Setenv("GHTMX_CACHE_DIR", t.TempDir())
+
+		// Two projects must not share a cache directory, or one
+		// project's entries slow the other's lookups.
+		a, _ := DefaultDir("/project/a")
+		b, _ := DefaultDir("/project/b")
+		if a == b {
+			t.Errorf("two modules resolved to the same cache directory %q", a)
+		}
+	})
+
+	t.Run("is stable for one module", func(t *testing.T) {
+		t.Setenv("GHTMX_CACHE_DIR", t.TempDir())
+
+		first, _ := DefaultDir("/project")
+		second, _ := DefaultDir("/project")
+		if first != second {
+			t.Errorf("two calls disagreed: %q then %q", first, second)
+		}
+	})
 }
