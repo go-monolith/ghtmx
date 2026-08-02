@@ -185,6 +185,46 @@ jobs:
             exit 1
           fi
 
+  # The statement-coverage floor for the code this project writes.
+  # Generated output, the ported LSP and safehtml sources, and the
+  # example and fixture programs are out of scope: a figure that
+  # includes them measures vendoring decisions rather than test
+  # discipline. Its own job rather than a step in the test matrix,
+  # because the profiling run needs -coverpkg over every package and a
+  # 20-minute budget — paying that on all three operating systems for a
+  # number only one of them has to produce would be waste.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Pinned to the toolchain the floor was measured with:
+          # instrumentation and inlining decisions shift block counts
+          # between releases, so this version moves with the baseline.
+          go-version: "1.26"
+      # Without gopls the lspcmd tests fail, `go test` exits non-zero,
+      # and the gate below has no profile to measure. Same pin as the
+      # test matrix.
+      - name: Install gopls (required by LSP tests)
+        run: go install golang.org/x/tools/gopls@v0.23.0
+      # -coverpkg=./... attributes coverage across package boundaries,
+      # so a package exercised only through its callers still counts.
+      # GHTMX_COVERAGE_GATE stays unset here on purpose: this run
+      # includes internal/covergate, which must skip while the profile
+      # it reads is still being written.
+      - name: Coverage profile
+        run: go test ./... -covermode=atomic -coverpkg=./... -coverprofile=cover.out -timeout 20m
+      # The gate parses cover.out directly rather than calling
+      # `go tool cover -func`, which drops coverage blocks inside
+      # function literals assigned to package-level vars — the shape
+      # internal/parser is built out of — and undercounts by roughly
+      # eight points. -coverpkg also makes every test binary emit its
+      # own copy of every block, so the gate merges by position before
+      # summing. The threshold is a reviewed constant in the package.
+      - name: Own-code coverage floor
+        run: GHTMX_COVERAGE_GATE=1 go test ./internal/covergate/ -count=1 -v
+
   fuzz:
     # Bounded fuzz budget on every build (NFR-006); longer campaigns run
     # on demand via internal/parser/fuzz.sh and goexpression/fuzz.sh.
