@@ -92,6 +92,33 @@ func TestGenerateConstructs(t *testing.T) {
 			want: []string{"one", "many"},
 		},
 		{
+			// writeRawElement takes a different path once the element
+			// carries attributes: the no-attribute case emits one
+			// literal, this one emits the tag piecewise.
+			name: "raw element with attributes",
+			src:  "package p\n\ntempl x() {\n\t<script type=\"module\" defer>let a = 1;</script>\n}\n",
+			want: []string{"module", "defer"},
+		},
+		{
+			name: "style element with attributes",
+			src:  "package p\n\ntempl x(nonce string) {\n\t<style nonce={ nonce }>body { color: red; }</style>\n}\n",
+			want: []string{"style", "nonce"},
+		},
+		{
+			// A doctype carrying a quote has to be escaped, or the
+			// emitted Go string literal will not compile.
+			name: "doctype with a quoted identifier",
+			src:  "package p\n\ntempl x() {\n\t<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\n\t<html></html>\n}\n",
+			want: []string{"doctype"},
+		},
+		{
+			// Trailing whitespace after an element drives
+			// writeWhitespaceTrailer's vertical and horizontal branches.
+			name: "trailing whitespace variants",
+			src:  "package p\n\ntempl x() {\n\t<span>a</span>\n\t<span>b</span> <span>c</span>\n}\n",
+			want: []string{"span"},
+		},
+		{
 			name: "css template with an expression property",
 			src:  "package p\n\ncss theme(c string) {\n\tcolor: { c };\n\tbackground: #fff;\n}\n",
 			want: []string{"color", "background"},
@@ -121,6 +148,9 @@ func TestGenerateConstructsSurviveWriteFailures(t *testing.T) {
 		"package p\n\ntempl wrapper() {\n\t<div>{ children... }</div>\n}\n",
 		"package p\n\ntempl x() {\n\t<br>\n\t<img src=\"a.png\"/>\n}\n",
 		"package p\n\ncss theme(c string) {\n\tcolor: { c };\n}\n",
+		"package p\n\ntempl x() {\n\t<script type=\"module\" defer>let a = 1;</script>\n}\n",
+		"package p\n\ntempl x() {\n\t<!DOCTYPE html>\n\t<html></html>\n}\n",
+		"package p\n\ntempl x() {\n\t<span>a</span> <span>b</span>\n}\n",
 	}
 	for i, src := range sources {
 		t.Run(subtestName(i), func(t *testing.T) {
@@ -145,7 +175,8 @@ func TestGenerateConstructsSurviveWriteFailures(t *testing.T) {
 // subtestName labels the write-failure sweep cases by index, since the
 // sources have no single distinguishing token.
 func subtestName(i int) string {
-	names := []string{"go-code", "html-comment", "raw-element", "children", "void-elements", "css"}
+	names := []string{"go-code", "html-comment", "raw-element", "children", "void-elements", "css",
+		"raw-element-with-attributes", "doctype", "trailing-whitespace"}
 	if i < len(names) {
 		return names[i]
 	}
