@@ -3,6 +3,7 @@ package generatecmd
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -148,7 +149,10 @@ func (f severityMapFlag) Set(v string) error {
 
 func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, log *slog.Logger, help bool, err error) {
 	cmd := flag.NewFlagSet("generate", flag.ContinueOnError)
-	cmd.SetOutput(stderr)
+	// Discarded, not sent to stderr: every flag here is registered with
+	// an empty description, so the flag package's auto-generated listing
+	// is noise beside generateUsageText. Matches the other subcommands.
+	cmd.SetOutput(io.Discard)
 	cmd.StringVar(&cmdArgs.FileName, "f", "", "")
 	cmd.StringVar(&cmdArgs.Path, "path", ".", "")
 	toStdoutFlag := cmd.Bool("stdout", false, "")
@@ -187,6 +191,13 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	logLevelFlag := cmd.String("log-level", "info", "")
 	helpFlag := cmd.Bool("help", false, "")
 	if err = cmd.Parse(args); err != nil {
+		// -h is not a registered flag; the flag package reports it as
+		// ErrHelp rather than a parse failure. Asking for help is not an
+		// error: it belongs on stdout with a zero exit, the same as
+		// -help and the same as every other subcommand.
+		if errors.Is(err, flag.ErrHelp) {
+			return Arguments{}, sloghandler.NewLogger("info", false, stderr), true, nil
+		}
 		return Arguments{}, nil, false, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 

@@ -154,8 +154,15 @@ func Process(t *parser.TemplateFile) (*parser.TemplateFile, error) {
 			astutil.AddNamedImport(fset, firstGoNodeInTemplate, name, path)
 		}
 	}
-	// Edge case: reinsert the import to use import syntax without parentheses.
-	if len(firstGoNodeInTemplate.Imports) == 1 {
+	// Edge case: a lone import is written without parentheses. Collapsing
+	// a parenthesized block to that form means deleting and re-adding the
+	// spec, which is only safe when there is a block to collapse: the
+	// re-added spec lands at the top of the file, and any comment that sat
+	// above the original stays where it was, so a template whose single
+	// import is already unparenthesized comes back with its comment
+	// stranded below it. Doing this only when parentheses are actually
+	// present leaves the already-correct case untouched.
+	if len(firstGoNodeInTemplate.Imports) == 1 && hasParenthesizedImports(firstGoNodeInTemplate) {
 		name, path, err := getImportDetails(firstGoNodeInTemplate.Imports[0])
 		if err != nil {
 			return t, err
@@ -211,6 +218,23 @@ func getPackageIdentifier(name, importPath string) string {
 func containsImport(imports []*ast.ImportSpec, spec *ast.ImportSpec) bool {
 	for _, imp := range imports {
 		if imp.Path.Value == spec.Path.Value {
+			return true
+		}
+	}
+	return false
+}
+
+// hasParenthesizedImports reports whether the file's imports are written
+// as a parenthesized block. gofmt renders a single import without
+// parentheses, so a block holding exactly one spec is the case worth
+// collapsing; one already written bare needs no rewriting.
+func hasParenthesizedImports(f *ast.File) bool {
+	for _, decl := range f.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.IMPORT {
+			continue
+		}
+		if gen.Lparen.IsValid() {
 			return true
 		}
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -84,13 +85,28 @@ Args:
 `
 
 func infoCmd(stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("diagnose", flag.ExitOnError)
+	cmd := flag.NewFlagSet("diagnose", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	jsonFlag := cmd.Bool("json", false, "")
 	verboseFlag := cmd.Bool("v", false, "")
 	logLevelFlag := cmd.String("log-level", "info", "")
 	helpFlag := cmd.Bool("help", false, "")
 	err := cmd.Parse(args)
+	// -h is handled by the flag package itself, which reports it as
+	// ErrHelp rather than a parse failure. Asking for help is not a
+	// usage error: it belongs on stdout with a zero exit, so that
+	// `ghtmx ... -h | less` works and wrappers do not see a failure.
+	if errors.Is(err, flag.ErrHelp) {
+		_, _ = fmt.Fprint(stdout, infoUsageText)
+		return 0
+	}
 	if err != nil {
+		// The flag package's own message names the offending flag or
+		// value; the usage text alone would leave the user diffing
+		// their command line against it by eye.
+		_, _ = fmt.Fprintf(stderr, "%v\n\n", err)
 		_, _ = fmt.Fprint(stderr, infoUsageText)
 		return 64 // EX_USAGE
 	}
@@ -159,6 +175,11 @@ Format stdin to stdout:
 
   ghtmx fmt < header.ghtmx
 
+Format several files or directories:
+
+  ghtmx fmt header.ghtmx footer.ghtmx
+  ghtmx fmt ./internal ./cmd
+
 Format file or directory to stdout:
 
   ghtmx fmt -stdout FILE
@@ -182,7 +203,10 @@ Args:
 `
 
 func fmtCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("fmt", flag.ExitOnError)
+	cmd := flag.NewFlagSet("fmt", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	helpFlag := cmd.Bool("help", false, "")
 	workerCountFlag := cmd.Int("w", runtime.NumCPU(), "")
 	verboseFlag := cmd.Bool("v", false, "")
@@ -191,7 +215,19 @@ func fmtCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int)
 	stdoutFlag := cmd.Bool("stdout", false, "")
 	stdinFilepath := cmd.String("stdin-filepath", "", "")
 	err := cmd.Parse(args)
+	// -h is handled by the flag package itself, which reports it as
+	// ErrHelp rather than a parse failure. Asking for help is not a
+	// usage error: it belongs on stdout with a zero exit, so that
+	// `ghtmx ... -h | less` works and wrappers do not see a failure.
+	if errors.Is(err, flag.ErrHelp) {
+		_, _ = fmt.Fprint(stdout, fmtUsageText)
+		return 0
+	}
 	if err != nil {
+		// The flag package's own message names the offending flag or
+		// value; the usage text alone would leave the user diffing
+		// their command line against it by eye.
+		_, _ = fmt.Fprintf(stderr, "%v\n\n", err)
 		_, _ = fmt.Fprint(stderr, fmtUsageText)
 		return 64 // EX_USAGE
 	}
@@ -234,14 +270,29 @@ Args:
 `
 
 func routesCmd(stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("routes", flag.ExitOnError)
+	cmd := flag.NewFlagSet("routes", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	jsonFlag := cmd.Bool("json", false, "")
 	dirFlag := cmd.String("dir", "", "")
 	verboseFlag := cmd.Bool("v", false, "")
 	logLevelFlag := cmd.String("log-level", "info", "")
 	helpFlag := cmd.Bool("help", false, "")
 	err := cmd.Parse(args)
+	// -h is handled by the flag package itself, which reports it as
+	// ErrHelp rather than a parse failure. Asking for help is not a
+	// usage error: it belongs on stdout with a zero exit, so that
+	// `ghtmx ... -h | less` works and wrappers do not see a failure.
+	if errors.Is(err, flag.ErrHelp) {
+		_, _ = fmt.Fprint(stdout, routesUsageText)
+		return 0
+	}
 	if err != nil {
+		// The flag package's own message names the offending flag or
+		// value; the usage text alone would leave the user diffing
+		// their command line against it by eye.
+		_, _ = fmt.Fprintf(stderr, "%v\n\n", err)
 		_, _ = fmt.Fprint(stderr, routesUsageText)
 		return 64 // EX_USAGE
 	}
@@ -288,7 +339,10 @@ Args:
 `
 
 func lspCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int) {
-	cmd := flag.NewFlagSet("lsp", flag.ExitOnError)
+	cmd := flag.NewFlagSet("lsp", flag.ContinueOnError)
+	// The usage text below is the one users should see; the flag
+	// package\'s own output would print alongside it.
+	cmd.SetOutput(io.Discard)
 	logFlag := cmd.String("log", "", "")
 	goplsLog := cmd.String("goplsLog", "", "")
 	goplsRPCTrace := cmd.Bool("goplsRPCTrace", false, "")
@@ -298,7 +352,19 @@ func lspCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int)
 	httpDebugFlag := cmd.String("http", "", "")
 	noPreloadFlag := cmd.Bool("no-preload", false, "")
 	err := cmd.Parse(args)
+	// -h is handled by the flag package itself, which reports it as
+	// ErrHelp rather than a parse failure. Asking for help is not a
+	// usage error: it belongs on stdout with a zero exit, so that
+	// `ghtmx ... -h | less` works and wrappers do not see a failure.
+	if errors.Is(err, flag.ErrHelp) {
+		_, _ = fmt.Fprint(stdout, lspUsageText)
+		return 0
+	}
 	if err != nil {
+		// The flag package's own message names the offending flag or
+		// value; the usage text alone would leave the user diffing
+		// their command line against it by eye.
+		_, _ = fmt.Fprintf(stderr, "%v\n\n", err)
 		_, _ = fmt.Fprint(stderr, lspUsageText)
 		return 64 // EX_USAGE
 	}

@@ -18,10 +18,14 @@ func WalkUp(dir string) (string, error) {
 		return "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	var modFile string
+	// found, not modFile: the previous guard tested modFile == "", which
+	// is never true after the first iteration, so a tree with no go.mod
+	// anywhere returned the filesystem root and a nil error. The caller
+	// then failed further along, reading "/go.mod", with a message that
+	// named the wrong problem.
+	var found bool
 	for {
-		modFile = filepath.Join(dir, "go.mod")
-		_, err := os.Stat(modFile)
+		_, err := os.Stat(filepath.Join(dir, "go.mod"))
 		if err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("failed to stat go.mod file: %w", err)
 		}
@@ -34,11 +38,11 @@ func WalkUp(dir string) (string, error) {
 			}
 			continue
 		}
+		found = true
 		break
 	}
 
-	// No file found.
-	if modFile == "" {
+	if !found {
 		return dir, fmt.Errorf("could not find go.mod file")
 	}
 	return dir, nil

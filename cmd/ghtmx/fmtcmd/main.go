@@ -65,12 +65,26 @@ func Run(log *slog.Logger, stdin io.Reader, stdout io.Writer, args Arguments) (e
 		}
 		return nil, true
 	}
-	dir := args.Files[0]
-	shouldSkip, err := ignorefile.ShouldSkipFunc(dir, ".ghtmxignore_fmt")
-	if err != nil {
-		return fmt.Errorf("failed to parse .ghtmxignore_fmt: %w", err)
+	// Every path is formatted, not just the first. `ghtmx fmt *.ghtmx`
+	// is a natural thing to type, and taking Files[0] alone left the
+	// rest untouched with nothing said about it — the shell had already
+	// expanded the glob, so the user saw a successful run and assumed
+	// the whole set was done.
+	var errs []error
+	for _, dir := range args.Files {
+		shouldSkip, err := ignorefile.ShouldSkipFunc(dir, ".ghtmxignore_fmt")
+		if err != nil {
+			// Collected rather than returned: aborting here would throw
+			// away the failures already gathered from earlier paths and
+			// skip the remaining ones.
+			errs = append(errs, fmt.Errorf("failed to parse .ghtmxignore_fmt in %q: %w", dir, err))
+			continue
+		}
+		if err := NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip).Run(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip).Run()
+	return errors.Join(errs...)
 }
 
 type Formatter struct {
@@ -121,7 +135,7 @@ func (f *Formatter) Run() (err error) {
 
 	if f.FailIfChange && changesMade > 0 {
 		f.Log.Error("Templates were valid but not properly formatted", slog.Int("count", successCount+errorCount), slog.Int("changed", changesMade), slog.Int("errors", errorCount), slog.Duration("duration", time.Since(start)))
-		return fmt.Errorf("templates were not formatted properly")
+		return fmt.Errorf("templates in %q were not formatted properly", f.Dir)
 	}
 
 	f.Log.Info("Format Complete", slog.Int("count", successCount+errorCount), slog.Int("errors", errorCount), slog.Int("changed", changesMade), slog.Duration("duration", time.Since(start)))
