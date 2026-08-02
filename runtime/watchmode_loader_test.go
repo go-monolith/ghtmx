@@ -23,7 +23,16 @@ func writeSidecar(t *testing.T, dir string, literals ...string) (goPath, txtPath
 	if err := os.WriteFile(goPath, []byte("package p\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	txtPath = GetDevModeTextFileName(goPath)
+	// GetWatchedString resolves the path before deriving the sidecar
+	// name, so the test has to resolve too: /tmp is a symlink to
+	// /private/var on macOS, and Windows hands back an 8.3 short name.
+	// Without this the two sides hash different strings and the sidecar
+	// is never found — which passes on Linux and fails everywhere else.
+	resolved, err := filepath.EvalSymlinks(goPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txtPath = GetDevModeTextFileName(resolved)
 	if err := os.WriteFile(txtPath, []byte(strings.Join(literals, "\n")), 0o644); err != nil {
 		t.Fatal(err)
 	}

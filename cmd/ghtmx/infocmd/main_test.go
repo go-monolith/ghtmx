@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-monolith/ghtmx"
+	"github.com/go-monolith/ghtmx/cmd/ghtmx/lspcmd/pls"
 )
 
 // `ghtmx info` is the command a user runs when something is wrong with
@@ -40,13 +41,28 @@ func fakeTool(t *testing.T, dir, name, output string, code int) {
 
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
-// emptyPath points PATH at a directory with nothing in it, so every
-// lookup fails.
+// emptyPath points PATH at a directory with nothing in it, and
+// redirects the home directory the standard-location probe reads, so
+// every lookup fails. Both variables are set because os.UserHomeDir
+// reads HOME on Unix and USERPROFILE on Windows.
 func emptyPath(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	return dir
+}
+
+// requireGoplsAbsent skips when gopls is still discoverable despite the
+// redirected environment. Asserting "not found" against a machine that
+// can still find it is a false failure, not a defect.
+func requireGoplsAbsent(t *testing.T) {
+	t.Helper()
+	if _, err := pls.FindGopls(); err == nil {
+		t.Skip("gopls is still discoverable in this environment; the not-installed case cannot be tested here")
+	}
 }
 
 func TestFindGhtmxReportsAHelpfulMessageWhenMissing(t *testing.T) {
@@ -191,9 +207,9 @@ func TestGetGoplsInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := emptyPath(t)
-			// pls.FindGopls also probes $HOME/go/bin, so HOME is
-			// redirected too or a developer's real gopls leaks in.
-			t.Setenv("HOME", t.TempDir())
+			if !tt.install {
+				requireGoplsAbsent(t)
+			}
 			if tt.install {
 				fakeTool(t, dir, "gopls", tt.output, tt.exitCode)
 			}
@@ -222,7 +238,6 @@ func TestGetInfoReportsTheHostPlatform(t *testing.T) {
 
 func TestRunJSON(t *testing.T) {
 	dir := emptyPath(t)
-	t.Setenv("HOME", t.TempDir())
 	fakeTool(t, dir, "go", "go version go1.26.0 linux/amd64", 0)
 
 	var stdout bytes.Buffer
@@ -246,7 +261,6 @@ func TestRunJSON(t *testing.T) {
 
 func TestRunTextLogsEveryTool(t *testing.T) {
 	dir := emptyPath(t)
-	t.Setenv("HOME", t.TempDir())
 	fakeTool(t, dir, "go", "go version go1.26.0 linux/amd64", 0)
 
 	var logged bytes.Buffer
