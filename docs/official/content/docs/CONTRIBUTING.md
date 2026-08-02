@@ -3,10 +3,14 @@
 ## Change workflow
 
 `main` is protected: every change lands through a feature branch and a
-pull request, and all 11 CI checks (the 3-OS × 2-Go-version test
-matrix, perf-gate, lint, ensure-generated, vulncheck, and fuzz) must
-pass before merge. Direct pushes to `main` are rejected, including for
-administrators.
+pull request. CI runs 12 checks — the 3-OS × 2-Go-version test matrix,
+plus perf-gate, lint, ensure-generated, vulncheck, fuzz, and coverage.
+
+Eight of them are *required* to merge: the two ubuntu matrix rows and
+the six single-OS jobs. The macOS and Windows matrix rows run on every
+pull request but are not required status checks, so a failure there
+does not block a merge — treat one as a real failure anyway. Direct
+pushes to `main` are rejected, including for administrators.
 
 1. Branch from `main` (`feat/...`, `fix/...`, or similar).
 2. Push the branch and open a pull request against `main`.
@@ -35,6 +39,29 @@ go build ./... && go test ./... && gofmt -l . && go vet ./...
 
 `go build ./...` type-checks every package without writing binaries, so
 it leaves no artifacts behind.
+
+### Coverage
+
+The `coverage` job holds statement coverage of the project's own code at
+90% or above. "Own code" excludes generated `*_ghtmx.go` output, the
+ported `internal/lsp` and `internal/safehtml` trees, and the example and
+fixture programs. To run the same check locally:
+
+```sh
+go install golang.org/x/tools/gopls@v0.23.0
+go test ./... -covermode=atomic -coverpkg=./... -coverprofile=cover.out -timeout 20m
+GHTMX_COVERAGE_GATE=1 go test ./internal/covergate/ -count=1 -v
+```
+
+The `gopls` install is a real prerequisite, not boilerplate: without it
+the `cmd/ghtmx/lspcmd` tests fail and there is no profile to measure. It
+is only needed once per machine. On failure the gate prints the
+least-covered packages, worst first.
+
+`-coverpkg=./...` matters — it attributes coverage across package
+boundaries, so a package exercised only through its callers still counts.
+Without it the figure is about ten points lower and not comparable to the
+threshold.
 
 ## Build output
 
