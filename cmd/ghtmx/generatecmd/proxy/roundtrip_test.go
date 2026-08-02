@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -25,10 +27,16 @@ func newRoundTripper(maxRetries int) *roundTripper {
 }
 
 func TestRoundTripForwardsASuccessfulRequest(t *testing.T) {
+	// The handler runs on the server's goroutine, so everything it
+	// records is shared state and needs guarding — otherwise -race
+	// flags it the moment anyone runs the suite with it.
+	var mu sync.Mutex
 	var gotBody string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
 		gotBody = string(b)
+		mu.Unlock()
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = io.WriteString(w, "<html><body>ok</body></html>")
 	}))
@@ -50,8 +58,11 @@ func TestRoundTripForwardsASuccessfulRequest(t *testing.T) {
 	}
 	// The body is buffered so it can be replayed on a retry; losing it
 	// would turn every retried POST into an empty one.
-	if gotBody != "payload" {
-		t.Errorf("the backend received %q, want %q", gotBody, "payload")
+	mu.Lock()
+	received := gotBody
+	mu.Unlock()
+	if received != "payload" {
+		t.Errorf("the backend received %q, want %q", received, "payload")
 	}
 }
 
@@ -59,10 +70,9 @@ func TestRoundTripForwardsASuccessfulRequest(t *testing.T) {
 // front of a server that has not finished starting answers 502, and the
 // tripper has to keep trying rather than showing the user an error.
 func TestRoundTripRetriesABadGateway(t *testing.T) {
-	var attempts int
+	var attempts atomic.Int64
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts < 3 {
+		if attempts.Add(1) < 3 {
 			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
@@ -84,8 +94,8 @@ func TestRoundTripRetriesABadGateway(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want 200 after the backend came up", resp.StatusCode)
 	}
-	if attempts < 3 {
-		t.Errorf("the backend saw %d attempts; the retry did not happen", attempts)
+	if got := attempts.Load(); got < 3 {
+		t.Errorf("the backend saw %d attempts; the retry did not happen", got)
 	}
 }
 
@@ -112,11 +122,15 @@ func TestRoundTripGivesUpEventually(t *testing.T) {
 // buffered at all: a retried POST must carry the same payload, not an
 // already-consumed reader.
 func TestRoundTripReplaysTheBodyOnRetry(t *testing.T) {
+	var mu sync.Mutex
 	var bodies []string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
 		bodies = append(bodies, string(b))
-		if len(bodies) < 2 {
+		n := len(bodies)
+		mu.Unlock()
+		if n < 2 {
 			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
@@ -135,10 +149,13 @@ func TestRoundTripReplaysTheBodyOnRetry(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if len(bodies) < 2 {
-		t.Fatalf("the backend saw %d requests, want at least 2", len(bodies))
+	mu.Lock()
+	seen := append([]string(nil), bodies...)
+	mu.Unlock()
+	if len(seen) < 2 {
+		t.Fatalf("the backend saw %d requests, want at least 2", len(seen))
 	}
-	for i, b := range bodies {
+	for i, b := range seen {
 		if b != "form=data" {
 			t.Errorf("attempt %d carried %q, want the original payload", i+1, b)
 		}

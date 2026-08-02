@@ -66,18 +66,33 @@ func TestWalkUpFindsTheModuleRoot(t *testing.T) {
 	}
 }
 
+// skipIfModuleAbove skips when a go.mod exists at or above dir, which
+// would make the no-module cases below meaningless. Temp directories
+// live outside any module in practice, but a stray /tmp/go.mod on a
+// developer's machine would otherwise turn these into silent passes.
+func skipIfModuleAbove(t *testing.T, dir string) {
+	t.Helper()
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			t.Skipf("a go.mod exists at %s; the no-module case cannot be tested here", dir)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return
+		}
+		dir = parent
+	}
+}
+
 // TestWalkUpWithNoModule pins the behaviour when the walk reaches the
-// filesystem root without finding a go.mod. Generation cannot proceed
+// filesystem root without finding a go.mod: generation cannot proceed
 // without a module, so this has to be distinguishable from success.
 func TestWalkUpWithNoModule(t *testing.T) {
-	// A directory guaranteed to have no go.mod above it is hard to
-	// arrange, so this only checks the call is safe and returns
-	// something usable rather than panicking on the climb.
 	dir := t.TempDir()
+	skipIfModuleAbove(t, dir)
 
-	got, err := WalkUp(dir)
-	if err == nil && got == "" {
-		t.Error("WalkUp reported success with no directory")
+	if _, err := WalkUp(dir); err == nil {
+		t.Error("WalkUp reported success with no go.mod anywhere above the directory")
 	}
 }
 
@@ -150,14 +165,13 @@ func TestCheck(t *testing.T) {
 // rather than silently proceeding, since without a module there is no
 // version to verify against.
 func TestCheckWithNoGoMod(t *testing.T) {
-	// A directory with no go.mod anywhere beneath the temp root.
 	dir := filepath.Join(t.TempDir(), "nested")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	skipIfModuleAbove(t, dir)
 
-	// Whatever the walk finds above the temp directory, Check must not
-	// panic; the assertion is on that rather than on a specific error,
-	// since the machine running the tests may have a go.mod anywhere.
-	_ = Check(dir)
+	if err := Check(dir); err == nil {
+		t.Error("Check succeeded with no module; there is no version to verify against")
+	}
 }

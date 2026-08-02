@@ -174,14 +174,12 @@ func TestSaltDistinguishesPartLists(t *testing.T) {
 // tolerate: generation must not fail because the cache cannot be
 // created, so Open reports and the caller continues with a nil store.
 func TestOpenReportsAnUnusableDirectory(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: permission bits are not enforced")
-	}
 	parent := t.TempDir()
 	if err := os.Chmod(parent, 0o555); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+	skipIfWritable(t, parent)
 
 	if _, err := Open(filepath.Join(parent, "cache"), Salt("v1")); err == nil {
 		t.Error("Open succeeded under a read-only parent directory")
@@ -192,9 +190,6 @@ func TestOpenReportsAnUnusableDirectory(t *testing.T) {
 // side: a full disk or a revoked permission is reported for logging, not
 // treated as a generation failure.
 func TestPutReportsAnUnwritableStore(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: permission bits are not enforced")
-	}
 	dir := filepath.Join(t.TempDir(), "cache")
 	store, err := Open(dir, Salt("v1"))
 	if err != nil {
@@ -204,6 +199,7 @@ func TestPutReportsAnUnwritableStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	skipIfWritable(t, dir)
 
 	if err := store.Put(sha256.Sum256([]byte("key")), []byte("payload")); err == nil {
 		t.Error("Put succeeded into a read-only cache directory")
@@ -245,4 +241,16 @@ func TestDefaultDir(t *testing.T) {
 			t.Errorf("two calls disagreed: %q then %q", first, second)
 		}
 	})
+}
+
+// skipIfWritable probes rather than checking euid: root, unusual
+// capabilities and filesystems that ignore mode bits all make a
+// read-only directory writable, and euid catches only the first.
+func skipIfWritable(t *testing.T, dir string) {
+	t.Helper()
+	probe := filepath.Join(dir, ".write-probe")
+	if err := os.WriteFile(probe, []byte("x"), 0o644); err == nil {
+		_ = os.Remove(probe)
+		t.Skip("the directory is writable despite its mode; permission bits are not enforced here")
+	}
 }

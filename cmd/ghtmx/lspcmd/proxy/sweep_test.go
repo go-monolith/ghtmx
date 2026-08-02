@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -69,6 +70,10 @@ func callMethodWith(t *testing.T, srv lsp.Server, name string, ctx context.Conte
 			t.Errorf("%s panicked on an empty request: %v\n"+
 				"the proxy sits between the editor and gopls, so this would take the language server down",
 				name, r)
+			// Reported as an error too, so a caller classifying this
+			// method as allowed-to-fail does not also report that it
+			// unexpectedly succeeded.
+			err = fmt.Errorf("panic: %v", r)
 		}
 	}()
 	mt := method.Type()

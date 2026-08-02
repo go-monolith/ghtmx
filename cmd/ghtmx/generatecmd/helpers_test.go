@@ -43,6 +43,9 @@ func TestFatalError(t *testing.T) {
 	if !errors.As(fatal, &target) {
 		t.Error("errors.As(fatal, &FatalError{}) = false, want true")
 	}
+	if !errors.Is(target.Err, inner) {
+		t.Errorf("errors.As left the target empty: %+v", target)
+	}
 
 	// Wrapped one level deeper, the classification must survive: this is
 	// how it actually arrives from the generate pipeline.

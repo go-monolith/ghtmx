@@ -239,8 +239,17 @@ func TestDiagnosticCacheClearsTemplDiagnostics(t *testing.T) {
 
 // TestDiagnosticCacheClearOnAnUnknownURI pins that clearing a document
 // the cache never saw is harmless — it happens whenever a file is closed
-// before it was ever diagnosed.
+// before it was ever diagnosed — and that it does not disturb another
+// document's entry.
 func TestDiagnosticCacheClearOnAnUnknownURI(t *testing.T) {
+	const kept = "file:///project/kept.ghtmx"
 	cache := NewDiagnosticCache()
+	cache.AddGoDiagnostics(kept, []lsp.Diagnostic{{Message: "still relevant"}})
+
 	cache.ClearTemplDiagnostics("file:///project/never-seen.ghtmx")
+
+	merged := cache.AddTemplDiagnostics(kept, nil)
+	if len(merged) != 1 || merged[0].Message != "still relevant" {
+		t.Errorf("clearing an unknown URI disturbed another document: %+v", merged)
+	}
 }

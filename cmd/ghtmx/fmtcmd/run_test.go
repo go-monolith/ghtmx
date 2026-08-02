@@ -12,9 +12,10 @@ import (
 
 // `ghtmx fmt` rewrites the user's source in place, so its failure modes
 // are the expensive kind. Reading a file it cannot parse must leave that
-// file alone and say why; -stdout must not also write; and -fail is what
-// CI relies on to reject an unformatted branch, so it has to notice a
-// change without making one.
+// file alone and say why, and -stdout must not also write. -fail is what
+// CI relies on to reject an unformatted branch: it reports through the
+// exit code and still rewrites, which is pinned below rather than
+// assumed either way.
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
@@ -71,17 +72,28 @@ func TestRunToStdoutLeavesTheFileAlone(t *testing.T) {
 	}
 }
 
-// TestRunFailIfChange is what CI runs. It has to report the change
-// without applying it, or a formatting check would quietly fix the
-// branch it was meant to reject.
+// TestRunFailIfChange is what CI runs. Note what it actually does: the
+// file is rewritten *and* a non-zero exit returned. -fail reports that
+// formatting was needed; it does not suppress the write, so a CI job
+// relying on it is really relying on the exit code, and any job that
+// also wants the tree untouched has to check out again afterwards.
 func TestRunFailIfChange(t *testing.T) {
-	t.Run("unformatted source fails", func(t *testing.T) {
+	t.Run("unformatted source fails and is rewritten", func(t *testing.T) {
 		_, path := writeTemplate(t, unformatted)
 
 		err := Run(quiet(), strings.NewReader(""), io.Discard,
 			Arguments{Files: []string{path}, FailIfChanged: true})
 		if err == nil {
 			t.Fatal("Run succeeded on unformatted source with -fail")
+		}
+		// Pinned because the opposite is easy to assume: -fail is a
+		// report, not a dry run.
+		got, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if string(got) != formatted {
+			t.Errorf("-fail left the file unformatted:\n%q", got)
 		}
 	})
 
@@ -183,6 +195,66 @@ func TestRunOverSeveralFiles(t *testing.T) {
 		}
 		if string(got) != formatted {
 			t.Errorf("%s was not formatted:\n%q", filepath.Base(path), got)
+		}
+	}
+}
+
+// TestRunOverSeveralPathsAggregatesFailures is the regression test for
+// the multi-path change: before it, everything after the first path was
+// ignored entirely. A failure in one path must not stop the others, and
+// the error has to name the file that broke.
+func TestRunOverSeveralPathsAggregatesFailures(t *testing.T) {
+	dir := t.TempDir()
+	broken := filepath.Join(dir, "broken.ghtmx")
+	good := filepath.Join(dir, "good.ghtmx")
+	if err := os.WriteFile(broken, []byte("package app\n\ntempl X() {\n\t<div>\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(good, []byte(unformatted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Run(quiet(), strings.NewReader(""), io.Discard,
+		Arguments{Files: []string{broken, good}})
+	if err == nil {
+		t.Fatal("Run succeeded despite an unparseable file")
+	}
+	if !strings.Contains(err.Error(), "broken.ghtmx") {
+		t.Errorf("error %q does not name the file that failed", err)
+	}
+
+	// The good file must still have been formatted: stopping at the
+	// first failure is the behaviour this change removed.
+	got, readErr := os.ReadFile(good)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(got) != formatted {
+		t.Errorf("a later path was skipped after an earlier failure:\n%q", got)
+	}
+}
+
+// TestRunOverADirectory covers the invocation the usage text documents
+// and the multi-path loop now supports.
+func TestRunOverADirectory(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"a.ghtmx", "b.ghtmx"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(unformatted), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := Run(quiet(), strings.NewReader(""), io.Discard,
+		Arguments{Files: []string{dir}}); err != nil {
+		t.Fatalf("Run over a directory: %v", err)
+	}
+	for _, name := range []string{"a.ghtmx", "b.ghtmx"} {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != formatted {
+			t.Errorf("%s was not formatted:\n%q", name, got)
 		}
 	}
 }

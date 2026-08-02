@@ -111,9 +111,6 @@ func TestArgumentsAcceptValidCombinations(t *testing.T) {
 // has to say so rather than reporting success over a file that was never
 // updated.
 func TestRunReportsAnUnwritableOutputDirectory(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("running as root: permission bits are not enforced")
-	}
 	dir := newProject(t)
 
 	// Read-only directory: the generated file cannot be created.
@@ -121,6 +118,7 @@ func TestRunReportsAnUnwritableOutputDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	skipIfWritable(t, dir)
 
 	if _, _, err := runGenerate(t, "-path", dir, "-include-version=false"); err == nil {
 		t.Error("Run succeeded writing into a read-only directory")
@@ -263,5 +261,17 @@ func TestRunWithACancelledContextDoesNotCorrupt(t *testing.T) {
 	}
 	if !strings.Contains(string(content), "func Page(") {
 		t.Errorf("the generated file is truncated:\n%s", content)
+	}
+}
+
+// skipIfWritable probes rather than checking euid: root, unusual
+// capabilities and filesystems that ignore mode bits all make a
+// read-only directory writable, and euid catches only the first.
+func skipIfWritable(t *testing.T, dir string) {
+	t.Helper()
+	probe := filepath.Join(dir, ".write-probe")
+	if err := os.WriteFile(probe, []byte("x"), 0o644); err == nil {
+		_ = os.Remove(probe)
+		t.Skip("the directory is writable despite its mode; permission bits are not enforced here")
 	}
 }

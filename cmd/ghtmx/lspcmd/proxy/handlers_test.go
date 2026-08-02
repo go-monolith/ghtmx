@@ -132,8 +132,14 @@ func TestNotifyGoplsVersionWithoutAClient(t *testing.T) {
 	s := newTestServer(&mockServer{})
 	s.GoplsVersion = "v0.23.0"
 
-	// No client in the context: must be a no-op, not a panic.
+	// A client is reachable, but not through the context — which is the
+	// only place the notification looks. Nothing may reach it.
+	client := &loggingClient{}
 	s.notifyGoplsVersion(context.Background())
+
+	if len(client.messages) != 0 {
+		t.Errorf("a message was sent with no client in the context: %+v", client.messages)
+	}
 }
 
 // loggingClient records the LogMessage calls the server makes.

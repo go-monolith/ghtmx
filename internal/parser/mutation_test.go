@@ -15,9 +15,12 @@ import (
 // Mutating real templates reaches them in bulk instead, and asserts the
 // property that actually matters: whatever you do to a .ghtmx file, the
 // parser either understands it or reports an error — it never panics,
-// never hangs, and never returns a tree it cannot reproduce. That is the
-// contract the LSP depends on, because it parses on every keystroke and
-// every intermediate state is a mutation of something valid.
+// and never returns a tree it cannot reproduce. That is the contract the
+// LSP depends on, because it parses on every keystroke and every
+// intermediate state is a mutation of something valid.
+//
+// Parse time is not bounded here, so a hang would surface as the package
+// timing out rather than as a named failure.
 
 // mutationSeeds are templates chosen to span the grammar: elements and
 // attributes, control flow, expressions, and the three declaration kinds
@@ -152,6 +155,14 @@ func TestWhatParsesAlsoWrites(t *testing.T) {
 				var sb strings.Builder
 				if err := parsed.Write(&sb); err != nil {
 					t.Errorf("line %d dropped: parsed but could not be written back: %v\nsource:\n%s", i, err, mutated)
+					continue
+				}
+				// A Write that emitted nothing and returned nil is
+				// exactly the truncation this test exists to catch, so
+				// the output has to parse in turn.
+				if _, err := parser.ParseString(sb.String()); err != nil {
+					t.Errorf("line %d dropped: the written output does not parse: %v\nwritten:\n%q\nsource:\n%s",
+						i, err, sb.String(), mutated)
 				}
 			}
 		})

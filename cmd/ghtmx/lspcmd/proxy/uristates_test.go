@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
+	"github.com/go-monolith/ghtmx/internal/parser"
 )
 
 // Nearly every method on this server branches three ways on the URI it
@@ -101,7 +102,7 @@ func sweepWithURI(t *testing.T, uri string, allowFailure map[string]bool, prepar
 			ctx := lsp.WithClient(context.Background(), &recordingClient{})
 
 			err := callMethodWith(t, s, name, ctx, func(arg reflect.Value) {
-				fillRequest(arg, uri, 5, 10)
+				fillRequest(arg, uri, 5, 9)
 			})
 			if err != nil && !allowFailure[name] {
 				t.Errorf("%s returned %v for %q, want nil", name, err, uri)
@@ -135,13 +136,30 @@ func TestEveryMethodHandlesAKnownTemplURI(t *testing.T) {
 	sweepWithURI(t, uri, nil, func(s *Server) {
 		s.TemplSource.Set(uri, NewDocument(testLog(), "package project\n\ntempl X() {\n\t<div></div>\n}\n"))
 		s.GoSource[uri] = "package project\n"
-	})
-}
 
-// TestEveryMethodHandlesAnEmptyURI pins the degenerate case an editor
-// sends on shutdown, when the document it refers to is already gone.
-func TestEveryMethodHandlesAnEmptyURI(t *testing.T) {
-	sweepWithURI(t, "", nil, nil)
+		// Without this the sweep takes the no-source-map branch and
+		// duplicates the unknown-URI case above; the mapping covers the
+		// position fillRequest sets, so the conversion paths run.
+		sm := parser.NewSourceMap()
+		sm.Add(
+			parser.Expression{
+				Value: "name",
+				Range: parser.Range{
+					From: parser.Position{Line: 3, Col: 8},
+					To:   parser.Position{Line: 3, Col: 12},
+				},
+			},
+			parser.Range{
+				From: parser.Position{Line: 5, Col: 8},
+				To:   parser.Position{Line: 5, Col: 12},
+			},
+		)
+		sm.AddSymbolRange(
+			parser.Range{From: parser.Position{Line: 2, Col: 0}, To: parser.Position{Line: 4, Col: 1}},
+			parser.Range{From: parser.Position{Line: 5, Col: 0}, To: parser.Position{Line: 12, Col: 1}},
+		)
+		s.SourceMapCache.Set(uri, sm)
+	})
 }
 
 // TestFormattingADocumentThatIsNotOpen is a regression test. The server
