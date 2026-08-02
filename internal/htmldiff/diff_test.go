@@ -221,7 +221,7 @@ func TestDiffCtxPassesTheContextThrough(t *testing.T) {
 // more than one golden, where it cannot know which one to overwrite.
 func TestGoldenUpdateModeRewritesTheGolden(t *testing.T) {
 	dir := t.TempDir()
-	chdir(t, dir)
+	t.Chdir(dir)
 	t.Setenv("GHTMX_UPDATE_GOLDEN", "1")
 
 	if err := os.WriteFile(filepath.Join(dir, "expected.html"), []byte("<p>stale</p>"), 0o644); err != nil {
@@ -252,7 +252,7 @@ func TestGoldenUpdateModeRewritesTheGolden(t *testing.T) {
 
 func TestGoldenUpdateModeRefusesWithSeveralGoldens(t *testing.T) {
 	dir := t.TempDir()
-	chdir(t, dir)
+	t.Chdir(dir)
 	t.Setenv("GHTMX_UPDATE_GOLDEN", "1")
 
 	for _, name := range []string{"expected.html", "expected-alt.html"} {
@@ -284,7 +284,7 @@ func TestGoldenUpdateModeRefusesWithSeveralGoldens(t *testing.T) {
 // updates the file that would have caught it.
 func TestGoldenUpdateModeIsOffByDefault(t *testing.T) {
 	dir := t.TempDir()
-	chdir(t, dir)
+	t.Chdir(dir)
 	t.Setenv("GHTMX_UPDATE_GOLDEN", "")
 
 	if err := os.WriteFile(filepath.Join(dir, "expected.html"), []byte("<p>stale</p>"), 0o644); err != nil {
@@ -324,23 +324,4 @@ func TestCollapse(t *testing.T) {
 			}
 		})
 	}
-}
-
-// chdir switches the working directory for the duration of a test. The
-// golden-update path is defined in terms of the test's working
-// directory, so exercising it means actually being somewhere else.
-func chdir(t *testing.T, dir string) {
-	t.Helper()
-	prev, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(prev); err != nil {
-			t.Fatal(err)
-		}
-	})
 }

@@ -52,7 +52,13 @@ func argFor(t reflect.Type) reflect.Value {
 // callMethod invokes the named method with allocated arguments and
 // returns the trailing error, reporting a panic as a test failure rather
 // than letting one method take the whole run down.
-func callMethod(t *testing.T, srv lsp.Server, name string) (err error) {
+func callMethod(t *testing.T, srv lsp.Server, name string) error {
+	return callMethodWith(t, srv, name, context.Background(), nil)
+}
+
+// callMethodWith invokes the named method with allocated arguments, an
+// explicit context, and an optional hook to populate each argument.
+func callMethodWith(t *testing.T, srv lsp.Server, name string, ctx context.Context, fill func(reflect.Value)) (err error) {
 	t.Helper()
 	method := reflect.ValueOf(srv).MethodByName(name)
 	if !method.IsValid() {
@@ -70,8 +76,13 @@ func callMethod(t *testing.T, srv lsp.Server, name string) (err error) {
 	for i := range args {
 		args[i] = argFor(mt.In(i))
 	}
+	if fill != nil {
+		for _, arg := range args {
+			fill(arg)
+		}
+	}
 	if len(args) > 0 && mt.In(0) == reflect.TypeFor[context.Context]() {
-		args[0] = reflect.ValueOf(context.Background())
+		args[0] = reflect.ValueOf(ctx)
 	}
 	out := method.Call(args)
 	if len(out) == 0 {
@@ -168,26 +179,15 @@ func TestEveryServerMethodHandlesATemplURI(t *testing.T) {
 			s.TemplSource.Set(templURI, NewDocument(testLog(), "package main\n"))
 			ctx := lsp.WithClient(context.Background(), &recordingClient{})
 
-			method := reflect.ValueOf(s).MethodByName(name)
-			mt := method.Type()
-			args := make([]reflect.Value, mt.NumIn())
-			for i := range args {
-				args[i] = argFor(mt.In(i))
-			}
-			if len(args) > 0 && mt.In(0) == reflect.TypeFor[context.Context]() {
-				args[0] = reflect.ValueOf(ctx)
-			}
-			// Fill any TextDocument.URI field the request carries.
-			for _, arg := range args {
+			// Routed through callMethod so the trailing error is
+			// checked: discarding it would let a method that started
+			// failing on a well-formed .ghtmx request — the branch this
+			// test exists for — pass silently.
+			if err := callMethodWith(t, s, name, ctx, func(arg reflect.Value) {
 				setTextDocumentURI(arg, templURI)
+			}); err != nil {
+				t.Errorf("%s returned %v for a .ghtmx request, want nil", name, err)
 			}
-
-			defer func() {
-				if r := recover(); r != nil {
-					t.Errorf("%s panicked on a .ghtmx request: %v", name, r)
-				}
-			}()
-			method.Call(args)
 		})
 	}
 }

@@ -93,14 +93,17 @@ func newStubServer() *stubServer {
 	return &stubServer{Resilient: NewResilient(discardLog(), fixedSpawner(&spawned))}
 }
 
-// pendingCount reports how many document-sync notifications the stub
-// has buffered, which is how the delegation sweep proves calls actually
-// reached the target rather than being answered by the wrapper.
-func (s *stubServer) pendingCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.pending)
+// pendingCountOf reports how many document-sync notifications a
+// supervisor has buffered. It takes the lock because restart() runs in a
+// goroutine and reassigns pending.
+func pendingCountOf(r *Resilient) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.pending)
 }
+
+// pendingCount is the same read for the stub target.
+func (s *stubServer) pendingCount() int { return pendingCountOf(s.Resilient) }
 
 // documentSyncMethods are the notifications Resilient buffers for replay
 // while gopls is down, rather than dropping. Keeping the list explicit
@@ -147,8 +150,9 @@ func TestEveryServerMethodDelegatesToTheTarget(t *testing.T) {
 
 	// With a live target nothing may be buffered on the wrapper itself:
 	// the notifications went through to the target, which buffered them
-	// in turn because it is degraded.
-	if got := len(r.pending); got != 0 {
+	// in turn because it is degraded. Read under the lock: restart()
+	// runs in a goroutine and reassigns pending.
+	if got := pendingCountOf(r); got != 0 {
 		t.Errorf("wrapper buffered %d notifications while the target was live, want 0", got)
 	}
 	if got, want := stub.pendingCount(), len(documentSyncMethods); got != want {

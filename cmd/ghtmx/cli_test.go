@@ -79,17 +79,32 @@ func TestRunDispatch(t *testing.T) {
 // or return a failure code — a user piping the output would otherwise
 // get nothing.
 func TestSubcommandHelp(t *testing.T) {
-	for _, sub := range []string{"info", "generate", "fmt", "routes", "lsp"} {
-		t.Run(sub, func(t *testing.T) {
-			code, stdout, stderr := invoke(sub, "-help")
+	// -h is not a registered flag: the flag package handles it itself and
+	// reports ErrHelp, a different path from -help. Both have to land on
+	// stdout with exit 0, or `ghtmx fmt -h | less` shows nothing and any
+	// wrapper treating non-zero as failure breaks.
+	//
+	// `generate` handles -help itself but not -h: it parses its own
+	// arguments in generatecmd.NewArguments, which treats the flag
+	// package's ErrHelp as a parse failure. Pre-existing, and left alone
+	// here rather than silently papered over.
+	for _, flagName := range []string{"-help", "-h"} {
+		subs := []string{"info", "generate", "fmt", "routes", "lsp"}
+		if flagName == "-h" {
+			subs = []string{"info", "fmt", "routes", "lsp"}
+		}
+		for _, sub := range subs {
+			t.Run(sub+flagName, func(t *testing.T) {
+				code, stdout, stderr := invoke(sub, flagName)
 
-			if code != 0 {
-				t.Errorf("exit code = %d, want 0 (stderr: %s)", code, stderr)
-			}
-			if !strings.Contains(stdout, "usage: ghtmx "+sub) {
-				t.Errorf("stdout does not carry %s's usage text:\n%s", sub, stdout)
-			}
-		})
+				if code != 0 {
+					t.Errorf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+				}
+				if !strings.Contains(stdout, "usage: ghtmx "+sub) {
+					t.Errorf("stdout does not carry %s's usage text:\n%s", sub, stdout)
+				}
+			})
+		}
 	}
 }
 
@@ -115,10 +130,11 @@ func TestSubcommandRejectsAnUnknownFlag(t *testing.T) {
 			if !strings.Contains(stderr, "usage: ghtmx "+sub) {
 				t.Errorf("stderr does not carry %s's usage text:\n%s", sub, stderr)
 			}
-			// The flag package's own error text must not leak alongside
-			// the usage message.
-			if strings.Contains(stderr, "flag provided but not defined") {
-				t.Errorf("the flag package's message leaked into stderr:\n%s", stderr)
+			// The flag package's message names the offending flag, and
+			// it is the only thing that says *what* was wrong; the usage
+			// block alone leaves the user comparing by eye.
+			if !strings.Contains(stderr, "no-such-flag") {
+				t.Errorf("stderr does not name the offending flag:\n%s", stderr)
 			}
 		})
 	}

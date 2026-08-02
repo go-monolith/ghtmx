@@ -222,10 +222,18 @@ func parseProfile(r io.Reader) (map[string]*block, error) {
 		key := fields[0]
 		b := blocks[key]
 		if b == nil {
-			b = &block{
-				file:    strings.TrimPrefix(fields[0][:colon], modulePrefix),
-				numStmt: numStmt,
+			// CutPrefix rather than TrimPrefix: an entry from outside the
+			// root module would keep its full import path, match none of
+			// the exclusion rules, and be counted as own code under a
+			// package name like "github.com/a-h/parse". Reachable via
+			// GHTMX_COVER_PROFILE or a -coverpkg=all run, and reporting a
+			// confident wrong number is the one thing this gate exists to
+			// avoid.
+			rel, ok := strings.CutPrefix(fields[0][:colon], modulePrefix)
+			if !ok {
+				return nil, fmt.Errorf("line %d: %q is outside the root module %s", lineNo, fields[0], modulePrefix)
 			}
+			b = &block{file: rel, numStmt: numStmt}
 			blocks[key] = b
 		} else if b.numStmt != numStmt {
 			// Same position, different statement count: the profile
@@ -443,6 +451,7 @@ func TestProfileParsingRejectsMalformedInput(t *testing.T) {
 		{"no position separator", "mode: atomic\ngithub.com/go-monolith/ghtmx/a.go 3 1\n"},
 		{"bad statement count", "mode: atomic\ngithub.com/go-monolith/ghtmx/a.go:1.1,2.2 x 1\n"},
 		{"bad execution count", "mode: atomic\ngithub.com/go-monolith/ghtmx/a.go:1.1,2.2 3 x\n"},
+		{"a file outside the root module", "mode: atomic\ngithub.com/a-h/parse/parse.go:1.1,2.2 3 1\n"},
 		{
 			"mixed builds",
 			"mode: atomic\n" +

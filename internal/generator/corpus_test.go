@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -175,11 +176,16 @@ func TestCorpusGenerationMatchesCommittedOutput(t *testing.T) {
 				t.Errorf("generated output differs from %s\n%s",
 					generatedPath(tpl.rel), firstDifference(string(committed), string(formatted)))
 			}
+			// Counted here, not around t.Run: incrementing outside the
+			// closure counts templates that skipped for having no
+			// committed output, so the guard below would stay green even
+			// if every _ghtmx.go vanished.
+			compared++
 		})
-		compared++
 	}
 	if compared < 40 {
-		t.Errorf("only %d templates were compared; the corpus should be far larger, so the walk is missing files", compared)
+		t.Errorf("only %d templates were actually compared against committed output; "+
+			"the corpus should be far larger, so either the walk is missing files or the committed output is gone", compared)
 	}
 }
 
@@ -250,16 +256,6 @@ func firstDifference(want, got string) string {
 	return "the files differ only in trailing content"
 }
 
-func quote(s string) string { return "\"" + strings.ReplaceAll(s, "\t", "\\t") + "\"" }
+func quote(s string) string { return strconv.Quote(s) }
 
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var digits []byte
-	for i > 0 {
-		digits = append([]byte{byte('0' + i%10)}, digits...)
-		i /= 10
-	}
-	return string(digits)
-}
+func itoa(i int) string { return strconv.Itoa(i) }

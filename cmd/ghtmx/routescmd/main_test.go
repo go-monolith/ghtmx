@@ -296,18 +296,7 @@ func TestRunDefaultsToTheWorkingDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	prev, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(prev); err != nil {
-			t.Fatal(err)
-		}
-	})
+	t.Chdir(dir)
 
 	var stdout bytes.Buffer
 	if err := Run(discardLog(), &stdout, Arguments{}); err != nil {
