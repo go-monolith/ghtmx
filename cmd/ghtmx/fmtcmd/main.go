@@ -65,12 +65,22 @@ func Run(log *slog.Logger, stdin io.Reader, stdout io.Writer, args Arguments) (e
 		}
 		return nil, true
 	}
-	dir := args.Files[0]
-	shouldSkip, err := ignorefile.ShouldSkipFunc(dir, ".ghtmxignore_fmt")
-	if err != nil {
-		return fmt.Errorf("failed to parse .ghtmxignore_fmt: %w", err)
+	// Every path is formatted, not just the first. `ghtmx fmt *.ghtmx`
+	// is a natural thing to type, and taking Files[0] alone left the
+	// rest untouched with nothing said about it — the shell had already
+	// expanded the glob, so the user saw a successful run and assumed
+	// the whole set was done.
+	var errs []error
+	for _, dir := range args.Files {
+		shouldSkip, err := ignorefile.ShouldSkipFunc(dir, ".ghtmxignore_fmt")
+		if err != nil {
+			return fmt.Errorf("failed to parse .ghtmxignore_fmt: %w", err)
+		}
+		if err := NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip).Run(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip).Run()
+	return errors.Join(errs...)
 }
 
 type Formatter struct {

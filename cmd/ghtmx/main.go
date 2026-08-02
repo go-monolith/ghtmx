@@ -175,6 +175,11 @@ Format stdin to stdout:
 
   ghtmx fmt < header.ghtmx
 
+Format several files or directories:
+
+  ghtmx fmt header.ghtmx footer.ghtmx
+  ghtmx fmt ./internal ./cmd
+
 Format file or directory to stdout:
 
   ghtmx fmt -stdout FILE
