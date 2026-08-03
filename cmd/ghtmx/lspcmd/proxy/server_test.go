@@ -291,12 +291,13 @@ func newTestServer(mock *mockServer) *Server {
 	cache := NewSourceMapCache()
 	cache.Set("file:///project/component.ghtmx", newTestSourceMap())
 	return &Server{
-		Log:             log,
-		Target:          mock,
-		SourceMapCache:  cache,
-		DiagnosticCache: NewDiagnosticCache(),
-		TemplSource:     newDocumentContents(log),
-		GoSource:        make(map[string]string),
+		Log:               log,
+		Target:            mock,
+		SourceMapCache:    cache,
+		DiagnosticCache:   NewDiagnosticCache(),
+		TemplSource:       newDocumentContents(log),
+		GoSource:          make(map[string]string),
+		templateExtension: NewTemplateExtension(),
 	}
 }
 
@@ -1026,12 +1027,13 @@ func TestCodeActionConvertsWorkspaceEdit(t *testing.T) {
 	cache.Set("file:///project/component.ghtmx", newTestSourceMapMulti())
 	log := slog.Default()
 	s := &Server{
-		Log:             log,
-		Target:          mock,
-		SourceMapCache:  cache,
-		DiagnosticCache: NewDiagnosticCache(),
-		TemplSource:     newDocumentContents(log),
-		GoSource:        make(map[string]string),
+		Log:               log,
+		Target:            mock,
+		SourceMapCache:    cache,
+		DiagnosticCache:   NewDiagnosticCache(),
+		TemplSource:       newDocumentContents(log),
+		GoSource:          make(map[string]string),
+		templateExtension: NewTemplateExtension(),
 	}
 	result, err := s.CodeAction(context.Background(), &lsp.CodeActionParams{
 		TextDocument: lsp.TextDocumentIdentifier{URI: "file:///project/component.ghtmx"},
