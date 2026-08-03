@@ -21,8 +21,12 @@
       {
         "id": "ghtmx",
         "aliases": ["ghtmx"],
-        "extensions": [".ghtmx"],
-        "configuration": "./language-configuration.json"
+        "extensions": [".ghtmx", ".htmx"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/ghtmx-light.svg",
+          "dark": "./icons/ghtmx-dark.svg"
+        }
       }
     ],
     "grammars": [

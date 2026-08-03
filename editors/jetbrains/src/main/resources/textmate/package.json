@@ -5,7 +5,10 @@
     "languages": [
       {
         "id": "ghtmx",
-        "extensions": [".ghtmx"]
+        "extensions": [
+          ".ghtmx",
+          ".htmx"
+        ]
       }
     ],
     "grammars": [
