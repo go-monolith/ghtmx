@@ -1,0 +1,157 @@
+name: Auto-release
+
+# Every merge to main cuts the next patch release.
+#
+# `main` is branch-protected with required status checks and
+# enforce_admins, so CI cannot push a release-prep commit to it. Tags are
+# not restricted, so this workflow builds the prep commit OFF main — its
+# parent is the merge commit — and tags that. main is never written to.
+# The tagged tree therefore still satisfies release.yml's "verify, never
+# stamp" invariant: .version and the adapter requires match the tag.
+#
+# main's own .version is a dev placeholder from here on; the value that
+# ships is the one this workflow writes into the tag.
+"on":
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Two merges in quick succession must not race for the same tag.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether this merge ships, and as what version
+        id: plan
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          skip() { echo "release=false" >> "$GITHUB_OUTPUT"; echo "::notice::$1"; exit 0; }
+
+          subject=$(git log -1 --pretty=%s)
+          message=$(git log -1 --pretty=%B)
+
+          case "$message" in
+            *"[skip release]"*|*"[release skip]"*)
+              skip "Opted out via [skip release]." ;;
+          esac
+
+          # A first push, a force-push, or a squash of an orphan branch
+          # leaves `before` unusable; fall back to the merge's own parent.
+          # `git rev-parse` echoes its argument back on failure, so every
+          # candidate is verified rather than captured — an unresolvable
+          # base must not read as "nothing changed" and skip the release.
+          base=""
+          if [ -n "${BEFORE:-}" ] && git rev-parse -q --verify "${BEFORE}^{commit}" >/dev/null; then
+            base="$BEFORE"
+          elif git rev-parse -q --verify 'HEAD~1^{commit}' >/dev/null; then
+            base=$(git rev-parse 'HEAD~1')
+          fi
+
+          # Docs-only merges must not publish a version with no code in it.
+          # With no resolvable base the change set is unknown, so the
+          # release proceeds rather than being silently dropped.
+          if [ -n "$base" ]; then
+            shipped=$(git diff --name-only "$base" HEAD \
+              | grep -vE '(^|/)[^/]*\.md$' \
+              | grep -vE '^docs/' \
+              | grep -vE '^\.github/' || true)
+            if [ -z "$shipped" ]; then
+              skip "Only docs, markdown, or workflows changed — nothing to release."
+            fi
+          fi
+
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+          if [ -z "$latest" ]; then
+            echo "::error::No vX.Y.Z tag exists yet. Automation only bumps from an existing tag — cut the first release by hand (RELEASING.md), then merges will auto-bump from it."
+            exit 1
+          fi
+
+          number=${latest#v}
+          major=${number%%.*}
+          rest=${number#*.}
+          minor=${rest%%.*}
+          patch=${rest#*.}
+          patch=${patch%%[!0-9]*}
+
+          # Pre-1.0 the project allows breaking changes between MINOR
+          # versions (CHANGELOG.md), so a breaking marker must not ship as
+          # a patch. The subject here is usually "#N Summary", not
+          # Conventional Commits, so `!:` in the subject and a
+          # BREAKING CHANGE trailer anywhere both count.
+          if printf '%s' "$subject" | grep -qE '!:' \
+             || printf '%s' "$message" | grep -qE '(^|[^A-Za-z])BREAKING[ -]CHANGE'; then
+            minor=$((minor + 1))
+            patch=0
+            echo "::notice::Breaking marker found — bumping the minor version."
+          else
+            patch=$((patch + 1))
+          fi
+
+          next="v${major}.${minor}.${patch}"
+
+          if git rev-parse -q --verify "refs/tags/$next" >/dev/null; then
+            echo "::error::$next already exists. Refusing to move a published tag — module versions are immutable once the proxy has seen them."
+            exit 1
+          fi
+
+          echo "Latest tag $latest -> releasing $next"
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+      # The prep commit RELEASING.md step 1 describes, built off main so
+      # branch protection is never bypassed. It is reachable only from the
+      # tag; main keeps its own .version.
+      - name: Build and tag the release-prep commit
+        if: steps.plan.outputs.release == 'true'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          printf '%s' "${TAG#v}" > .version
+
+          # Only the `require` lines carry a version; the `replace` lines
+          # have none and are left alone, so in-repo development keeps
+          # building against the working tree.
+          sed -i -E "s|(github\.com/go-monolith/ghtmx) v[0-9]+\.[0-9]+\.[0-9]+\S*$|\1 $TAG|" \
+            adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
+          sed -i -E "s|(github\.com/go-monolith/ghtmx/adapters/chi) v[0-9]+\.[0-9]+\.[0-9]+\S*$|\1 $TAG|" \
+            docs/official/go.mod internal/wasmcheck/fixture/go.mod
+
+          git add .version adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
+          git commit -m "Release $TAG" -m "Automated release-prep commit (auto-release.yml). Not on main: it exists only under the tag, so the tagged tree is self-consistent for go install and go get consumers."
+
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+
+  # Called directly rather than left to the tag-push trigger: tags pushed
+  # with the default GITHUB_TOKEN do not start new workflow runs.
+  release:
+    needs: tag
+    if: needs.tag.outputs.release == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    permissions:
+      contents: write
+    secrets: inherit

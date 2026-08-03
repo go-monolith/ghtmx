@@ -10,9 +10,22 @@ name: Release
 # release-prep commit (see RELEASING.md) sets .version and the adapter
 # requires to the tag's version, so the tagged tree is self-consistent
 # for `go install` and `go get` consumers too.
+#
+# Two entry points, both landing here with a tag that already exists:
+#   - a human pushing `vX.Y.Z` (RELEASING.md)
+#   - auto-release.yml calling this workflow after an automated bump
+# A tag pushed by the default GITHUB_TOKEN does not start a new workflow
+# run, so the automated path calls this one directly rather than relying
+# on the tag-push trigger.
 "on":
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Existing tag to release. Defaults to the pushed tag."
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -20,18 +33,22 @@ permissions:
 jobs:
   gates:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
       - name: Verify the release-prep commit
         run: |
-          test "v$(cat .version)" = "$GITHUB_REF_NAME" || {
-            echo ".version is $(cat .version) but the tag is $GITHUB_REF_NAME — make the release-prep commit first (RELEASING.md)"; exit 1; }
+          test "v$(cat .version)" = "$TAG" || {
+            echo ".version is $(cat .version) but the tag is $TAG — make the release-prep commit first (RELEASING.md)"; exit 1; }
           for mod in adapters/*/go.mod; do
-            grep -q "github.com/go-monolith/ghtmx $GITHUB_REF_NAME" "$mod" || {
-              echo "$mod does not require ghtmx $GITHUB_REF_NAME — adapters must version in lockstep (RELEASING.md)"; exit 1; }
+            grep -q "github.com/go-monolith/ghtmx $TAG\$" "$mod" || {
+              echo "$mod does not require ghtmx $TAG — adapters must version in lockstep (RELEASING.md)"; exit 1; }
           done
       - name: Install gopls (required by LSP tests)
         run: go install golang.org/x/tools/gopls@v0.23.0
@@ -70,19 +87,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
       - name: Build checksummed artifacts for every platform
-        run: go run ./internal/release/cmd -version "$GITHUB_REF_NAME" -out dist/release
+        run: go run ./internal/release/cmd -version "$TAG" -out dist/release
       - name: Verify the shipped binary reports the tag
         run: |
-          tar -xzf "dist/release/ghtmx_${GITHUB_REF_NAME#v}_linux_amd64.tar.gz" -C "$(mktemp -d /tmp/ghtmx-verify-XXXX)" ghtmx || exit 1
+          tar -xzf "dist/release/ghtmx_${TAG#v}_linux_amd64.tar.gz" -C "$(mktemp -d /tmp/ghtmx-verify-XXXX)" ghtmx || exit 1
           bin=$(ls /tmp/ghtmx-verify-*/ghtmx | head -1)
-          test "$("$bin" version)" = "$GITHUB_REF_NAME" || {
-            echo "shipped binary reports $("$bin" version), expected $GITHUB_REF_NAME"; exit 1; }
+          test "$("$bin" version)" = "$TAG" || {
+            echo "shipped binary reports $("$bin" version), expected $TAG"; exit 1; }
       # Adapter tags go first: if anything fails after the release
       # exists, a re-run must stay idempotent.
       - name: Tag the adapter modules in lockstep
@@ -91,13 +112,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           for mod in adapters/*/go.mod; do
             dir=$(dirname "$mod")
-            git tag -f "$dir/$GITHUB_REF_NAME"
-            git push -f origin "refs/tags/$dir/$GITHUB_REF_NAME"
+            git tag -f "$dir/$TAG"
+            git push -f origin "refs/tags/$dir/$TAG"
           done
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" dist/release/* \
-              --title "ghtmx $GITHUB_REF_NAME" --generate-notes
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" dist/release/* \
+              --title "ghtmx $TAG" --generate-notes
