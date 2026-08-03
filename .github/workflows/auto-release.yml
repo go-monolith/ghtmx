@@ -34,7 +34,12 @@ concurrency:
 
 jobs:
   plan:
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # A fork PR's token is read-only no matter what `permissions` says,
+    # so the staging push would fail; the push-to-main run covers those.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,10 +63,9 @@ jobs:
           set -euo pipefail
           skip() { echo "release=false" >> "$GITHUB_OUTPUT"; echo "::notice::$1"; exit 0; }
 
-          subject=$(git log -1 --pretty=%s)
-          message=$(git log -1 --pretty=%B)
-
-          case "$message" in
+          # Opting out is about this merge, so it reads the tip only: it
+          # means "not now", and the next merge releases the backlog.
+          case "$(git log -1 --pretty=%B)" in
             *"[skip release]"*|*"[release skip]"*)
               skip "Opted out via [skip release]." ;;
           esac
@@ -113,11 +117,19 @@ jobs:
 
           # Pre-1.0 the project allows breaking changes between MINOR
           # versions (CHANGELOG.md), so a breaking marker must not ship
-          # as a patch. `!:` is read from the subject only, and the
-          # trailer must start its own line — prose that merely mentions
-          # a breaking change must not force a minor bump.
-          if printf '%s' "$subject" | grep -qE '^[^ ]*!:' \
-             || printf '%s' "$message" | grep -qE '^BREAKING[ -]CHANGE:'; then
+          # as a patch. This scans every commit the release covers, not
+          # just the tip: the release spans everything since the last
+          # tag, and a marker in a merge whose own run was coalesced
+          # away would otherwise ship as a patch. It also reaches the
+          # individual commits behind a true merge commit, whose own
+          # subject carries no marker.
+          #
+          # `!:` is read from subjects only, and the trailer must start
+          # its own line, so prose mentioning a breaking change does not
+          # force a minor bump.
+          range=${base:+$base..}HEAD
+          if git log "$range" --pretty=%s | grep -qE '^[^ ]*!:' \
+             || git log "$range" --pretty=%B | grep -qE '^BREAKING[ -]CHANGE:'; then
             minor=$((minor + 1))
             patch=0
             echo "::notice::Breaking marker found — bumping the minor version."
@@ -190,16 +202,19 @@ jobs:
     permissions:
       contents: write
 
+  # Only on success. A failed release must keep its scratch branch: the
+  # gated tree is the post-mortem, and deleting it makes GitHub's
+  # "Re-run failed jobs" check out a ref that no longer exists. Branches
+  # left by a failure are cleared by the next successful run of the same
+  # version, or by hand — `git push origin --delete auto-release/vX.Y.Z`.
   cleanup:
     needs: [plan, release]
-    if: always() && needs.plan.outputs.ref != ''
+    if: needs.plan.outputs.ref != '' && needs.release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      # The commit survives under its tag when the release succeeded, and
-      # is unreferenced when it failed — either way the scratch branch has
-      # done its job.
+      # The commit survives under its tag from here on.
       - name: Delete the scratch branch
         run: git push origin --delete "${{ needs.plan.outputs.ref }}" || true

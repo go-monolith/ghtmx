@@ -133,9 +133,12 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 		`grep -q "github.com/go-monolith/ghtmx $TAG\$"`,
 		"git diff --exit-code", // generated code is current
 		"adapters/*/go.mod",    // adapter tests + lockstep tags
-		// Tags are created only when absent and pushed without --force:
-		// a published module version must never move under consumers.
-		`git tag -a "$name" -m "Release $name"`,
+		// Existence is checked against the remote, because the checkout
+		// fetches no tags and a local miss would mint a fresh tag object
+		// whose push is rejected — stranding a partial release that no
+		// re-run could finish.
+		`git ls-remote origin "refs/tags/$name^{}"`,
+		`refusing to move it`,
 		`git push origin "refs/tags/$name"`,
 	} {
 		if !strings.Contains(workflow, needle) {

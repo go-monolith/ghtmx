@@ -20,11 +20,20 @@ and only then does the tag exist. A failed gate leaves no published
 version behind — which matters because a tag is immutable once the
 module proxy has seen it.
 
+A failed run keeps its `auto-release/vX.Y.Z` branch so the gated tree
+stays inspectable and the run can be retried. Re-run **all** jobs rather
+than only the failed ones; the version is derived from the last tag, so
+a retry recomputes the same one. Tag publishing is idempotent — already
+correct tags are left alone, missing ones are filled in, and a tag
+pointing at a different commit fails the job rather than moving.
+
 - **Version.** The next patch above the highest `vX.Y.Z` tag. A `!:` in
-  the merge subject, or a `BREAKING CHANGE` trailer anywhere in the
-  message, bumps the **minor** instead — pre-1.0 this project allows
-  breaking changes between minor versions, so they must not ship as a
-  patch.
+  a subject, or a line starting `BREAKING CHANGE:`, bumps the **minor**
+  instead — pre-1.0 this project allows breaking changes between minor
+  versions, so they must not ship as a patch. Every commit the release
+  covers is scanned, not just the merge tip, so a marker still counts
+  when its own run was coalesced away or when it sits behind a merge
+  commit.
 - **Opting out.** Put `[skip release]` in the merge commit message. A
   release is also skipped when nothing but `*.md`, `docs/`, or
   `.github/` has changed **since the last tag** — measured from the tag,
