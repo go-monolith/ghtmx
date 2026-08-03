@@ -31,7 +31,7 @@ func (s *shutdownServer) Exit(ctx context.Context) error {
 
 func TestShutdownAndExitReachGopls(t *testing.T) {
 	target := &shutdownServer{}
-	s := NewServer(testLog(), target, NewSourceMapCache(), NewDiagnosticCache(), true, format.Config{})
+	s := NewServer(testLog(), target, NewSourceMapCache(), NewDiagnosticCache(), true, format.Config{}, NewTemplateExtension())
 	ctx := context.Background()
 
 	if err := s.Shutdown(ctx); err != nil {

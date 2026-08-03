@@ -86,7 +86,7 @@ func TestGoFileIsUpToDate(t *testing.T) {
 				}
 			}
 
-			if got := goFileIsUpToDate(templPath, "_ghtmx.go", edited); got != tt.want {
+			if got := goFileIsUpToDate(templPath, ".ghtmx", "_ghtmx.go", edited); got != tt.want {
 				t.Errorf("goFileIsUpToDate = %v, want %v", got, tt.want)
 			}
 		})

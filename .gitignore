@@ -63,3 +63,6 @@ internal/wasmcheck/fixture/fixture
 
 # Documentation site output
 dist/
+
+# Agent scratch worktrees, not project content.
+.claude/worktrees/

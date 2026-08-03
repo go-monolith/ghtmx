@@ -21,13 +21,17 @@ type Client struct {
 	Target          lsp.Client
 	SourceMapCache  *SourceMapCache
 	DiagnosticCache *DiagnosticCache
+	// TemplateExtension is shared with the Server proxy, which sets it from
+	// ghtmx.json at Initialize.
+	TemplateExtension *TemplateExtension
 }
 
-func NewClient(log *slog.Logger, cache *SourceMapCache, diagnosticCache *DiagnosticCache) (c *Client, init func(lsp.Client)) {
+func NewClient(log *slog.Logger, cache *SourceMapCache, diagnosticCache *DiagnosticCache, templateExtension *TemplateExtension) (c *Client, init func(lsp.Client)) {
 	c = &Client{
-		Log:             log,
-		SourceMapCache:  cache,
-		DiagnosticCache: diagnosticCache,
+		Log:               log,
+		SourceMapCache:    cache,
+		DiagnosticCache:   diagnosticCache,
+		TemplateExtension: templateExtension,
 	}
 	return c, func(target lsp.Client) {
 		c.Target = target
@@ -61,7 +65,7 @@ func (p Client) PublishDiagnostics(ctx context.Context, params *lsp.PublishDiagn
 	}
 	// Only convert diagnostics for _ghtmx.go files. Diagnostics for regular
 	// .go files are dropped because the Go extension publishes those directly.
-	isTemplGoFile, templURI := convertTemplGoToTemplURI(params.URI)
+	isTemplGoFile, templURI := convertTemplGoToTemplURI(p.TemplateExtension.Get(), params.URI)
 	if !isTemplGoFile {
 		return nil
 	}
@@ -141,7 +145,7 @@ func (p Client) UnregisterCapability(ctx context.Context, params *lsp.Unregistra
 
 func (p Client) ApplyEdit(ctx context.Context, params *lsp.ApplyWorkspaceEditParams) (result *lsp.ApplyWorkspaceEditResponse, err error) {
 	p.Log.Info("client <- server: ApplyEdit")
-	convertWorkspaceEdit(p.SourceMapCache, p.Log, &params.Edit)
+	convertWorkspaceEdit(p.TemplateExtension.Get(), p.SourceMapCache, p.Log, &params.Edit)
 	return p.Target.ApplyEdit(ctx, params)
 }
 

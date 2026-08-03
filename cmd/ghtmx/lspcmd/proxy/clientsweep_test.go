@@ -54,7 +54,7 @@ func (c *countingClient) ShowMessage(ctx context.Context, p *lsp.ShowMessagePara
 }
 
 func newTestClient(target lsp.Client) *Client {
-	c, init := NewClient(testLog(), NewSourceMapCache(), NewDiagnosticCache())
+	c, init := NewClient(testLog(), NewSourceMapCache(), NewDiagnosticCache(), NewTemplateExtension())
 	init(target)
 	return c
 }
