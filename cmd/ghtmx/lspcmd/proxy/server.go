@@ -517,7 +517,7 @@ func (p *Server) preload(ctx context.Context, workspaceFolders []lsp.WorkspaceFo
 				p.Log.Info("parseTemplate failure", slog.Any("error", err))
 			}
 			w := new(strings.Builder)
-			generatorOutput, err := generator.Generate(template, w)
+			generatorOutput, err := generator.Generate(template, w, generator.WithEditorBindings(p.generatedPkgName))
 			if err != nil {
 				// It's expected to have some failures while generating code from the template, since
 				// you are likely to have invalid docs while you're typing.
@@ -985,7 +985,7 @@ func (p *Server) DidChange(ctx context.Context, params *lsp.DidChangeTextDocumen
 	//
 	// This change would increase the surface area of gopls that we use, so may surface a number of issues
 	// if enabled.
-	generatorOutput, err := generator.Generate(template, w)
+	generatorOutput, err := generator.Generate(template, w, generator.WithEditorBindings(p.generatedPkgName))
 	if err != nil {
 		p.Log.Error("generate failure", slog.Any("error", err))
 		return
@@ -1117,7 +1117,7 @@ func (p *Server) HandleDidOpen(ctx context.Context, params *lsp.DidOpenTextDocum
 	// Generate the output code and cache the source map and Go contents to use during completion
 	// requests.
 	w := new(strings.Builder)
-	generatorOutput, err := generator.Generate(template, w)
+	generatorOutput, err := generator.Generate(template, w, generator.WithEditorBindings(p.generatedPkgName))
 	if err != nil {
 		return
 	}

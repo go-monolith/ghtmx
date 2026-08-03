@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	goast "go/ast"
+	goparser "go/parser"
 	"html"
 	"io"
 	"path/filepath"
@@ -59,6 +61,66 @@ func WithSkipCodeGeneratedComment() GenerateOpt {
 	}
 }
 
+// WithEditorBindings drops the ghtmx.SafeURL type expectation from the
+// hx-* verb attribute expressions the analyzer would have lowered, for
+// the language server only. generatedPkg names the central generated
+// package, which distinguishes the two cases.
+//
+// When `ghtmx generate` resolves a symbol binding against the route
+// table, the analyzer folds it into the registered path and the
+// generator never sees it. The language server generates straight from
+// the parsed template with no table, so the binding does reach the
+// generator, and the normal emission produces
+// `var v ghtmx.SafeURL = CreateTodo` — a type error against a template
+// that builds perfectly, which is what surfaces in editors as a false
+// IncompatibleAssign.
+//
+// Only the shapes the analyzer lowers are relaxed: a bare handler
+// identifier, and a handler qualified by a package other than the
+// generated one. A route-constructor call or a generated-package
+// reference is left alone, because those reach the generator in a real
+// build too — their result really must be a ghtmx.SafeURL, and the
+// editor should keep saying so.
+//
+// Lowering inside the server instead would delete the expression, and
+// with it the position gopls completes, defines, and hovers at inside
+// `{ … }` (FR-081, FR-083). Dropping only the assignment keeps the
+// symbol live for the editor, and the escaping contract stays enforced
+// everywhere the code is actually compiled.
+func WithEditorBindings(generatedPkg string) GenerateOpt {
+	return func(g *generator) error {
+		g.options.EditorBindings = true
+		g.options.EditorGeneratedPkg = generatedPkg
+		return nil
+	}
+}
+
+// relaxHxURLType reports whether the hx-* verb expression is one the
+// analyzer would have lowered before generation, and so is not required
+// to produce a ghtmx.SafeURL in the editor's copy of the Go.
+//
+// An unparseable expression is relaxed as well: it is broken Go either
+// way, and a half-typed binding should not gain a type error on top of
+// the syntax error it already has.
+func relaxHxURLType(expr, generatedPkg string) bool {
+	parsed, err := goparser.ParseExpr(strings.TrimSpace(expr))
+	if err != nil {
+		return true
+	}
+	switch e := parsed.(type) {
+	case *goast.Ident:
+		// A bare handler, resolved against the template's own package.
+		return true
+	case *goast.SelectorExpr:
+		// pkg.Handler, unless pkg is the generated package — those are
+		// route constructors and keep their type.
+		qualifier, ok := e.X.(*goast.Ident)
+		return ok && qualifier.Name != generatedPkg
+	default:
+		return false
+	}
+}
+
 type GeneratorOutput struct {
 	Options   GeneratorOptions  `json:"meta"`
 	SourceMap *parser.SourceMap `json:"sourceMap"`
@@ -74,6 +136,12 @@ type GeneratorOptions struct {
 	SkipCodeGeneratedComment bool
 	// GeneratedDate to include as a comment.
 	GeneratedDate string
+	// EditorBindings relaxes the hx-* verb attribute emission for the
+	// language server. See WithEditorBindings.
+	EditorBindings bool
+	// EditorGeneratedPkg is the central generated package's name, which
+	// tells a route constructor apart from a handler reference.
+	EditorGeneratedPkg string
 }
 
 // HasGoChanged returns true if the Go code has changed between the previous and updated GeneratorOutput.
@@ -1360,10 +1428,23 @@ func isHxVerbAttribute(key parser.AttributeKey) bool {
 // percent-encoded per path position; HTML attribute-value escaping
 // composes on top here. The context is fixed by the engine and is not
 // selectable at the binding site.
+//
+// WithEditorBindings drops that type expectation, and only that: the
+// language server generates without a route table, so an unlowered
+// symbol binding would otherwise fail to type-check. Nothing that is
+// compiled for real is generated with the option set.
 func (g *generator) writeExpressionAttributeValueHxURL(indentLevel int, attr *parser.ExpressionAttribute) (err error) {
 	vn := g.createVariableName()
-	// var vn ghtmx.SafeURL = expr
-	if _, err = g.w.WriteIndent(indentLevel, "var "+vn+" ghtmx.SafeURL = "); err != nil {
+	// var vn ghtmx.SafeURL = expr, or, for the editor, the expression on
+	// its own so no type is demanded of it (see WithEditorBindings).
+	decl := "var " + vn + " ghtmx.SafeURL = "
+	if g.options.EditorBindings && relaxHxURLType(attr.Expression.Value, g.options.EditorGeneratedPkg) {
+		if _, err = g.w.WriteIndent(indentLevel, "var "+vn+" ghtmx.SafeURL\n"); err != nil {
+			return err
+		}
+		decl = "_ = "
+	}
+	if _, err = g.w.WriteIndent(indentLevel, decl); err != nil {
 		return err
 	}
 	var r parser.Range
