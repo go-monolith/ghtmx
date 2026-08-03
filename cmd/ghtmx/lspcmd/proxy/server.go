@@ -119,7 +119,17 @@ func (p *Server) OpenGoDocuments() []lsp.TextDocumentItem {
 	return items
 }
 
+// NewServer requires the template-extension holder the Client proxy also
+// holds. Passing nil is a wiring mistake, and both ways of tolerating it
+// are worse than failing: nil makes Set a no-op, so the server ignores the
+// project's configured extension, and substituting a fresh holder is
+// quieter still — Set would appear to work while the Client kept reading
+// the default, leaving the two proxies mapping URIs to different file
+// names. Neither shows up until a .htmx project gets no diagnostics.
 func NewServer(log *slog.Logger, target lsp.Server, cache *SourceMapCache, diagnosticCache *DiagnosticCache, noPreload bool, formatConf format.Config, templateExtension *TemplateExtension) (s *Server) {
+	if templateExtension == nil {
+		panic("proxy.NewServer: templateExtension must not be nil; share the holder given to NewClient")
+	}
 	return &Server{
 		Log:               log,
 		Target:            target,
