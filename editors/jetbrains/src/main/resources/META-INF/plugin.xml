@@ -3,10 +3,10 @@
   <name>ghtmx</name>
   <vendor url="https://github.com/go-monolith/ghtmx">go-monolith</vendor>
   <description><![CDATA[
-    Language support for ghtmx templates (.ghtmx): syntax highlighting for
-    templates, fragments, events, htmx attributes, and route bindings, plus
-    language-server wiring for diagnostics, completion, hover, and go to
-    definition via <code>ghtmx lsp</code>.
+    Language support for ghtmx templates (.ghtmx and .htmx): syntax
+    highlighting for templates, fragments, events, htmx attributes, and route
+    bindings, plus language-server wiring for diagnostics, completion, hover,
+    and go to definition via <code>ghtmx lsp</code>.
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
@@ -16,8 +16,9 @@
 
   <!-- No native file type is registered on purpose: the TextMate plugin
        only takes over extensions no registered file type owns, and the
-       bundle's manifest claims .ghtmx. The LSP provider matches on the
-       file extension, so server wiring is independent of file types. -->
+       bundle's manifest claims .ghtmx and .htmx. The LSP provider matches
+       on the file extension, so server wiring is independent of file
+       types. -->
   <extensions defaultExtensionNs="com.intellij">
     <platform.lsp.serverSupportProvider
         implementation="dev.ghtmx.jetbrains.GhtmxLspServerSupportProvider"/>

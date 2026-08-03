@@ -38,6 +38,10 @@ func TestVSCodeManifest(t *testing.T) {
 				ID            string   `json:"id"`
 				Extensions    []string `json:"extensions"`
 				Configuration string   `json:"configuration"`
+				Icon          struct {
+					Light string `json:"light"`
+					Dark  string `json:"dark"`
+				} `json:"icon"`
 			} `json:"languages"`
 			Grammars []struct {
 				Language          string            `json:"language"`
@@ -56,11 +60,26 @@ func TestVSCodeManifest(t *testing.T) {
 	if manifest.Main != "./out/extension.js" {
 		t.Errorf("main = %q, want the compiled extension entry point", manifest.Main)
 	}
-	if len(manifest.Contributes.Languages) != 1 ||
-		manifest.Contributes.Languages[0].ID != "ghtmx" ||
-		len(manifest.Contributes.Languages[0].Extensions) != 1 ||
-		manifest.Contributes.Languages[0].Extensions[0] != ".ghtmx" {
-		t.Errorf("the extension must declare exactly the ghtmx language for .ghtmx, got %+v", manifest.Contributes.Languages)
+	// Both template extensions map to the one ghtmx language: .ghtmx is
+	// canonical, .htmx is accepted because some projects prefer it.
+	if len(manifest.Contributes.Languages) != 1 || manifest.Contributes.Languages[0].ID != "ghtmx" {
+		t.Fatalf("the extension must declare exactly the ghtmx language, got %+v", manifest.Contributes.Languages)
+	}
+	language := manifest.Contributes.Languages[0]
+	if got := strings.Join(language.Extensions, ","); got != ".ghtmx,.htmx" {
+		t.Errorf("language extensions = %q, want %q", got, ".ghtmx,.htmx")
+	}
+	// A file icon only renders if both variants exist: the source mark is
+	// near-black and would all but vanish in a dark sidebar, so the dark
+	// variant is not optional dressing.
+	for theme, path := range map[string]string{"light": language.Icon.Light, "dark": language.Icon.Dark} {
+		if path == "" {
+			t.Errorf("the language must contribute a %s file icon", theme)
+			continue
+		}
+		if _, err := os.Stat("vscode/" + strings.TrimPrefix(path, "./")); err != nil {
+			t.Errorf("contributed %s icon: %v", theme, err)
+		}
 	}
 	if len(manifest.Contributes.Grammars) != 1 || manifest.Contributes.Grammars[0].ScopeName != "source.ghtmx" {
 		t.Fatalf("the extension must contribute the source.ghtmx grammar, got %+v", manifest.Contributes.Grammars)
@@ -99,6 +118,41 @@ func TestVSCodeManifest(t *testing.T) {
 	for _, entry := range []string{"node_modules/", "out/", "*.vsix"} {
 		if !strings.Contains(ignored, entry) {
 			t.Errorf(".gitignore must exclude %s", entry)
+		}
+	}
+	// The icons must reach the .vsix; excluding them would leave the
+	// contribution pointing at files that are not in the package.
+	for line := range strings.SplitSeq(string(read(t, "vscode/.vscodeignore")), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "icons") {
+			t.Errorf(".vscodeignore must not exclude the icons: %q", strings.TrimSpace(line))
+		}
+	}
+}
+
+// TestVSCodeIconsSuitLightAndDark: the htmx mark is near-black, so the
+// same artwork cannot serve both themes — on a dark sidebar the two
+// chevrons disappear and only the slash survives. The variants must
+// actually differ, and each must carry marks its background can show.
+func TestVSCodeIconsSuitLightAndDark(t *testing.T) {
+	light := string(read(t, "vscode/icons/ghtmx-light.svg"))
+	dark := string(read(t, "vscode/icons/ghtmx-dark.svg"))
+
+	if light == dark {
+		t.Fatal("the light and dark icons are identical, so one theme renders an invisible mark")
+	}
+	// Matched as a fill, not as bare text: both files explain the choice
+	// in a comment that names the colour.
+	if !strings.Contains(light, `fill="#111111"`) {
+		t.Error("the light-theme icon must keep the dark mark so it reads on a light background")
+	}
+	if strings.Contains(dark, `fill="#111111"`) {
+		t.Error("the dark-theme icon must not fill with the near-black mark: it vanishes on a dark background")
+	}
+	// Square viewBox: a file icon gets a square slot, and the source art
+	// is 256x168, so an unpadded viewBox letterboxes or squashes it.
+	for name, svg := range map[string]string{"light": light, "dark": dark} {
+		if !strings.Contains(svg, `viewBox="0 0 256 256"`) {
+			t.Errorf("the %s icon must use a square viewBox so it is not squashed at 16px", name)
 		}
 	}
 }
@@ -161,6 +215,24 @@ func TestJetBrainsBundleMatchesVSCodeGrammar(t *testing.T) {
 	if len(bundle.Contributes.Grammars) != 1 || bundle.Contributes.Grammars[0].ScopeName != "source.ghtmx" {
 		t.Errorf("bundle must contribute the source.ghtmx grammar, got %+v", bundle.Contributes.Grammars)
 	}
+	// The bundle's claimed extensions are what TextMate highlights, so
+	// they must track the VS Code manifest.
+	var languages struct {
+		Contributes struct {
+			Languages []struct {
+				Extensions []string `json:"extensions"`
+			} `json:"languages"`
+		} `json:"contributes"`
+	}
+	if err := json.Unmarshal(read(t, "jetbrains/src/main/resources/textmate/package.json"), &languages); err != nil {
+		t.Fatal(err)
+	}
+	if len(languages.Contributes.Languages) != 1 {
+		t.Fatalf("bundle must declare one language, got %+v", languages.Contributes.Languages)
+	}
+	if got := strings.Join(languages.Contributes.Languages[0].Extensions, ","); got != ".ghtmx,.htmx" {
+		t.Errorf("bundle extensions = %q, want %q", got, ".ghtmx,.htmx")
+	}
 }
 
 // TestJetBrainsPlugin: the plugin manifest wires the file type, the LSP
@@ -206,13 +278,19 @@ func TestJetBrainsPlugin(t *testing.T) {
 	if !strings.Contains(launcher, `GeneralCommandLine("ghtmx", "lsp")`) {
 		t.Error("the JetBrains plugin must launch `ghtmx lsp`")
 	}
+	if !strings.Contains(launcher, `setOf("ghtmx", "htmx")`) {
+		t.Error("the LSP provider must recognise both template extensions")
+	}
 }
 
 // TestNeovimPlugin: filetype detection, syntax coverage of the native
 // constructs, and LSP wiring.
 func TestNeovimPlugin(t *testing.T) {
-	if !strings.Contains(string(read(t, "nvim/ftdetect/ghtmx.lua")), `ghtmx = "ghtmx"`) {
-		t.Error("ftdetect must map the .ghtmx extension to the ghtmx filetype")
+	ftdetect := string(read(t, "nvim/ftdetect/ghtmx.lua"))
+	for _, mapping := range []string{`ghtmx = "ghtmx"`, `htmx = "ghtmx"`} {
+		if !strings.Contains(ftdetect, mapping) {
+			t.Errorf("ftdetect must map %s so both template extensions get the filetype", mapping)
+		}
 	}
 	syntax := string(read(t, "nvim/syntax/ghtmx.vim"))
 	for _, needle := range []string{"fragment", "event", "hx-", "templ"} {
