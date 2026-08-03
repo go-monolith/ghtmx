@@ -3,44 +3,57 @@ name: Auto-release
 # Every merge to main cuts the next patch release.
 #
 # `main` is branch-protected with required status checks and
-# enforce_admins, so CI cannot push a release-prep commit to it. Tags are
-# not restricted, so this workflow builds the prep commit OFF main — its
-# parent is the merge commit — and tags that. main is never written to.
-# The tagged tree therefore still satisfies release.yml's "verify, never
-# stamp" invariant: .version and the adapter requires match the tag.
+# enforce_admins, so CI cannot push a release-prep commit to it. The prep
+# commit is built OFF main — its parent is the merge commit — and parked
+# on a scratch branch. release.yml gates that commit and only then
+# creates the tag, so a failed gate never leaves a published version
+# behind. main is never written to.
 #
 # main's own .version is a dev placeholder from here on; the value that
 # ships is the one this workflow writes into the tag.
 "on":
   push:
     branches: [main]
+  # Merges through GitHub's asynchronous merge API deliver their push
+  # events late or not at all (observed on this repo — see
+  # deploy-docs.yml). The merged-PR trigger fires reliably, and the work
+  # is idempotent: the release always covers everything since the last
+  # tag, so a duplicate run is a no-op and a lost event self-heals on the
+  # next merge.
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-# Two merges in quick succession must not race for the same tag.
 concurrency:
   group: auto-release
   cancel-in-progress: false
 
 jobs:
-  tag:
+  plan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
+      ref: ${{ steps.stage.outputs.ref }}
       release: ${{ steps.plan.outputs.release }}
     steps:
+      # Always main's tip, never the event's SHA: the decision below is
+      # "everything since the last tag", so a late or duplicated event
+      # still produces the same release.
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           fetch-tags: true
 
       - name: Decide whether this merge ships, and as what version
         id: plan
-        env:
-          BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
           skip() { echo "release=false" >> "$GITHUB_OUTPUT"; echo "::notice::$1"; exit 0; }
@@ -53,51 +66,58 @@ jobs:
               skip "Opted out via [skip release]." ;;
           esac
 
-          # A first push, a force-push, or a squash of an orphan branch
-          # leaves `before` unusable; fall back to the merge's own parent.
-          # `git rev-parse` echoes its argument back on failure, so every
-          # candidate is verified rather than captured — an unresolvable
-          # base must not read as "nothing changed" and skip the release.
-          base=""
-          if [ -n "${BEFORE:-}" ] && git rev-parse -q --verify "${BEFORE}^{commit}" >/dev/null; then
-            base="$BEFORE"
-          elif git rev-parse -q --verify 'HEAD~1^{commit}' >/dev/null; then
-            base=$(git rev-parse 'HEAD~1')
+          # Strict vX.Y.Z only. A prerelease such as v0.2.0-rc1 sorts
+          # ABOVE v0.2.0 under -v:refname without versionsort.suffix set,
+          # which would silently skip a version.
+          latest=$(git tag --list 'v[0-9]*' --sort=-v:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -1 || true)
+          if [ -z "$latest" ]; then
+            echo "::error::No vX.Y.Z tag exists yet. Automation only bumps from an existing tag — cut the first release by hand (RELEASING.md), then merges will auto-bump from it."
+            exit 1
           fi
 
-          # Docs-only merges must not publish a version with no code in it.
-          # With no resolvable base the change set is unknown, so the
-          # release proceeds rather than being silently dropped.
+          # The base is the MAIN commit the last release was built from,
+          # not this push's delta. A per-push delta permanently drops any
+          # merge whose event is lost, coalesced, or cancelled while
+          # pending; measuring from the last tag makes the decision
+          # idempotent and self-healing.
+          #
+          # Which commit that is depends on how the tag was cut. A
+          # hand-cut tag sits on main, so it IS the base. An automated
+          # tag sits on an off-main prep commit, so its first parent is.
+          # Using the prep commit either way would count its own
+          # .version and go.mod edits as shipped changes, and the
+          # docs-only skip below could never fire.
+          if git merge-base --is-ancestor "$latest" HEAD; then
+            base=$(git rev-parse "${latest}^{commit}")
+          else
+            base=$(git rev-parse -q --verify "${latest}^" || true)
+          fi
           if [ -n "$base" ]; then
-            shipped=$(git diff --name-only "$base" HEAD \
+            changed=$(git diff --name-only "$base" HEAD)
+            shipped=$(printf '%s\n' "$changed" \
               | grep -vE '(^|/)[^/]*\.md$' \
               | grep -vE '^docs/' \
               | grep -vE '^\.github/' || true)
             if [ -z "$shipped" ]; then
-              skip "Only docs, markdown, or workflows changed — nothing to release."
+              skip "Nothing but docs, markdown, or workflows since $latest."
             fi
-          fi
-
-          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
-          if [ -z "$latest" ]; then
-            echo "::error::No vX.Y.Z tag exists yet. Automation only bumps from an existing tag — cut the first release by hand (RELEASING.md), then merges will auto-bump from it."
-            exit 1
           fi
 
           number=${latest#v}
           major=${number%%.*}
           rest=${number#*.}
           minor=${rest%%.*}
-          patch=${rest#*.}
-          patch=${patch%%[!0-9]*}
+          patch=${rest##*.}
 
           # Pre-1.0 the project allows breaking changes between MINOR
-          # versions (CHANGELOG.md), so a breaking marker must not ship as
-          # a patch. The subject here is usually "#N Summary", not
-          # Conventional Commits, so `!:` in the subject and a
-          # BREAKING CHANGE trailer anywhere both count.
-          if printf '%s' "$subject" | grep -qE '!:' \
-             || printf '%s' "$message" | grep -qE '(^|[^A-Za-z])BREAKING[ -]CHANGE'; then
+          # versions (CHANGELOG.md), so a breaking marker must not ship
+          # as a patch. `!:` is read from the subject only, and the
+          # trailer must start its own line — prose that merely mentions
+          # a breaking change must not force a minor bump.
+          if printf '%s' "$subject" | grep -qE '^[^ ]*!:' \
+             || printf '%s' "$message" | grep -qE '^BREAKING[ -]CHANGE:'; then
             minor=$((minor + 1))
             patch=0
             echo "::notice::Breaking marker found — bumping the minor version."
@@ -112,14 +132,15 @@ jobs:
             exit 1
           fi
 
-          echo "Latest tag $latest -> releasing $next"
+          echo "Releasing $next (previous $latest, base ${base:-none})"
           echo "tag=$next" >> "$GITHUB_OUTPUT"
           echo "release=true" >> "$GITHUB_OUTPUT"
 
       # The prep commit RELEASING.md step 1 describes, built off main so
-      # branch protection is never bypassed. It is reachable only from the
-      # tag; main keeps its own .version.
-      - name: Build and tag the release-prep commit
+      # branch protection is never bypassed, and parked on a scratch
+      # branch so the gates can check it out. It carries no tag yet.
+      - name: Stage the release-prep commit
+        id: stage
         if: steps.plan.outputs.release == 'true'
         env:
           TAG: ${{ steps.plan.outputs.tag }}
@@ -133,25 +154,52 @@ jobs:
           # Only the `require` lines carry a version; the `replace` lines
           # have none and are left alone, so in-repo development keeps
           # building against the working tree.
-          sed -i -E "s|(github\.com/go-monolith/ghtmx) v[0-9]+\.[0-9]+\.[0-9]+\S*$|\1 $TAG|" \
+          sed -i -E "s|(github\.com/go-monolith/ghtmx) v[0-9]+\.[0-9]+\.[0-9]+\S*\$|\1 $TAG|" \
             adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
-          sed -i -E "s|(github\.com/go-monolith/ghtmx/adapters/chi) v[0-9]+\.[0-9]+\.[0-9]+\S*$|\1 $TAG|" \
+          sed -i -E "s|(github\.com/go-monolith/ghtmx/adapters/chi) v[0-9]+\.[0-9]+\.[0-9]+\S*\$|\1 $TAG|" \
             docs/official/go.mod internal/wasmcheck/fixture/go.mod
 
           git add .version adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
-          git commit -m "Release $TAG" -m "Automated release-prep commit (auto-release.yml). Not on main: it exists only under the tag, so the tagged tree is self-consistent for go install and go get consumers."
 
-          git tag "$TAG"
-          git push origin "refs/tags/$TAG"
+          # A hand-made prep commit for this same version may already be
+          # on main (RELEASING.md's manual path), leaving nothing to do.
+          # Committing nothing is an error, so tag main's tip instead.
+          if git diff --cached --quiet; then
+            echo "::notice::main already carries $TAG — gating its tip as-is."
+          else
+            git commit -m "Release $TAG" \
+              -m "Automated release-prep commit (auto-release.yml). Reachable only from the tag, so the tagged tree is self-consistent for go install and go get consumers."
+          fi
 
-  # Called directly rather than left to the tag-push trigger: tags pushed
-  # with the default GITHUB_TOKEN do not start new workflow runs.
+          # Force-push is safe here and only here: a scratch branch is
+          # not a published version. It is deleted once the run ends.
+          branch="auto-release/$TAG"
+          git push --force origin "HEAD:refs/heads/$branch"
+          echo "ref=$branch" >> "$GITHUB_OUTPUT"
+
+  # Called rather than left to the tag-push trigger: the tag does not
+  # exist yet, and one pushed by the default GITHUB_TOKEN would start no
+  # workflow run anyway. release.yml gates `ref` and tags it on success.
   release:
-    needs: tag
-    if: needs.tag.outputs.release == 'true'
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
     uses: ./.github/workflows/release.yml
     with:
-      tag: ${{ needs.tag.outputs.tag }}
+      tag: ${{ needs.plan.outputs.tag }}
+      ref: ${{ needs.plan.outputs.ref }}
     permissions:
       contents: write
-    secrets: inherit
+
+  cleanup:
+    needs: [plan, release]
+    if: always() && needs.plan.outputs.ref != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      # The commit survives under its tag when the release succeeded, and
+      # is unreferenced when it failed — either way the scratch branch has
+      # done its job.
+      - name: Delete the scratch branch
+        run: git push origin --delete "${{ needs.plan.outputs.ref }}" || true

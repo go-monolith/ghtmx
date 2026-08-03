@@ -131,9 +131,12 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 		// version so go-install consumers see it too (RELEASING.md).
 		`test "v$(cat .version)" = "$TAG"`,
 		`grep -q "github.com/go-monolith/ghtmx $TAG\$"`,
-		"git diff --exit-code",   // generated code is current
-		"adapters/*/go.mod",      // adapter tests + lockstep tags
-		`git tag -f "$dir/$TAG"`, // lockstep versioning
+		"git diff --exit-code", // generated code is current
+		"adapters/*/go.mod",    // adapter tests + lockstep tags
+		// Tags are created only when absent and pushed without --force:
+		// a published module version must never move under consumers.
+		`git tag -a "$name" -m "Release $name"`,
+		`git push origin "refs/tags/$name"`,
 	} {
 		if !strings.Contains(workflow, needle) {
 			t.Errorf("release.yml lost %q", needle)
@@ -141,6 +144,11 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 	}
 	if !strings.Contains(workflow, "dist/release/*") {
 		t.Error("release.yml must upload every artifact including checksums.txt")
+	}
+	// A tag is immutable once the module proxy has seen it, so nothing
+	// here may move one — not even to recover a failed run.
+	if strings.Contains(workflow, "push -f") || strings.Contains(workflow, "push --force") {
+		t.Error("release.yml must never force-push: a published module version cannot move")
 	}
 }
 
@@ -157,9 +165,10 @@ func TestAutoReleaseNeverWritesToMain(t *testing.T) {
 
 	for _, needle := range []string{
 		"branches: [main]",                      // every merge to main
-		"uses: ./.github/workflows/release.yml", // a GITHUB_TOKEN tag push starts no run
+		"uses: ./.github/workflows/release.yml", // the gates own the tagging
 		"concurrency:",                          // two quick merges must not race
 		"[skip release]",                        // the documented opt-out
+		"pull_request:",                         // merge events on this repo get lost
 	} {
 		if !strings.Contains(workflow, needle) {
 			t.Errorf("auto-release.yml lost %q", needle)
@@ -170,8 +179,17 @@ func TestAutoReleaseNeverWritesToMain(t *testing.T) {
 		if !strings.Contains(line, "git push") {
 			continue
 		}
-		if !strings.Contains(line, "refs/tags/") {
-			t.Errorf("auto-release.yml pushes something other than a tag: %q", strings.TrimSpace(line))
+		// The tag must not exist until release.yml has gated the tree
+		// behind it: a tag is immutable once the proxy sees it, so a
+		// failed gate would otherwise burn the version permanently and
+		// publish a root module with no adapter tags beside it.
+		if strings.Contains(line, "refs/tags/") {
+			t.Errorf("auto-release.yml tags before the gates run: %q", strings.TrimSpace(line))
+		}
+		// main is branch-protected with enforce_admins; any push to it
+		// would be rejected and strand a half-cut release.
+		if strings.Contains(line, "refs/heads/main") || strings.Contains(line, "origin main") {
+			t.Errorf("auto-release.yml pushes to main: %q", strings.TrimSpace(line))
 		}
 	}
 }
