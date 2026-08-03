@@ -11,6 +11,12 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-02
+
+First tagged release. Before this, the module had no tags at all, so
+`go get github.com/go-monolith/ghtmx` could only resolve to a pseudo-version
+and the nested adapter modules did not resolve at all.
+
 ### Added
 
 - Live example demos on the documentation site: every `examples/*`
