@@ -6,10 +6,20 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-monolith/ghtmx/internal/config"
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
 	"github.com/go-monolith/ghtmx/internal/lsp/uri"
 	"golang.org/x/tools/go/packages"
 )
+
+// ext is the configured template extension, falling back to the default
+// so a zero-valued traverser still recognises templates.
+func (t *goPkgTraverser) ext() string {
+	if t.templExt == "" {
+		return config.DefaultTemplateExtension
+	}
+	return t.templExt
+}
 
 type pkgTraverser interface {
 	openTopologically(ctx context.Context, pkg *packages.Package) error
@@ -21,7 +31,8 @@ type goPkgTraverser struct {
 	pkgsRefCount    map[string]int
 	fileReader      fileReader
 	// templExt is the project's configured template extension: a sibling
-	// file only counts as a template when it matches.
+	// file only counts as a template when it matches. Empty means the
+	// default — an unset value must not silently match nothing.
 	templExt string
 }
 
@@ -53,7 +64,7 @@ func (t *goPkgTraverser) openTopologically(ctx context.Context, pkg *packages.Pa
 	}
 
 	for _, otherFile := range pkg.OtherFiles {
-		if filepath.Ext(otherFile) != t.templExt {
+		if filepath.Ext(otherFile) != t.ext() {
 			continue
 		}
 
@@ -85,7 +96,7 @@ func (t *goPkgTraverser) closeTopologically(ctx context.Context, pkg *packages.P
 	}
 
 	for _, otherFile := range pkg.OtherFiles {
-		if filepath.Ext(otherFile) != t.templExt {
+		if filepath.Ext(otherFile) != t.ext() {
 			continue
 		}
 

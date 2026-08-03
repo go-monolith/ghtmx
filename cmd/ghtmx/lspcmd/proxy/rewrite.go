@@ -38,7 +38,13 @@ type TemplateExtension struct {
 // project configuration is known.
 func NewTemplateExtension() *TemplateExtension { return &TemplateExtension{} }
 
+// Set is nil-safe for symmetry with Get: a Server assembled without
+// NewServer has no holder to share, and Initialize must not panic on it.
+// Such a server reads the default, which is what Get already returns.
 func (t *TemplateExtension) Set(ext string) {
+	if t == nil {
+		return
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.ext = ext
