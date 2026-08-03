@@ -18,6 +18,26 @@ import (
 
 func reset() { todos = NewStore() }
 
+// TestPageEmbedsStyleSheet: the rules live in crud.css and reach the
+// page through //go:embed. A missing file is a compile error, so what
+// this guards is the wiring the compiler cannot see — a template that
+// stops calling @styleSheet(), or a stylesheet emptied by a bad edit.
+func TestPageEmbedsStyleSheet(t *testing.T) {
+	reset()
+	rec := httptest.NewRecorder()
+	Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET / = %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "<style>") || !strings.Contains(body, "</style>") {
+		t.Errorf("the page must carry a style element, got:\n%s", body)
+	}
+	if !strings.Contains(body, ".todoapp {") {
+		t.Errorf("crud.css was not inlined into the page, got:\n%s", body)
+	}
+}
+
 func serve(t *testing.T) *httptest.Server {
 	t.Helper()
 	reset()
@@ -336,7 +356,9 @@ func TestRouteChangesBreakTheBuild(t *testing.T) {
 	setup := func(t *testing.T, mutate func(main string) string) string {
 		t.Helper()
 		dir := t.TempDir()
-		for _, name := range []string{"crud.go", "crud.ghtmx"} {
+		// crud.css comes along because crud.go embeds it; without it the
+		// scratch module fails to build for a reason unrelated to routes.
+		for _, name := range []string{"crud.go", "crud.ghtmx", "crud.css"} {
 			data, err := os.ReadFile(name)
 			if err != nil {
 				t.Fatal(err)

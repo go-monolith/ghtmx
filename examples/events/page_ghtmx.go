@@ -43,7 +43,11 @@ func eventsPage(items []Item, csrf string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; color-scheme: light dark; }\n\t\t\t\t@media (prefers-color-scheme: dark) {\n\t\t\t\t\t:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; }\n\t\t\t\t}\n\t\t\t\t* { box-sizing: border-box; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tbackground: var(--bg); color: var(--text);\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t}\n\t\t\t\t.app {\n\t\t\t\t\twidth: min(36rem, 92vw); margin: 3rem 0; padding: 1.6rem 1.8rem;\n\t\t\t\t\tbackground: var(--surface); border: 1px solid var(--border);\n\t\t\t\t\tborder-radius: .6rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .1);\n\t\t\t\t}\n\t\t\t\t.badge {\n\t\t\t\t\tdisplay: inline-block; font-size: .72rem; font-weight: 600;\n\t\t\t\t\tcolor: var(--primary); border: 1px solid var(--primary);\n\t\t\t\t\tborder-radius: 999px; padding: .1rem .6rem; margin-bottom: .8rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 .4rem; font-size: 1.5rem; }\n\t\t\t\t.tagline { margin: 0 0 1.2rem; color: var(--muted); font-size: .95rem; }\n\t\t\t\tbutton, a.action {\n\t\t\t\t\tfont-size: .9rem; padding: .45rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t\ttext-decoration: none; display: inline-block;\n\t\t\t\t}\n\t\t\t\tbutton:hover, a.action:hover { border-color: var(--primary); color: var(--primary); }\n\t\t\t\ttable { width: 100%; border-collapse: collapse; margin: .6rem 0 1rem; }\n\t\t\t\ttd { padding: .5rem .3rem; border-bottom: 1px solid var(--border); }\n\t\t\t\ttr:last-child td { border-bottom: none; }\n\t\t\t\ttd:last-child { text-align: right; }\n\t\t\t\t#board { border-radius: .45rem; }\n\t\t\t\t#board[data-last]::after {\n\t\t\t\t\tcontent: \"last saved: #\" attr(data-last);\n\t\t\t\t\tdisplay: block; font-size: .8rem; color: var(--primary); margin-top: .6rem;\n\t\t\t\t}\n\t\t\t\t#cart {\n\t\t\t\t\tpadding: .8rem 1rem; border: 1px dashed var(--border); border-radius: .45rem;\n\t\t\t\t\tcolor: var(--muted); font-size: .88rem;\n\t\t\t\t}\n\t\t\t</style></head><body><main class=\"app\"><span class=\"badge\">ghtmx example</span><h1>Events</h1><p class=\"tagline\">Saving emits two declared events through generated emitters — merged into one HX-Trigger header — and the CSRF token rides a bound hx-headers attribute.</p><div id=\"board\" hx-on:item-saved=\"this.dataset.last = event.detail.id\"><table id=\"items\"><tbody>")
+		ghtmx_7f3b9d1a_Err = styleSheet().Render(ctx, ghtmx_7f3b9d1a_Buffer)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "</head><body><main class=\"app\"><span class=\"badge\">ghtmx example</span><h1>Events</h1><p class=\"tagline\">Saving emits two declared events through generated emitters — merged into one HX-Trigger header — and the CSRF token rides a bound hx-headers attribute.</p><div id=\"board\" hx-on:item-saved=\"this.dataset.last = event.detail.id\"><table id=\"items\"><tbody>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -55,7 +59,7 @@ func eventsPage(items []Item, csrf string) ghtmx.Component {
 			var ghtmx_7f3b9d1a_Var2 string
 			ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("item-" + it.ID)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 75, Col: 32}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 33, Col: 32}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var2)
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -68,7 +72,7 @@ func eventsPage(items []Item, csrf string) ghtmx.Component {
 			var ghtmx_7f3b9d1a_Var3 string
 			ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(it.Name)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 76, Col: 22}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 34, Col: 22}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -90,7 +94,7 @@ func eventsPage(items []Item, csrf string) ghtmx.Component {
 			var ghtmx_7f3b9d1a_Var5 string
 			ghtmx_7f3b9d1a_Var5, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue(ghtmx.CSRFHeader(csrf))
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 78, Col: 90}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 36, Col: 90}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var5)
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -103,7 +107,7 @@ func eventsPage(items []Item, csrf string) ghtmx.Component {
 			var ghtmx_7f3b9d1a_Var6 string
 			ghtmx_7f3b9d1a_Var6, ghtmx_7f3b9d1a_Err = ghtmx.ResolveAttributeValue("#item-" + it.ID)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 78, Col: 121}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/events/page.ghtmx`, Line: 36, Col: 121}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx_7f3b9d1a_Var6)
 			if ghtmx_7f3b9d1a_Err != nil {

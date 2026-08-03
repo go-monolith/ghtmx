@@ -9,6 +9,25 @@ import (
 	"github.com/go-monolith/ghtmx/ghtmxgen"
 )
 
+// TestPageEmbedsStyleSheet: the rules live in page.css and reach the
+// page through //go:embed. A missing file is a compile error, so what
+// this guards is the wiring the compiler cannot see — a template that
+// stops calling @styleSheet(), or a stylesheet emptied by a bad edit.
+func TestPageEmbedsStyleSheet(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/events", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /events = %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "<style>") || !strings.Contains(body, "</style>") {
+		t.Errorf("the page must carry a style element, got:\n%s", body)
+	}
+	if !strings.Contains(body, "#cart {") {
+		t.Errorf("page.css was not inlined into the page, got:\n%s", body)
+	}
+}
+
 // TestTwoEmissionsMergeIntoOneHeader: FR-037 — two events emitted in one
 // response merge into a single, correctly-serialized HX-Trigger header in
 // htmx 2.x's JSON object form, preserving emission order.

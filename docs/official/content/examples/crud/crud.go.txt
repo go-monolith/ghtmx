@@ -13,15 +13,26 @@
 package crud
 
 import (
+	_ "embed"
 	"log"
 	"net/http"
 	"sort"
 	"strconv"
 	"sync"
 
+	"github.com/go-monolith/ghtmx"
 	"github.com/go-monolith/ghtmx/adapters/nethttp"
 	"github.com/go-monolith/ghtmx/ghtmxgen"
 )
+
+//go:embed crud.css
+var styleCSS string
+
+// styleSheet inlines crud.css into the page head. The rules live in
+// their own file so the template shows markup, not presentation.
+func styleSheet() ghtmx.Component {
+	return ghtmx.Raw("<style>" + styleCSS + "</style>")
+}
 
 // Todo is the row model.
 type Todo struct {

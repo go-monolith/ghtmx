@@ -6,11 +6,22 @@
 package events
 
 import (
+	_ "embed"
 	"fmt"
 	"net/http"
 
+	"github.com/go-monolith/ghtmx"
 	"github.com/go-monolith/ghtmx/ghtmxgen"
 )
+
+//go:embed page.css
+var styleCSS string
+
+// styleSheet inlines page.css into the page head. The rules live in
+// their own file so the template shows markup, not presentation.
+func styleSheet() ghtmx.Component {
+	return ghtmx.Raw("<style>" + styleCSS + "</style>")
+}
 
 // Item is a row of the demo table.
 type Item struct {

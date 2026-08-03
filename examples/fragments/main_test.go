@@ -9,6 +9,24 @@ import (
 	"testing"
 )
 
+// TestPageEmbedsStyleSheet: the rules live in rows.css and reach the
+// page through //go:embed. A missing file is a compile error, so what
+// this guards is the wiring the compiler cannot see — a template that
+// stops calling @styleSheet(), or a stylesheet emptied by a bad edit.
+func TestPageEmbedsStyleSheet(t *testing.T) {
+	var sb strings.Builder
+	if err := listPage(items).Render(context.Background(), &sb); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	if !strings.Contains(out, "<style>") || !strings.Contains(out, "</style>") {
+		t.Errorf("the page must carry a style element, got:\n%s", out)
+	}
+	if !strings.Contains(out, ".app {") {
+		t.Errorf("rows.css was not inlined into the page, got:\n%s", out)
+	}
+}
+
 // TestInlineAndStandaloneByteIdentical: FR-031 — for identical inputs, the
 // inline component entry point and the standalone fragment entry point
 // produce byte-identical markup, because both are wrappers over the same

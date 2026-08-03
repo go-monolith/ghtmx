@@ -24,6 +24,24 @@ func TestRenderedPage(t *testing.T) {
 	}
 }
 
+// TestPageEmbedsStyleSheet: the rules live in hello.css and reach the
+// page through //go:embed. A missing file is a compile error, so what
+// this guards is the wiring the compiler cannot see — a template that
+// stops calling @styleSheet(), or a stylesheet emptied by a bad edit.
+func TestPageEmbedsStyleSheet(t *testing.T) {
+	var sb strings.Builder
+	if err := page("World").Render(context.Background(), &sb); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	if !strings.Contains(out, "<style>") || !strings.Contains(out, "</style>") {
+		t.Errorf("the page must carry a style element, got:\n%s", out)
+	}
+	if !strings.Contains(out, ".app {") {
+		t.Errorf("hello.css was not inlined into the page, got:\n%s", out)
+	}
+}
+
 // TestEscaping proves interpolated values are escaped by default (FR-002).
 func TestEscaping(t *testing.T) {
 	w := httptest.NewRecorder()

@@ -6,12 +6,22 @@
 package hxbindings
 
 import (
+	_ "embed"
 	"log"
 	"net/http"
 
 	"github.com/go-monolith/ghtmx"
 	"github.com/go-monolith/ghtmx/examples/hx-bindings/handlers"
 )
+
+//go:embed items.css
+var styleCSS string
+
+// styleSheet inlines items.css into the page head. The rules live in
+// their own file so the template shows markup, not presentation.
+func styleSheet() ghtmx.Component {
+	return ghtmx.Raw("<style>" + styleCSS + "</style>")
+}
 
 // demoItems is the in-memory data the live demo lists.
 var demoItems = []string{"alpha", "beta", "gamma", "a/b?c#d"}
