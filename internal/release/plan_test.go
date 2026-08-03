@@ -340,6 +340,18 @@ func TestReleaseStageRewritesEveryModule(t *testing.T) {
 			t.Errorf("%s does not require adapters/chi v0.1.1", mod)
 		}
 	}
+	// The rewrite goes through a temporary file; a plain move would carry
+	// mktemp's 0600 onto tracked sources.
+	for _, mod := range []string{"adapters/chi/go.mod", "docs/official/go.mod"} {
+		info, err := os.Stat(filepath.Join(dir, mod))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o644 {
+			t.Errorf("%s mode = %#o after rewriting, want 0644", mod, got)
+		}
+	}
+
 	if got := readOutput(t, out)["ref"]; got != "auto-release/v0.1.1" {
 		t.Errorf("ref = %q, want the scratch branch", got)
 	}

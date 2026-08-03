@@ -20,10 +20,30 @@ printf '%s' "${TAG#v}" > .version
 # Only the `require` lines carry a version; the `replace` lines have none
 # and are left alone, so in-repo development keeps building against the
 # working tree.
-sed -i -E "s|(github\.com/go-monolith/ghtmx) v[0-9]+\.[0-9]+\.[0-9]+\S*\$|\1 $TAG|" \
-  adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
-sed -i -E "s|(github\.com/go-monolith/ghtmx/adapters/chi) v[0-9]+\.[0-9]+\.[0-9]+\S*\$|\1 $TAG|" \
-  docs/official/go.mod internal/wasmcheck/fixture/go.mod
+#
+# Written through a temporary file rather than `sed -i`, and using
+# [^[:space:]] rather than \S, because both differ between GNU and BSD
+# sed: BSD reads the argument after -i as a backup suffix, so `-i -E`
+# silently makes "-E" the suffix and parses the expression as a basic
+# regex. This runs on the ubuntu runner, but the tests covering it run
+# on every OS in the matrix.
+version='v[0-9]+\.[0-9]+\.[0-9]+[^[:space:]]*'
+rewrite() {
+  local file=$1 tmp
+  tmp=$(mktemp)
+  sed -E \
+    -e "s|(github\.com/go-monolith/ghtmx) $version\$|\1 $TAG|" \
+    -e "s|(github\.com/go-monolith/ghtmx/adapters/chi) $version\$|\1 $TAG|" \
+    "$file" > "$tmp"
+  # Written back through the original file rather than moved over it, so
+  # its mode survives: mktemp creates 0600, and a move would carry that
+  # onto a tracked source file.
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+for mod in adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod; do
+  rewrite "$mod"
+done
 
 git add .version adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
 
