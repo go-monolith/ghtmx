@@ -10,28 +10,67 @@ name: Release
 # release-prep commit (see RELEASING.md) sets .version and the adapter
 # requires to the tag's version, so the tagged tree is self-consistent
 # for `go install` and `go get` consumers too.
+#
+# Two entry points:
+#   - a human pushing `vX.Y.Z`, where the tag already exists
+#   - auto-release.yml calling in with `ref` pointing at a prep commit
+#     that is NOT yet tagged
+# In the second case the tag is created here, after the gates pass. A
+# tag is immutable once the module proxy has seen it, so it must never
+# exist before the tree behind it is known good. `ref` is what gets
+# checked out and gated; `tag` is the version that tree claims.
 "on":
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Version to release, e.g. v1.2.3."
+        type: string
+        required: true
+      ref:
+        description: "Commit to gate and tag. Defaults to the tag itself."
+        type: string
+        required: false
 
 permissions:
   contents: read
 
+# Serializes an automated release against a hand-pushed one for the same
+# version: both paths create the same tags and the same GitHub release.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   gates:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || inputs.tag || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
+      # Every module the release-prep step rewrites is verified here.
+      # docs/official and internal/wasmcheck/fixture are never tagged,
+      # but they require the root module, so a bad rewrite would ship
+      # inside the tag unnoticed if only adapters/ were checked.
       - name: Verify the release-prep commit
         run: |
-          test "v$(cat .version)" = "$GITHUB_REF_NAME" || {
-            echo ".version is $(cat .version) but the tag is $GITHUB_REF_NAME — make the release-prep commit first (RELEASING.md)"; exit 1; }
-          for mod in adapters/*/go.mod; do
-            grep -q "github.com/go-monolith/ghtmx $GITHUB_REF_NAME" "$mod" || {
-              echo "$mod does not require ghtmx $GITHUB_REF_NAME — adapters must version in lockstep (RELEASING.md)"; exit 1; }
+          test "v$(cat .version)" = "$TAG" || {
+            echo ".version is $(cat .version) but the tag is $TAG — make the release-prep commit first (RELEASING.md)"; exit 1; }
+          for mod in adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod; do
+            grep -q "github.com/go-monolith/ghtmx $TAG\$" "$mod" || {
+              echo "$mod does not require ghtmx $TAG — every module must version in lockstep (RELEASING.md)"; exit 1; }
+          done
+          # These two also require the chi adapter, and their `replace`
+          # directives would hide a stale version from the build.
+          for mod in docs/official/go.mod internal/wasmcheck/fixture/go.mod; do
+            grep -q "github.com/go-monolith/ghtmx/adapters/chi $TAG\$" "$mod" || {
+              echo "$mod does not require adapters/chi $TAG — every module must version in lockstep (RELEASING.md)"; exit 1; }
           done
       - name: Install gopls (required by LSP tests)
         run: go install golang.org/x/tools/gopls@v0.23.0
@@ -53,6 +92,12 @@ jobs:
             echo "== $dir"
             (cd "$dir" && go build ./... && go vet ./... && go test ./...)
           done
+      - name: The untagged nested modules still build
+        run: |
+          for dir in docs/official internal/wasmcheck/fixture; do
+            echo "== $dir"
+            (cd "$dir" && go build ./...)
+          done
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: govulncheck release gate (NFR-008)
@@ -70,34 +115,45 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || inputs.tag || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
       - name: Build checksummed artifacts for every platform
-        run: go run ./internal/release/cmd -version "$GITHUB_REF_NAME" -out dist/release
+        run: go run ./internal/release/cmd -version "$TAG" -out dist/release
       - name: Verify the shipped binary reports the tag
         run: |
-          tar -xzf "dist/release/ghtmx_${GITHUB_REF_NAME#v}_linux_amd64.tar.gz" -C "$(mktemp -d /tmp/ghtmx-verify-XXXX)" ghtmx || exit 1
-          bin=$(ls /tmp/ghtmx-verify-*/ghtmx | head -1)
-          test "$("$bin" version)" = "$GITHUB_REF_NAME" || {
-            echo "shipped binary reports $("$bin" version), expected $GITHUB_REF_NAME"; exit 1; }
-      # Adapter tags go first: if anything fails after the release
-      # exists, a re-run must stay idempotent.
-      - name: Tag the adapter modules in lockstep
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          for mod in adapters/*/go.mod; do
-            dir=$(dirname "$mod")
-            git tag -f "$dir/$GITHUB_REF_NAME"
-            git push -f origin "refs/tags/$dir/$GITHUB_REF_NAME"
-          done
+          set -euo pipefail
+          extracted=$(mktemp -d)
+          tar -xzf "dist/release/ghtmx_${TAG#v}_linux_amd64.tar.gz" -C "$extracted" ghtmx
+          test "$("$extracted/ghtmx" version)" = "$TAG" || {
+            echo "shipped binary reports $("$extracted/ghtmx" version), expected $TAG"; exit 1; }
+      # Only now does the version become real. Existence is checked
+      # against the REMOTE: the checkout fetches no tags, so a local
+      # rev-parse would always miss and every re-run would mint a fresh
+      # tag object whose push is then rejected — leaving a partial
+      # release, root tagged and adapters not, that no re-run could
+      # finish. A tag already pointing at this commit is simply left
+      # alone; one pointing elsewhere is a published version trying to
+      # move under consumers, which must fail loudly.
+      - name: Publish the tags
+        run: .github/scripts/publish-tags.sh
+      # Upload rather than skip when the release already exists: an
+      # earlier attempt may have created it and died before the assets
+      # landed, and "it exists" is not the same as "it is complete".
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" dist/release/* \
-              --title "ghtmx $GITHUB_REF_NAME" --generate-notes
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/release/* --clobber
+          else
+            gh release create "$TAG" dist/release/* \
+              --title "ghtmx $TAG" --generate-notes
+          fi

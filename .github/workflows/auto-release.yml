@@ -1,0 +1,104 @@
+name: Auto-release
+
+# Every merge to main cuts the next patch release.
+#
+# `main` is branch-protected with required status checks and
+# enforce_admins, so CI cannot push a release-prep commit to it. The prep
+# commit is built OFF main — its parent is the merge commit — and parked
+# on a scratch branch. release.yml gates that commit and only then
+# creates the tag, so a failed gate never leaves a published version
+# behind. main is never written to.
+#
+# main's own .version is a dev placeholder from here on; the value that
+# ships is the one this workflow writes into the tag.
+"on":
+  push:
+    branches: [main]
+  # Merges through GitHub's asynchronous merge API deliver their push
+  # events late or not at all (observed on this repo — see
+  # deploy-docs.yml). The merged-PR trigger fires reliably, and the work
+  # is idempotent: the release always covers everything since the last
+  # tag, so a duplicate run is a no-op and a lost event self-heals on the
+  # next merge.
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    # A fork PR's token is read-only no matter what `permissions` says,
+    # so the staging push would fail; the push-to-main run covers those.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      ref: ${{ steps.stage.outputs.ref }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      # Always main's tip, never the event's SHA: the decision below is
+      # "everything since the last tag", so a late or duplicated event
+      # still produces the same release.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      # The logic lives in a script so it can be tested against
+      # synthetic histories rather than only asserted as YAML text.
+      - name: Decide whether this merge ships, and as what version
+        id: plan
+        run: .github/scripts/release-plan.sh
+
+      # The prep commit RELEASING.md step 1 describes, built off main so
+      # branch protection is never bypassed, and parked on a scratch
+      # branch so the gates can check it out. It carries no tag yet.
+      - name: Stage the release-prep commit
+        id: stage
+        if: steps.plan.outputs.release == 'true'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: .github/scripts/release-stage.sh
+
+  # Called rather than left to the tag-push trigger: the tag does not
+  # exist yet, and one pushed by the default GITHUB_TOKEN would start no
+  # workflow run anyway. release.yml gates `ref` and tags it on success.
+  release:
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      ref: ${{ needs.plan.outputs.ref }}
+    permissions:
+      contents: write
+
+  # Only on success. A failed release must keep its scratch branch: the
+  # gated tree is the post-mortem, and deleting it makes GitHub's
+  # "Re-run failed jobs" check out a ref that no longer exists. Branches
+  # left by a failure are cleared by the next successful run of the same
+  # version, or by hand — `git push origin --delete auto-release/vX.Y.Z`.
+  cleanup:
+    needs: [plan, release]
+    if: needs.plan.outputs.ref != '' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      # The commit survives under its tag from here on.
+      - name: Delete the scratch branch
+        run: git push origin --delete "${{ needs.plan.outputs.ref }}" || true
