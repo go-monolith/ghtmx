@@ -101,7 +101,10 @@ func run(ctx context.Context, log *slog.Logger, templStream jsonrpc2.Stream, arg
 	diagnosticCache := proxy.NewDiagnosticCache()
 
 	log.Info("creating gopls client")
-	clientProxy, clientInit := proxy.NewClient(log, cache, diagnosticCache)
+	// Shared with the server proxy, which sets it from ghtmx.json at
+	// Initialize: both directions of URI mapping must use one extension.
+	templateExtension := proxy.NewTemplateExtension()
+	clientProxy, clientInit := proxy.NewClient(log, cache, diagnosticCache, templateExtension)
 	// resilient supervises gopls (FR-085): a crash degrades embedded-Go
 	// features only — .ghtmx diagnostics keep working — while gopls
 	// restarts with backoff. Each spawn's exit hook carries its own
@@ -136,7 +139,7 @@ func run(ctx context.Context, log *slog.Logger, templStream jsonrpc2.Stream, arg
 
 	log.Info("creating proxy")
 	// Create the proxy to sit between.
-	serverProxy := proxy.NewServer(log, resilient, cache, diagnosticCache, args.NoPreload, args.FormatConfig)
+	serverProxy := proxy.NewServer(log, resilient, cache, diagnosticCache, args.NoPreload, args.FormatConfig, templateExtension)
 	// After a restart, gopls needs the session re-established: the
 	// original initialize plus every open generated document.
 	resilient.SetReplay(func(replayCtx context.Context, target protocol.Server) error {

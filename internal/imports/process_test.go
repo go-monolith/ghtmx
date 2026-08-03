@@ -33,7 +33,7 @@ func TestFormatting(t *testing.T) {
 				t.Fatalf("failed to parse %v", err)
 			}
 			template.Filepath = a.Files[0].Name
-			tf, err := Process(template)
+			tf, err := Process(template, ".ghtmx")
 			if err != nil {
 				t.Fatalf("failed to process file: %v", err)
 			}
@@ -145,7 +145,7 @@ templ Page(count int) {
 				t.Fatalf("failed to parse %v", err)
 			}
 			template.Filepath = filePath
-			tf, err := Process(template)
+			tf, err := Process(template, ".ghtmx")
 			if err != nil {
 				t.Fatalf("failed to process file: %v", err)
 			}

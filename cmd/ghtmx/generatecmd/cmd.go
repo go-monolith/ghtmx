@@ -279,6 +279,7 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 		cmd.Args.FileWriter,
 		cmd.Args.Lazy,
 		WithGeneratedSuffix(cmd.Args.Config.GeneratedSuffix),
+		WithTemplateExtension(cmd.Args.Config.TemplateExtension),
 		attributeValidationOption(cmd.Log, cmd.Args.Config),
 		WithRouteBindings(table, modulePath, cmd.Args.Config.GeneratedPackage.Name, constructors),
 		WithCentralFile(cmd.centralFilePath(modRoot)),
@@ -598,7 +599,7 @@ func (cmd Generate) handleEvents(ctx context.Context, events chan fsnotify.Event
 			// A removal purges the file's facts inside HandleEvent, so its
 			// dependents must be captured first.
 			var removedDeps []string
-			if cmd.dependentsOf != nil && event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 && strings.HasSuffix(event.Name, ".ghtmx") {
+			if cmd.dependentsOf != nil && event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 && strings.HasSuffix(event.Name, cmd.templateExtension()) {
 				removedDeps = cmd.dependentsOf(event.Name)
 			}
 			r, err := fseh.HandleEvent(ctx, event)
@@ -616,7 +617,7 @@ func (cmd Generate) handleEvents(ctx context.Context, events chan fsnotify.Event
 			// are handled directly — no re-expansion, so cycles terminate.
 			// Whole-set diagnostics for the refreshed facts are re-emitted
 			// when the watch loop gains per-change checks (task 48).
-			if cmd.dependentsOf != nil && strings.HasSuffix(event.Name, ".ghtmx") {
+			if cmd.dependentsOf != nil && strings.HasSuffix(event.Name, cmd.templateExtension()) {
 				deps := removedDeps
 				if deps == nil {
 					deps = cmd.dependentsOf(event.Name)
@@ -659,6 +660,15 @@ func (cmd Generate) handleEvents(ctx context.Context, events chan fsnotify.Event
 // registrations) are reported through the handler error path when bindings
 // reference them; they are logged here so they are visible even when no
 // binding does.
+// templateExtension is the project's configured template extension,
+// falling back to the default so a zero Config still behaves.
+func (cmd *Generate) templateExtension() string {
+	if cmd.Args.Config.TemplateExtension == "" {
+		return config.DefaultTemplateExtension
+	}
+	return cmd.Args.Config.TemplateExtension
+}
+
 func (cmd *Generate) discoverRoutes() (table *routes.Table, fragRefs map[string]bool, modRoot, modulePath string, errorCount int, loadFailed bool) {
 	modRoot, err := modcheck.WalkUp(cmd.Args.Path)
 	if err != nil {
@@ -852,7 +862,7 @@ func (cmd *Generate) deleteWatchModeTextFiles() error {
 		if generatedSuffix == "" {
 			generatedSuffix = "_ghtmx.go"
 		}
-		if !strings.HasSuffix(absPath, generatedSuffix) && !strings.HasSuffix(absPath, ".ghtmx") {
+		if !strings.HasSuffix(absPath, generatedSuffix) && !strings.HasSuffix(absPath, cmd.templateExtension()) {
 			return nil
 		}
 		watchModeFileName := ghtmxruntime.GetDevModeTextFileName(absPath)

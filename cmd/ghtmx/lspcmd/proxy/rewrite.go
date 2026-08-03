@@ -4,17 +4,60 @@ import (
 	"log/slog"
 	"path"
 	"strings"
+	"sync"
 
+	"github.com/go-monolith/ghtmx/internal/config"
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
 )
 
-func convertTemplToGoURI(templURI lsp.DocumentURI) (isTemplFile bool, goURI lsp.DocumentURI) {
+// The template extension is project configuration, so these two
+// conversions are methods: they must use the same extension the generator
+// wrote with, or the proxy maps a document onto a Go file that does not
+// exist.
+func (p *Server) convertTemplToGoURI(templURI lsp.DocumentURI) (isTemplFile bool, goURI lsp.DocumentURI) {
+	ext := p.templateExt()
 	base, fileName := path.Split(string(templURI))
-	if !strings.HasSuffix(fileName, ".ghtmx") {
+	if !strings.HasSuffix(fileName, ext) {
 		return
 	}
-	return true, lsp.DocumentURI(base + (strings.TrimSuffix(fileName, ".ghtmx") + "_ghtmx.go"))
+	return true, lsp.DocumentURI(base + (strings.TrimSuffix(fileName, ext) + "_ghtmx.go"))
 }
+
+// TemplateExtension carries the project's configured template extension to
+// every URI mapping. The Server writes it once at Initialize, after
+// ghtmx.json has been read; the Client reads it when converting
+// diagnostics back. It is shared because the two proxies map URIs in
+// opposite directions and must agree, or a diagnostic lands on a file name
+// that was never generated.
+type TemplateExtension struct {
+	mu  sync.RWMutex
+	ext string
+}
+
+// NewTemplateExtension returns a holder reading as the default until the
+// project configuration is known.
+func NewTemplateExtension() *TemplateExtension { return &TemplateExtension{} }
+
+func (t *TemplateExtension) Set(ext string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.ext = ext
+}
+
+func (t *TemplateExtension) Get() string {
+	if t == nil {
+		return config.DefaultTemplateExtension
+	}
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if t.ext == "" {
+		return config.DefaultTemplateExtension
+	}
+	return t.ext
+}
+
+// templateExt is the configured template extension for this server.
+func (p *Server) templateExt() string { return p.templateExtension.Get() }
 
 // isPlainGoFile returns true if the URI refers to a .go file that is not a _ghtmx.go file.
 func isPlainGoFile(docURI lsp.DocumentURI) bool {
@@ -22,12 +65,12 @@ func isPlainGoFile(docURI lsp.DocumentURI) bool {
 	return strings.HasSuffix(s, ".go") && !strings.HasSuffix(s, "_ghtmx.go")
 }
 
-func convertTemplGoToTemplURI(goURI lsp.DocumentURI) (isTemplGoFile bool, templURI lsp.DocumentURI) {
+func convertTemplGoToTemplURI(ext string, goURI lsp.DocumentURI) (isTemplGoFile bool, templURI lsp.DocumentURI) {
 	base, fileName := path.Split(string(goURI))
 	if !strings.HasSuffix(fileName, "_ghtmx.go") {
 		return
 	}
-	return true, lsp.DocumentURI(base + (strings.TrimSuffix(fileName, "_ghtmx.go") + ".ghtmx"))
+	return true, lsp.DocumentURI(base + (strings.TrimSuffix(fileName, "_ghtmx.go") + ext))
 }
 
 // convertGoRangeToTemplRange converts a Go range to a templ range using the source map cache.
@@ -61,9 +104,9 @@ func convertGoRangeToTemplRange(cache *SourceMapCache, log *slog.Logger, templUR
 }
 
 // convertLocationResults converts _ghtmx.go URIs and ranges in location results back to .ghtmx URIs.
-func convertLocationResults(cache *SourceMapCache, log *slog.Logger, result []lsp.Location) {
+func convertLocationResults(ext string, cache *SourceMapCache, log *slog.Logger, result []lsp.Location) {
 	for i, r := range result {
-		isTemplGoFile, templURI := convertTemplGoToTemplURI(r.URI)
+		isTemplGoFile, templURI := convertTemplGoToTemplURI(ext, r.URI)
 		if !isTemplGoFile {
 			continue
 		}
@@ -79,8 +122,8 @@ func convertLocationResults(cache *SourceMapCache, log *slog.Logger, result []ls
 }
 
 // convertCallHierarchyItem converts a _ghtmx.go call hierarchy item back to .ghtmx.
-func convertCallHierarchyItem(cache *SourceMapCache, log *slog.Logger, item *lsp.CallHierarchyItem) {
-	isTemplGoFile, templURI := convertTemplGoToTemplURI(item.URI)
+func convertCallHierarchyItem(ext string, cache *SourceMapCache, log *slog.Logger, item *lsp.CallHierarchyItem) {
+	isTemplGoFile, templURI := convertTemplGoToTemplURI(ext, item.URI)
 	if !isTemplGoFile {
 		return
 	}
@@ -90,12 +133,12 @@ func convertCallHierarchyItem(cache *SourceMapCache, log *slog.Logger, item *lsp
 }
 
 // convertWorkspaceEdit converts _ghtmx.go URIs and ranges in a workspace edit back to .ghtmx.
-func convertWorkspaceEdit(cache *SourceMapCache, log *slog.Logger, edit *lsp.WorkspaceEdit) {
+func convertWorkspaceEdit(ext string, cache *SourceMapCache, log *slog.Logger, edit *lsp.WorkspaceEdit) {
 	if edit == nil {
 		return
 	}
 	for i, dc := range edit.DocumentChanges {
-		isTemplGoFile, templURI := convertTemplGoToTemplURI(dc.TextDocument.URI)
+		isTemplGoFile, templURI := convertTemplGoToTemplURI(ext, dc.TextDocument.URI)
 		if !isTemplGoFile {
 			continue
 		}
@@ -110,7 +153,7 @@ func convertWorkspaceEdit(cache *SourceMapCache, log *slog.Logger, edit *lsp.Wor
 	}
 	converted := make(map[lsp.DocumentURI][]lsp.TextEdit)
 	for docURI, edits := range edit.Changes {
-		isTemplGoFile, templURI := convertTemplGoToTemplURI(docURI)
+		isTemplGoFile, templURI := convertTemplGoToTemplURI(ext, docURI)
 		if !isTemplGoFile {
 			converted[docURI] = edits
 			continue

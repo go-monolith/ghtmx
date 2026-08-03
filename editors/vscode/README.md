@@ -13,13 +13,22 @@ Language support for `.ghtmx` and `.htmx` templates:
 
 ## File extensions
 
-`.ghtmx` is the canonical extension. `.htmx` is accepted because some
-projects prefer it, and gets the same highlighting and icon.
+The extension is chosen per project in `ghtmx.json`:
 
-**The toolchain currently matches `.ghtmx` only.** `ghtmx generate`
-discovers `*.ghtmx`, and `ghtmx lsp` filters the workspace the same way,
-so a `.htmx` file is highlighted but produces no generated Go and no
-diagnostics. Name files `.ghtmx` unless you only want highlighting.
+```json
+{
+  "templateExtension": ".htmx"
+}
+```
+
+`.ghtmx` is the default and needs no configuration; `.htmx` is the one
+alternative. A project uses **exactly one** — with `.htmx` configured, a
+`.ghtmx` file is not a template and is neither generated from nor served
+by the language server.
+
+The editor claims both extensions regardless, so highlighting and the
+icon work either way. Generation and diagnostics follow the configured
+value, so set it to match the files you actually write.
 
 ## Requirements
 

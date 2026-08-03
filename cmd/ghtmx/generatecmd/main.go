@@ -43,7 +43,7 @@ Args:
   -watch
     Set to true to watch the path for changes and regenerate code.
   -watch-pattern <regexp>
-    Set the regexp pattern of files that will be watched for changes. (default: '(.+\.go$)|(.+\.ghtmx$)')
+    Set the regexp pattern of files that will be watched for changes. (default: '(.+\.go$)|(.+\.ghtmx$)', following -template-extension)
   -ignore-pattern <regexp>
     Set the regexp pattern of files to ignore when watching for changes. (default: '')
   -open-browser
@@ -86,6 +86,8 @@ Args:
     Directory of the central generated package. (default from ghtmx.json, else ghtmxgen)
   -generated-pkg-name <name>
     Package name of the central generated package. (default from ghtmx.json, else ghtmxgen)
+  -template-extension <ext>
+    Template file extension: .ghtmx (default) or .htmx. (default from ghtmx.json, else .ghtmx)
   -generated-suffix <suffix>
     Generated Go file suffix replacing the .ghtmx extension. (default from ghtmx.json, else _ghtmx.go)
   -check-severity <ID=severity>
@@ -121,7 +123,12 @@ Examples:
     ghtmx generate -check
 `
 
-const defaultWatchPattern = `(.+\.go$)|(.+\.ghtmx$)`
+// defaultWatchPattern watches Go sources and the project's templates. The
+// template extension is configurable, so the pattern is derived rather
+// than constant.
+func defaultWatchPattern(templateExtension string) string {
+	return `(.+\.go$)|(.+\` + templateExtension + `$)`
+}
 
 // stringSliceFlag collects repeatable string flags.
 type stringSliceFlag []string
@@ -160,7 +167,7 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	cmd.BoolVar(&cmdArgs.IncludeVersion, "include-version", true, "")
 	cmd.BoolVar(&cmdArgs.IncludeTimestamp, "include-timestamp", false, "")
 	cmd.BoolVar(&cmdArgs.Watch, "watch", false, "")
-	watchPatternFlag := cmd.String("watch-pattern", defaultWatchPattern, "")
+	watchPatternFlag := cmd.String("watch-pattern", "", "")
 	ignorePatternFlag := cmd.String("ignore-pattern", "", "")
 	cmd.BoolVar(&cmdArgs.OpenBrowser, "open-browser", true, "")
 	cmd.StringVar(&cmdArgs.Command, "cmd", "", "")
@@ -184,6 +191,7 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	generatedPkgDirFlag := cmd.String("generated-pkg-dir", "", "")
 	generatedPkgNameFlag := cmd.String("generated-pkg-name", "", "")
 	generatedSuffixFlag := cmd.String("generated-suffix", "", "")
+	templateExtensionFlag := cmd.String("template-extension", "", "")
 	checkSeverityFlag := severityMapFlag{}
 	cmd.Var(checkSeverityFlag, "check-severity", "")
 	strictTargetsFlag := cmd.Bool("strict-targets", false, "")
@@ -211,10 +219,6 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	}
 	if cmdArgs.Check && *toStdoutFlag {
 		return Arguments{}, log, *helpFlag, fmt.Errorf("cannot use -check with -stdout")
-	}
-	cmdArgs.WatchPattern, err = regexp.Compile(*watchPatternFlag)
-	if err != nil {
-		return cmdArgs, log, *helpFlag, fmt.Errorf("invalid watch pattern %q: %w", *watchPatternFlag, err)
 	}
 	if *ignorePatternFlag != "" {
 		cmdArgs.IgnorePattern, err = regexp.Compile(*ignorePatternFlag)
@@ -264,6 +268,8 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 			flags.GeneratedPkgName = generatedPkgNameFlag
 		case "generated-suffix":
 			flags.GeneratedSuffix = generatedSuffixFlag
+		case "template-extension":
+			flags.TemplateExtension = templateExtensionFlag
 		case "strict-targets":
 			flags.StrictTargets = strictTargetsFlag
 		case "path":
@@ -273,6 +279,16 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	cmdArgs.Config = config.Resolve(fileCfg, flags)
 	if err := cmdArgs.Config.Validate(); err != nil {
 		return Arguments{}, log, *helpFlag, err
+	}
+	// Compiled only now: the default watches the configured template
+	// extension, which is not known until the config has resolved.
+	watchPattern := *watchPatternFlag
+	if watchPattern == "" {
+		watchPattern = defaultWatchPattern(cmdArgs.Config.TemplateExtension)
+	}
+	cmdArgs.WatchPattern, err = regexp.Compile(watchPattern)
+	if err != nil {
+		return cmdArgs, log, *helpFlag, fmt.Errorf("invalid watch pattern %q: %w", watchPattern, err)
 	}
 	if _, err := htmxsurface.ForVersion(cmdArgs.Config.HtmxVersion); err != nil {
 		return Arguments{}, log, *helpFlag, err

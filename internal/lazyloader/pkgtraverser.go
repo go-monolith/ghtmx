@@ -11,10 +11,6 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-const (
-	_templExt = ".ghtmx"
-)
-
 type pkgTraverser interface {
 	openTopologically(ctx context.Context, pkg *packages.Package) error
 	closeTopologically(ctx context.Context, pkg *packages.Package) error
@@ -24,6 +20,9 @@ type goPkgTraverser struct {
 	templDocHandler TemplDocHandler
 	pkgsRefCount    map[string]int
 	fileReader      fileReader
+	// templExt is the project's configured template extension: a sibling
+	// file only counts as a template when it matches.
+	templExt string
 }
 
 type TemplDocHandler interface {
@@ -54,7 +53,7 @@ func (t *goPkgTraverser) openTopologically(ctx context.Context, pkg *packages.Pa
 	}
 
 	for _, otherFile := range pkg.OtherFiles {
-		if filepath.Ext(otherFile) != _templExt {
+		if filepath.Ext(otherFile) != t.templExt {
 			continue
 		}
 
@@ -86,7 +85,7 @@ func (t *goPkgTraverser) closeTopologically(ctx context.Context, pkg *packages.P
 	}
 
 	for _, otherFile := range pkg.OtherFiles {
-		if filepath.Ext(otherFile) != _templExt {
+		if filepath.Ext(otherFile) != t.templExt {
 			continue
 		}
 

@@ -25,6 +25,7 @@ import (
 	"github.com/go-monolith/ghtmx/cmd/ghtmx/visualize"
 	"github.com/go-monolith/ghtmx/internal/analyzer"
 	"github.com/go-monolith/ghtmx/internal/buildcache"
+	"github.com/go-monolith/ghtmx/internal/config"
 	"github.com/go-monolith/ghtmx/internal/diag"
 	"github.com/go-monolith/ghtmx/internal/generator"
 	"github.com/go-monolith/ghtmx/internal/generator/central"
@@ -76,13 +77,26 @@ func NewCheckWriter() (writer FileWriterFunc, getChanged func() []string) {
 // FSEventHandlerOption configures optional event handler behavior.
 type FSEventHandlerOption func(*FSEventHandler)
 
-// WithGeneratedSuffix sets the file-name suffix that replaces the .ghtmx
+// WithGeneratedSuffix sets the file-name suffix that replaces the template
 // extension on generated Go files (config generatedSuffix, default
 // "_ghtmx.go").
 func WithGeneratedSuffix(suffix string) FSEventHandlerOption {
 	return func(h *FSEventHandler) {
 		if suffix != "" {
 			h.generatedSuffix = suffix
+		}
+	}
+}
+
+// WithTemplateExtension sets the extension templates are written with
+// (config templateExtension, default ".ghtmx"). It decides what the
+// watcher treats as a template and, critically, which source file the
+// orphan check looks for: with the wrong extension every generated file
+// looks orphaned and is deleted immediately after being written.
+func WithTemplateExtension(ext string) FSEventHandlerOption {
+	return func(h *FSEventHandler) {
+		if ext != "" {
+			h.templateExtension = ext
 		}
 	}
 }
@@ -172,6 +186,7 @@ func NewFSEventHandler(
 		Log:                   log,
 		dir:                   dir,
 		generatedSuffix:       "_ghtmx.go",
+		templateExtension:     config.DefaultTemplateExtension,
 		fileNameToLastModTime: syncmap.New[string, time.Time](),
 		fileNameToError:       syncset.New[string](),
 		fileNameToOutput:      syncmap.New[string, generator.GeneratorOutput](),
@@ -202,6 +217,7 @@ type FSEventHandler struct {
 	buildCache            *buildcache.Store
 	genSourceMapVis       bool
 	generatedSuffix       string
+	templateExtension     string
 	surface               *htmxsurface.Surface
 	severityOverrides     map[string]diag.Severity
 	bindingMu             sync.RWMutex
@@ -248,7 +264,7 @@ func (h *FSEventHandler) HandleEvent(ctx context.Context, event fsnotify.Event) 
 
 	// Handle generated Go files.
 	if !event.Has(fsnotify.Remove) && strings.HasSuffix(event.Name, h.generatedSuffix) {
-		_, err = os.Stat(strings.TrimSuffix(event.Name, h.generatedSuffix) + ".ghtmx")
+		_, err = os.Stat(strings.TrimSuffix(event.Name, h.generatedSuffix) + h.templateExtension)
 		if !os.IsNotExist(err) {
 			return GenerateResult{}, err
 		}
@@ -274,12 +290,12 @@ func (h *FSEventHandler) HandleEvent(ctx context.Context, event fsnotify.Event) 
 		// purge its facts and freshness gates. TemplFileGoUpdated makes
 		// the batch pipeline run, so the central package and whole-set
 		// diagnostics refresh without the removed declarations.
-		if strings.HasSuffix(event.Name, ".ghtmx") {
+		if strings.HasSuffix(event.Name, h.templateExtension) {
 			if h.setAnalysis != nil {
 				h.setAnalysis.RemoveFile(event.Name)
 			}
 			h.fileNameToLastModTime.Delete(event.Name)
-			h.hashes.Delete(strings.TrimSuffix(event.Name, ".ghtmx") + h.generatedSuffix)
+			h.hashes.Delete(strings.TrimSuffix(event.Name, h.templateExtension) + h.generatedSuffix)
 			return GenerateResult{TemplFileGoUpdated: true}, nil
 		}
 	}
@@ -299,7 +315,7 @@ func (h *FSEventHandler) HandleEvent(ctx context.Context, event fsnotify.Event) 
 	}
 
 	// Process anything that isn't a templ file.
-	if !strings.HasSuffix(event.Name, ".ghtmx") {
+	if !strings.HasSuffix(event.Name, h.templateExtension) {
 		if h.devMode {
 			h.Log.Info("Watched file updated", slog.String("file", event.Name))
 		}
@@ -315,7 +331,7 @@ func (h *FSEventHandler) HandleEvent(ctx context.Context, event fsnotify.Event) 
 	// Handle templ files.
 
 	// If the go file is newer than the templ file, skip generation, because it's up-to-date.
-	if h.lazy && goFileIsUpToDate(event.Name, h.generatedSuffix, fileInfo.ModTime()) {
+	if h.lazy && goFileIsUpToDate(event.Name, h.templateExtension, h.generatedSuffix, fileInfo.ModTime()) {
 		h.Log.Debug("Skipping file because the Go file is up-to-date", slog.String("file", event.Name))
 		return GenerateResult{}, nil
 	}
@@ -408,8 +424,8 @@ func (h *FSEventHandler) analyze(t *parser.TemplateFile, fileName string) error 
 	return nil
 }
 
-func goFileIsUpToDate(templFileName, generatedSuffix string, templFileLastMod time.Time) (upToDate bool) {
-	goFileName := strings.TrimSuffix(templFileName, ".ghtmx") + generatedSuffix
+func goFileIsUpToDate(templFileName, templateExtension, generatedSuffix string, templFileLastMod time.Time) (upToDate bool) {
+	goFileName := strings.TrimSuffix(templFileName, templateExtension) + generatedSuffix
 	goFileInfo, err := os.Stat(goFileName)
 	if err != nil {
 		return false
@@ -446,7 +462,7 @@ func (h *FSEventHandler) generate(ctx context.Context, fileName string) (result 
 	if analyzeErr != nil {
 		return GenerateResult{}, nil, analyzeErr
 	}
-	targetFileName := strings.TrimSuffix(fileName, ".ghtmx") + h.generatedSuffix
+	targetFileName := strings.TrimSuffix(fileName, h.templateExtension) + h.generatedSuffix
 
 	// Only use relative filenames to the basepath for filenames in runtime error messages.
 	absFilePath, err := filepath.Abs(fileName)
@@ -565,7 +581,7 @@ func (h *FSEventHandler) generate(ctx context.Context, fileName string) (result 
 	}
 
 	if h.genSourceMapVis {
-		err = generateSourceMapVisualisation(ctx, fileName, targetFileName, generatorOutput.SourceMap)
+		err = generateSourceMapVisualisation(ctx, fileName, targetFileName, h.templateExtension, generatorOutput.SourceMap)
 	}
 
 	return result, parsedDiagnostics, err
@@ -594,7 +610,7 @@ func remapErrorList(err error, sourceMap *parser.SourceMap, fileName string) err
 	return list
 }
 
-func generateSourceMapVisualisation(ctx context.Context, templFileName, goFileName string, sourceMap *parser.SourceMap) error {
+func generateSourceMapVisualisation(ctx context.Context, templFileName, goFileName, templateExtension string, sourceMap *parser.SourceMap) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -613,7 +629,7 @@ func generateSourceMapVisualisation(ctx context.Context, templFileName, goFileNa
 	}
 	component := visualize.HTML(templFileName, string(templContents), string(goContents), sourceMap)
 
-	targetFileName := strings.TrimSuffix(templFileName, ".ghtmx") + "_ghtmx_sourcemap.html"
+	targetFileName := strings.TrimSuffix(templFileName, templateExtension) + "_ghtmx_sourcemap.html"
 	w, err := os.Create(targetFileName)
 	if err != nil {
 		return fmt.Errorf("%s sourcemap visualisation error: %w", templFileName, err)

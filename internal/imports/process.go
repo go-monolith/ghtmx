@@ -23,12 +23,12 @@ import (
 
 var internalImports = []string{"github.com/go-monolith/ghtmx", "github.com/go-monolith/ghtmx/runtime"}
 
-func convertTemplToGoURI(templURI string) (isTemplFile bool, goURI string) {
+func convertTemplToGoURI(templURI, ext string) (isTemplFile bool, goURI string) {
 	base, fileName := path.Split(templURI)
-	if !strings.HasSuffix(fileName, ".ghtmx") {
+	if !strings.HasSuffix(fileName, ext) {
 		return
 	}
-	return true, base + (strings.TrimSuffix(fileName, ".ghtmx") + "_ghtmx.go")
+	return true, base + (strings.TrimSuffix(fileName, ext) + "_ghtmx.go")
 }
 
 var fset = token.NewFileSet()
@@ -72,11 +72,11 @@ func updateImports(name, src string) (updated []*ast.ImportSpec, parsedFile *ast
 	return updated, gofile, nil
 }
 
-func Process(t *parser.TemplateFile) (*parser.TemplateFile, error) {
+func Process(t *parser.TemplateFile, ext string) (*parser.TemplateFile, error) {
 	if t.Filepath == "" {
 		return t, nil
 	}
-	isTemplFile, fileName := convertTemplToGoURI(t.Filepath)
+	isTemplFile, fileName := convertTemplToGoURI(t.Filepath, ext)
 	if !isTemplFile {
 		return t, fmt.Errorf("invalid filepath: %s", t.Filepath)
 	}
