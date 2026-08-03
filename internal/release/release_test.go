@@ -133,13 +133,9 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 		`grep -q "github.com/go-monolith/ghtmx $TAG\$"`,
 		"git diff --exit-code", // generated code is current
 		"adapters/*/go.mod",    // adapter tests + lockstep tags
-		// Existence is checked against the remote, because the checkout
-		// fetches no tags and a local miss would mint a fresh tag object
-		// whose push is rejected — stranding a partial release that no
-		// re-run could finish.
-		`git ls-remote origin "refs/tags/$name^{}"`,
-		`refusing to move it`,
-		`git push origin "refs/tags/$name"`,
+		// Tagging happens after the gates, and its behaviour is covered
+		// by TestPublishTagsIsIdempotent rather than by matching text.
+		".github/scripts/publish-tags.sh",
 	} {
 		if !strings.Contains(workflow, needle) {
 			t.Errorf("release.yml lost %q", needle)
@@ -148,10 +144,22 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 	if !strings.Contains(workflow, "dist/release/*") {
 		t.Error("release.yml must upload every artifact including checksums.txt")
 	}
-	// A tag is immutable once the module proxy has seen it, so nothing
-	// here may move one — not even to recover a failed run.
-	if strings.Contains(workflow, "push -f") || strings.Contains(workflow, "push --force") {
-		t.Error("release.yml must never force-push: a published module version cannot move")
+	// A tag is immutable once the module proxy has seen it, so neither
+	// the workflow nor the script it calls may move one — not even to
+	// recover a failed run.
+	publish, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "scripts", "publish-tags.sh"))
+	if err != nil {
+		t.Fatalf("the publish script is missing: %v", err)
+	}
+	for name, body := range map[string]string{"release.yml": workflow, "publish-tags.sh": string(publish)} {
+		for line := range strings.SplitSeq(body, "\n") {
+			if !strings.Contains(line, "git push") {
+				continue
+			}
+			if strings.Contains(line, "-f") || strings.Contains(line, "--force") {
+				t.Errorf("%s force-pushes a tag, which moves a published version: %q", name, strings.TrimSpace(line))
+			}
+		}
 	}
 }
 
@@ -169,30 +177,47 @@ func TestAutoReleaseNeverWritesToMain(t *testing.T) {
 	for _, needle := range []string{
 		"branches: [main]",                      // every merge to main
 		"uses: ./.github/workflows/release.yml", // the gates own the tagging
-		"concurrency:",                          // two quick merges must not race
-		"[skip release]",                        // the documented opt-out
 		"pull_request:",                         // merge events on this repo get lost
+		// Serialization rests on the group being shared AND on pending
+		// runs surviving. Flipping cancel-in-progress to true would
+		// silently drop a queued merge's release, so pin the value, not
+		// just the presence of a concurrency block.
+		"group: auto-release",
+		"cancel-in-progress: false",
 	} {
 		if !strings.Contains(workflow, needle) {
 			t.Errorf("auto-release.yml lost %q", needle)
 		}
 	}
 
-	for line := range strings.SplitSeq(workflow, "\n") {
-		if !strings.Contains(line, "git push") {
-			continue
+	// Everything the pre-gate half of the release pushes, including the
+	// scripts it calls.
+	sources := map[string]string{"auto-release.yml": workflow}
+	for _, name := range []string{"release-plan.sh", "release-stage.sh"} {
+		body, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "scripts", name))
+		if err != nil {
+			t.Fatalf("%s is missing: %v", name, err)
 		}
-		// The tag must not exist until release.yml has gated the tree
-		// behind it: a tag is immutable once the proxy sees it, so a
-		// failed gate would otherwise burn the version permanently and
-		// publish a root module with no adapter tags beside it.
-		if strings.Contains(line, "refs/tags/") {
-			t.Errorf("auto-release.yml tags before the gates run: %q", strings.TrimSpace(line))
-		}
-		// main is branch-protected with enforce_admins; any push to it
-		// would be rejected and strand a half-cut release.
-		if strings.Contains(line, "refs/heads/main") || strings.Contains(line, "origin main") {
-			t.Errorf("auto-release.yml pushes to main: %q", strings.TrimSpace(line))
+		sources[name] = string(body)
+	}
+
+	for name, body := range sources {
+		for line := range strings.SplitSeq(body, "\n") {
+			if !strings.Contains(line, "git push") {
+				continue
+			}
+			// The tag must not exist until release.yml has gated the tree
+			// behind it: a tag is immutable once the proxy sees it, so a
+			// failed gate would otherwise burn the version permanently and
+			// publish a root module with no adapter tags beside it.
+			if strings.Contains(line, "refs/tags/") {
+				t.Errorf("%s tags before the gates run: %q", name, strings.TrimSpace(line))
+			}
+			// main is branch-protected with enforce_admins; any push to it
+			// would be rejected and strand a half-cut release.
+			if strings.Contains(line, "refs/heads/main") || strings.Contains(line, "origin main") {
+				t.Errorf("%s pushes to main: %q", name, strings.TrimSpace(line))
+			}
 		}
 	}
 }
