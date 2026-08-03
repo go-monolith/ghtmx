@@ -449,7 +449,8 @@ func remoteTags(t *testing.T, dir string) string {
 	for line := range strings.SplitSeq(git(t, dir, "ls-remote", "--tags", "origin"), "\n") {
 		_, ref, ok := strings.Cut(line, "refs/tags/")
 		if ok && !strings.HasSuffix(ref, "^{}") {
-			tags.WriteString(ref + "\n")
+			tags.WriteString(ref)
+			tags.WriteString("\n")
 		}
 	}
 	return tags.String()
