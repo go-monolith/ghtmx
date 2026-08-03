@@ -283,6 +283,8 @@ func sourceLanguage(name string) string {
 		return "language-ghtmx"
 	case strings.HasSuffix(name, ".go"):
 		return "language-go"
+	case strings.HasSuffix(name, ".css"):
+		return "language-css"
 	default:
 		return "language-plaintext"
 	}
@@ -517,12 +519,15 @@ func ExampleFiles(name string) ([]SourceFile, string, error) {
 }
 
 // sourceRank orders an example's files for display: templates first,
-// then the package sources, with the thin cmd/ entry point last.
+// then the package sources, then the stylesheet the templates pull in,
+// with the thin cmd/ entry point last.
 func sourceRank(name string) int {
 	switch {
 	case strings.HasSuffix(name, ".ghtmx"):
 		return 0
 	case strings.HasPrefix(name, "cmd/"):
+		return 3
+	case strings.HasSuffix(name, ".css"):
 		return 2
 	default:
 		return 1

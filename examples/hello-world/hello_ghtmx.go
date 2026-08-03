@@ -38,7 +38,11 @@ func page(name string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "<style>\n\t\t\t\t:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; color-scheme: light dark; }\n\t\t\t\t@media (prefers-color-scheme: dark) {\n\t\t\t\t\t:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; }\n\t\t\t\t}\n\t\t\t\t* { box-sizing: border-box; }\n\t\t\t\tbody {\n\t\t\t\t\tfont-family: system-ui, sans-serif; margin: 0; min-height: 100vh;\n\t\t\t\t\tbackground: var(--bg); color: var(--text);\n\t\t\t\t\tdisplay: flex; justify-content: center; align-items: flex-start;\n\t\t\t\t}\n\t\t\t\t.app {\n\t\t\t\t\twidth: min(36rem, 92vw); margin: 3rem 0; padding: 1.6rem 1.8rem;\n\t\t\t\t\tbackground: var(--surface); border: 1px solid var(--border);\n\t\t\t\t\tborder-radius: .6rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .1);\n\t\t\t\t}\n\t\t\t\t.badge {\n\t\t\t\t\tdisplay: inline-block; font-size: .72rem; font-weight: 600;\n\t\t\t\t\tcolor: var(--primary); border: 1px solid var(--primary);\n\t\t\t\t\tborder-radius: 999px; padding: .1rem .6rem; margin-bottom: .8rem;\n\t\t\t\t}\n\t\t\t\th1 { margin: 0 0 .4rem; font-size: 1.5rem; }\n\t\t\t\t.tagline { margin: 0 0 1.2rem; color: var(--muted); font-size: .95rem; }\n\t\t\t\tbutton, a.action {\n\t\t\t\t\tfont-size: .9rem; padding: .45rem .9rem; border-radius: .45rem; cursor: pointer;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t\ttext-decoration: none; display: inline-block;\n\t\t\t\t}\n\t\t\t\tbutton:hover, a.action:hover { border-color: var(--primary); color: var(--primary); }\n\t\t\t\ttable { width: 100%; border-collapse: collapse; margin: .6rem 0 1rem; }\n\t\t\t\ttd { padding: .5rem .3rem; border-bottom: 1px solid var(--border); }\n\t\t\t\ttr:last-child td { border-bottom: none; }\n\t\t\t\ttd:last-child { text-align: right; }\n\t\t\t\tform { display: flex; gap: .6rem; }\n\t\t\t\tinput {\n\t\t\t\t\tflex: 1; font-size: 1rem; padding: .5rem .8rem; border-radius: .45rem;\n\t\t\t\t\tborder: 1px solid var(--border); background: var(--bg); color: inherit;\n\t\t\t\t}\n\t\t\t\tform button { border-color: var(--primary); background: var(--primary); color: var(--surface); }\n\t\t\t</style></head><body><main class=\"app\"><span class=\"badge\">ghtmx example</span>")
+		ghtmx_7f3b9d1a_Err = styleSheet().Render(ctx, ghtmx_7f3b9d1a_Buffer)
+		if ghtmx_7f3b9d1a_Err != nil {
+			return ghtmx_7f3b9d1a_Err
+		}
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "</head><body><main class=\"app\"><span class=\"badge\">ghtmx example</span>")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
@@ -53,7 +57,7 @@ func page(name string) ghtmx.Component {
 		var ghtmx_7f3b9d1a_Var2 ghtmx.SafeURL
 		ghtmx_7f3b9d1a_Var2, ghtmx_7f3b9d1a_Err = ghtmx.JoinURLErrs(ghtmx.URL(ghtmxgen.HomePath))
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hello-world/hello.ghtmx`, Line: 59, Col: 60}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hello-world/hello.ghtmx`, Line: 20, Col: 60}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var2))
 		if ghtmx_7f3b9d1a_Err != nil {
@@ -95,7 +99,7 @@ func greeting(name string) ghtmx.Component {
 		var ghtmx_7f3b9d1a_Var4 string
 		ghtmx_7f3b9d1a_Var4, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(name)
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hello-world/hello.ghtmx`, Line: 69, Col: 18}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `examples/hello-world/hello.ghtmx`, Line: 30, Col: 18}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var4))
 		if ghtmx_7f3b9d1a_Err != nil {

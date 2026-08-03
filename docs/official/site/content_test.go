@@ -165,6 +165,9 @@ func TestHelperClasses(t *testing.T) {
 	if got := sourceLanguage("main.go"); got != "language-go" {
 		t.Errorf("sourceLanguage(main.go) = %q", got)
 	}
+	if got := sourceLanguage("crud.css"); got != "language-css" {
+		t.Errorf("sourceLanguage(crud.css) = %q", got)
+	}
 	if got := sourceLanguage("README.md"); got != "language-plaintext" {
 		t.Errorf("sourceLanguage(README.md) = %q", got)
 	}
@@ -179,6 +182,20 @@ func TestHelperClasses(t *testing.T) {
 	}
 	if got := navClass("", false); got != "" {
 		t.Errorf(`navClass("", false) = %q`, got)
+	}
+}
+
+// TestSourceRankOrdersExampleFiles pins the display order of an
+// example's sources: the template first, then the package source, then
+// the stylesheet it inlines, with the thin cmd/ entry point last.
+func TestSourceRankOrdersExampleFiles(t *testing.T) {
+	ordered := []string{"crud.ghtmx", "crud.go", "crud.css", "cmd/main.go"}
+	for i := 1; i < len(ordered); i++ {
+		prev, cur := ordered[i-1], ordered[i]
+		if sourceRank(prev) >= sourceRank(cur) {
+			t.Errorf("sourceRank(%s) = %d must sort before sourceRank(%s) = %d",
+				prev, sourceRank(prev), cur, sourceRank(cur))
+		}
 	}
 }
 

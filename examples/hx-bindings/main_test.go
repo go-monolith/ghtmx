@@ -18,6 +18,24 @@ func TestSymbolBindingEmitsStaticPath(t *testing.T) {
 	}
 }
 
+// TestPageEmbedsStyleSheet: the rules live in items.css and reach the
+// page through //go:embed. A missing file is a compile error, so what
+// this guards is the wiring the compiler cannot see — a template that
+// stops calling @styleSheet(), or a stylesheet emptied by a bad edit.
+func TestPageEmbedsStyleSheet(t *testing.T) {
+	var sb strings.Builder
+	if err := itemsPage(demoItems).Render(context.Background(), &sb); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	if !strings.Contains(out, "<style>") || !strings.Contains(out, "</style>") {
+		t.Errorf("the page must carry a style element, got:\n%s", out)
+	}
+	if !strings.Contains(out, ".pill {") {
+		t.Errorf("items.css was not inlined into the page, got:\n%s", out)
+	}
+}
+
 // TestConstructorEscapingComposition is the mandatory route-binding case
 // of the escaping conformance suite (FR-023, NFR-007): parameters
 // containing /, ?, #, &, and a space are percent-encoded for the path

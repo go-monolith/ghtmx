@@ -73,7 +73,7 @@ func TestExampleDirsMatchRepository(t *testing.T) {
 }
 
 // TestCopyName pins the copy rules: sources gain .txt, generated and
-// test files are skipped, READMEs pass through.
+// test files are skipped, READMEs and stylesheets pass through.
 func TestCopyName(t *testing.T) {
 	cases := []struct {
 		rel  string
@@ -84,6 +84,7 @@ func TestCopyName(t *testing.T) {
 		{"crud.ghtmx", "crud.ghtmx.txt", true},
 		{"handlers/handlers.go", "handlers/handlers.go.txt", true},
 		{"README.md", "README.md", true},
+		{"crud.css", "crud.css", true},
 		{"crud_ghtmx.go", "", false},
 		{"main_test.go", "", false},
 		{"notes.txt", "", false},

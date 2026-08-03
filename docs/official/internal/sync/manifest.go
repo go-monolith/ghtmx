@@ -140,7 +140,8 @@ func Entries() ([]Entry, error) {
 // copyName decides whether an example file is copied and under what
 // relative name. Go and template sources gain a .txt suffix so the
 // copies are invisible to go build, gofmt, and ghtmx generate;
-// generated pairs and tests are not shown on the site. Dot- and
+// stylesheets need no such hiding and are copied verbatim. Generated
+// pairs and tests are not shown on the site. Dot- and
 // underscore-prefixed names are never copied — go:embed's plain
 // patterns exclude them, so a copy would silently miss the binary.
 func copyName(rel string) (string, bool) {
@@ -152,7 +153,7 @@ func copyName(rel string) (string, bool) {
 	}
 	base := filepath.Base(slash)
 	switch {
-	case base == "README.md":
+	case base == "README.md", strings.HasSuffix(base, ".css"):
 		return slash, true
 	case strings.HasSuffix(base, "_ghtmx.go"), strings.HasSuffix(base, "_test.go"):
 		return "", false

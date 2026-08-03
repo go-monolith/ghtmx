@@ -9,8 +9,20 @@
 package helloworld
 
 import (
+	_ "embed"
 	"net/http"
+
+	"github.com/go-monolith/ghtmx"
 )
+
+//go:embed hello.css
+var styleCSS string
+
+// styleSheet inlines hello.css into the page head. The rules live in
+// their own file so the template shows markup, not presentation.
+func styleSheet() ghtmx.Component {
+	return ghtmx.Raw("<style>" + styleCSS + "</style>")
+}
 
 func home(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
