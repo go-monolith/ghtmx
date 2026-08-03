@@ -67,9 +67,11 @@ Used for the first release, and any release the automation cannot make.
      `require github.com/go-monolith/ghtmx` version to the tag (e.g.
      `v1.2.3`). The local `replace` stays — consumers ignore it; it
      only serves in-repo development.
-   - `docs/official/go.mod` and `internal/wasmcheck/fixture/go.mod`
-     depend on `adapters/chi`, so their requires move in lockstep too or
-     they fail to build. Both stay internal and are never tagged.
+   - In `docs/official/go.mod` and `internal/wasmcheck/fixture/go.mod`,
+     set **both** requires — `github.com/go-monolith/ghtmx` and
+     `github.com/go-monolith/ghtmx/adapters/chi` — to the tag. They are
+     gated exactly like the adapters, and they fail to build otherwise.
+     Both stay internal and are never tagged themselves.
    - Update `CHANGELOG.md` for the release.
 2. **Tag and push.** Tag that commit `v1.2.3` and push the tag. The
    Release workflow then:
