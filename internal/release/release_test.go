@@ -122,13 +122,18 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 		"TestLSPLatencyGate",
 		"GHTMX_RELEASE_GATE=1", // the artifact matrix itself
 		"needs: gates",         // artifacts only after the gates
+		// The tag reaches the workflow two ways — a human pushing it and
+		// auto-release.yml calling in — and both must resolve to one
+		// value, or the gates would verify a different tree than the one
+		// that ships.
+		"TAG: ${{ inputs.tag || github.ref_name }}",
 		// Verify-not-stamp: the tagged tree must already carry the
 		// version so go-install consumers see it too (RELEASING.md).
-		`test "v$(cat .version)" = "$GITHUB_REF_NAME"`,
-		`grep -q "github.com/go-monolith/ghtmx $GITHUB_REF_NAME"`,
-		"git diff --exit-code",               // generated code is current
-		"adapters/*/go.mod",                  // adapter tests + lockstep tags
-		`git tag -f "$dir/$GITHUB_REF_NAME"`, // lockstep versioning
+		`test "v$(cat .version)" = "$TAG"`,
+		`grep -q "github.com/go-monolith/ghtmx $TAG\$"`,
+		"git diff --exit-code",   // generated code is current
+		"adapters/*/go.mod",      // adapter tests + lockstep tags
+		`git tag -f "$dir/$TAG"`, // lockstep versioning
 	} {
 		if !strings.Contains(workflow, needle) {
 			t.Errorf("release.yml lost %q", needle)
@@ -136,5 +141,37 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 	}
 	if !strings.Contains(workflow, "dist/release/*") {
 		t.Error("release.yml must upload every artifact including checksums.txt")
+	}
+}
+
+// TestAutoReleaseNeverWritesToMain: main is branch-protected with
+// enforce_admins, so the automation earns its keep only by tagging an
+// off-main prep commit. A push to any branch would break on protection
+// and leave a half-cut release, so guard the shape of the workflow.
+func TestAutoReleaseNeverWritesToMain(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "auto-release.yml"))
+	if err != nil {
+		t.Fatalf("the auto-release workflow is missing: %v", err)
+	}
+	workflow := string(raw)
+
+	for _, needle := range []string{
+		"branches: [main]",                      // every merge to main
+		"uses: ./.github/workflows/release.yml", // a GITHUB_TOKEN tag push starts no run
+		"concurrency:",                          // two quick merges must not race
+		"[skip release]",                        // the documented opt-out
+	} {
+		if !strings.Contains(workflow, needle) {
+			t.Errorf("auto-release.yml lost %q", needle)
+		}
+	}
+
+	for line := range strings.SplitSeq(workflow, "\n") {
+		if !strings.Contains(line, "git push") {
+			continue
+		}
+		if !strings.Contains(line, "refs/tags/") {
+			t.Errorf("auto-release.yml pushes something other than a tag: %q", strings.TrimSpace(line))
+		}
 	}
 }
