@@ -1,0 +1,4 @@
+# Gradle's local state and build output. Neither is committed, and the
+# platform cache under .gradle/ runs to gigabytes.
+.gradle/
+build/

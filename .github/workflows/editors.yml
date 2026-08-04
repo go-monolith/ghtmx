@@ -3,11 +3,16 @@ name: Editor artifacts
 # Packages the three editor integrations and, when called with a tag,
 # attaches them to that release.
 #
-# Each integration is its own job rather than three steps in one: the
-# toolchains are unrelated (Node, JDK + Gradle, none at all), and a
-# JetBrains failure — the heaviest and least predictable of the three,
-# since it resolves an IntelliJ platform from JetBrains' repositories —
-# must not stop the other two from shipping.
+# Each integration is packaged by its own job rather than three steps in
+# one: the toolchains are unrelated (Node, JDK + Gradle, none at all),
+# and a JetBrains failure — the heaviest and least predictable of the
+# three, since it resolves an IntelliJ platform from JetBrains'
+# repositories — must not stop the other two from shipping.
+#
+# Packaging and uploading are separate jobs so that only the upload
+# carries contents: write. The packaging jobs run on every pull request
+# that touches editors/, where they execute npm install and a Gradle
+# build, and neither needs a token that can write to the repository.
 #
 # Versions come from each integration's own manifest and are NOT stamped
 # from the tag. editors/README.md ties an extension to a module SERIES:
@@ -36,15 +41,13 @@ name: Editor artifacts
         type: string
         required: false
 
+# The packaging jobs inherit this; only `attach` raises it.
 permissions:
   contents: read
 
 jobs:
   vscode:
     runs-on: ubuntu-latest
-    # Only the upload needs write; a PR build never reaches it.
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,17 +73,9 @@ jobs:
           name: vscode
           path: ${{ runner.temp }}/artifacts/*.vsix
           if-no-files-found: error
-      - name: Attach to the release
-        if: inputs.tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.vsix --clobber
 
   jetbrains:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,17 +104,9 @@ jobs:
           name: jetbrains
           path: ${{ runner.temp }}/artifacts/*.zip
           if-no-files-found: error
-      - name: Attach to the release
-        if: inputs.tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.zip --clobber
 
   nvim:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,11 +115,13 @@ jobs:
       # drop on their runtimepath, so the artifact is the directory. It
       # carries no version of its own — editors_test.go pins the
       # compatibility table's Neovim row to the VS Code version, so that
-      # is the one it ships under.
+      # is the one it ships under. jq rather than node, so this job
+      # depends on no language toolchain at all.
       - name: Archive the plugin
         run: |
           set -euo pipefail
-          version=$(node -p "require('./editors/vscode/package.json').version")
+          version=$(jq -r .version editors/vscode/package.json)
+          test -n "$version" && test "$version" != "null"
           mkdir -p "$RUNNER_TEMP/artifacts"
           # --transform so the archive extracts to a self-describing
           # directory rather than a bare nvim/ in someone's downloads.
@@ -145,9 +134,34 @@ jobs:
           name: nvim
           path: ${{ runner.temp }}/artifacts/*.tar.gz
           if-no-files-found: error
+
+  # The only job that can write to the repository, and the only one that
+  # runs for a release rather than a pull request.
+  #
+  # always(): a packaging failure must not withhold the artifacts that
+  # did build. The failed job still turns the workflow red, so a release
+  # missing an asset is visible — see editors/README.md.
+  attach:
+    needs: [vscode, jetbrains, nvim]
+    if: always() && inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
       - name: Attach to the release
-        if: inputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
-        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.tar.gz --clobber
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(artifacts/*/*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "every packaging job failed; there is nothing to attach" >&2
+            exit 1
+          fi
+          printf 'attaching %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber

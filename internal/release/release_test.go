@@ -9,8 +9,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func repoRoot(t *testing.T) string {
@@ -169,55 +172,185 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 // permissions, and an upload without contents: write fails only at
 // release time, on a tag that has already been published.
 func TestReleaseAttachesEditorArtifacts(t *testing.T) {
-	release, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "release.yml"))
-	if err != nil {
-		t.Fatalf("the release workflow is missing: %v", err)
+	caller, ok := parseWorkflow(t, "release.yml").Jobs["editors"]
+	if !ok {
+		t.Fatal("release.yml lost the editors job")
 	}
-	for _, needle := range []string{
-		"uses: ./.github/workflows/editors.yml",
-		// Packaging must never stand between a green gate set and a
-		// published module, so the artifacts follow the release.
-		"needs: release",
-		"tag: ${{ inputs.tag || github.ref_name }}",
-	} {
-		if !strings.Contains(string(release), needle) {
-			t.Errorf("release.yml lost %q", needle)
+	if caller.Uses != "./.github/workflows/editors.yml" {
+		t.Errorf("the editors job calls %q", caller.Uses)
+	}
+	// Packaging must never stand between a green gate set and a
+	// published module, so the artifacts follow the release.
+	if !slices.Contains(caller.Needs, "release") {
+		t.Errorf("the editors job runs before the release exists: needs %v", caller.Needs)
+	}
+	// Both entry points — a human pushing the tag, and auto-release
+	// calling in — must reach the same version.
+	if want := "${{ inputs.tag || github.ref_name }}"; caller.With["tag"] != want {
+		t.Errorf("the editors job passes tag %q, want %q", caller.With["tag"], want)
+	}
+	// A reusable workflow gets no permission the caller does not grant.
+	if caller.Permissions["contents"] != "write" {
+		t.Errorf("the editors job grants %q, want write", caller.Permissions["contents"])
+	}
+
+	editors := parseWorkflow(t, "editors.yml")
+
+	// Whole-file substring checks would pass on a file that shuffled
+	// these between jobs, so every assertion below is scoped to the job
+	// it belongs to.
+	if _, ok := editors.On["workflow_call"]; !ok {
+		t.Error("editors.yml must be callable from release.yml")
+	}
+	if editors.Permissions["contents"] != "read" {
+		t.Errorf("editors.yml default permission is %q, want read: packaging runs untrusted PR code",
+			editors.Permissions["contents"])
+	}
+
+	// One job per integration. The JetBrains build resolves an IntelliJ
+	// platform and is the most likely to fail; it must not take the
+	// other two artifacts with it.
+	packagers := []string{"vscode", "jetbrains", "nvim"}
+	for _, name := range packagers {
+		job, ok := editors.Jobs[name]
+		if !ok {
+			t.Errorf("editors.yml lost the %s job", name)
+			continue
+		}
+		// A packaging job runs npm install and a Gradle build on pull
+		// request code. Nothing in it needs to write to the repository.
+		if granted := job.Permissions.writes(); len(granted) > 0 {
+			t.Errorf("%s packages on pull requests and must hold no write scope, got %v", name, granted)
+		}
+		for _, step := range job.Steps {
+			if strings.Contains(step.Run, "gh release upload") {
+				t.Errorf("%s uploads to a release; only the attach job may", name)
+			}
 		}
 	}
 
-	editors, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "editors.yml"))
-	if err != nil {
-		t.Fatalf("the editors workflow is missing: %v", err)
+	attach, ok := editors.Jobs["attach"]
+	if !ok {
+		t.Fatal("editors.yml lost the attach job")
 	}
-	workflow := string(editors)
-	for _, needle := range []string{
-		"workflow_call:",
-		// Without this the upload 403s: workflow_call does not inherit
-		// the caller job's permissions, and secrets: inherit does not
-		// carry them either.
-		"contents: write",
-		// One job per integration: the JetBrains build resolves an
-		// IntelliJ platform and is the most likely to fail, and it must
-		// not take the other two artifacts down with it.
-		"  vscode:",
-		"  jetbrains:",
-		"  nvim:",
-		// A PR that touches the editors builds all three for real; it is
-		// the only automated exercise the JDK path gets.
-		"- \"editors/**\"",
-	} {
-		if !strings.Contains(workflow, needle) {
-			t.Errorf("editors.yml lost %q", needle)
+	// workflow_call does not inherit the caller job's permissions, and
+	// secrets: inherit does not carry them either. Without this the
+	// upload 403s — at release time, on an already-published tag.
+	if attach.Permissions["contents"] != "write" {
+		t.Errorf("attach contents permission is %q, want write", attach.Permissions["contents"])
+	}
+	// A pull request has no release to upload to.
+	if !strings.Contains(attach.If, "inputs.tag != ''") {
+		t.Errorf("attach must be gated on a tag, got %q", attach.If)
+	}
+	// Without always(), one packaging failure withholds the artifacts
+	// that did build.
+	if !strings.Contains(attach.If, "always()") {
+		t.Errorf("attach must run even when a packaging job failed, got %q", attach.If)
+	}
+	for _, name := range packagers {
+		if !slices.Contains(attach.Needs, name) {
+			t.Errorf("attach does not wait for the %s job", name)
 		}
 	}
-	// Every job must actually attach its artifact, and only when called
-	// with a tag — a PR build has no release to upload to.
-	if got := strings.Count(workflow, "gh release upload"); got != 3 {
-		t.Errorf("editors.yml has %d release uploads, want one per integration", got)
+	uploads := 0
+	for _, step := range attach.Steps {
+		if strings.Contains(step.Run, "gh release upload") {
+			uploads++
+		}
 	}
-	if got := strings.Count(workflow, "if: inputs.tag != ''"); got != 3 {
-		t.Errorf("editors.yml guards %d uploads on a tag, want one per integration", got)
+	if uploads != 1 {
+		t.Errorf("attach has %d upload steps, want exactly 1", uploads)
 	}
+}
+
+// workflow is the slice of GitHub Actions schema these tests assert on.
+type workflow struct {
+	On          map[string]any `yaml:"on"`
+	Permissions permissions    `yaml:"permissions"`
+	Jobs        map[string]struct {
+		If          string            `yaml:"if"`
+		Uses        string            `yaml:"uses"`
+		With        map[string]string `yaml:"with"`
+		Needs       stringList        `yaml:"needs"`
+		Permissions permissions       `yaml:"permissions"`
+		Steps       []struct {
+			Run string `yaml:"run"`
+		} `yaml:"steps"`
+	} `yaml:"jobs"`
+}
+
+// permissions decodes a permissions block. GitHub accepts either a map
+// of scopes or the read-all/write-all shorthand, and the shorthand is
+// the easiest way to grant write by accident.
+type permissions map[string]string
+
+func (p *permissions) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		var all string
+		if err := node.Decode(&all); err != nil {
+			return err
+		}
+		*p = permissions{"all": strings.TrimSuffix(all, "-all")}
+		return nil
+	}
+	var scopes map[string]string
+	if err := node.Decode(&scopes); err != nil {
+		return err
+	}
+	*p = scopes
+	return nil
+}
+
+// writes names every scope granted write access. Checking `contents`
+// alone would miss packages: write or id-token: write on a job that
+// runs pull-request code.
+func (p permissions) writes() []string {
+	var granted []string
+	for scope, level := range p {
+		if level == "write" {
+			granted = append(granted, scope)
+		}
+	}
+	slices.Sort(granted)
+	return granted
+}
+
+// stringList decodes a field GitHub Actions accepts as either one value
+// or a sequence — `needs: release` and `needs: [a, b]` are both valid.
+type stringList []string
+
+func (s *stringList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		var one string
+		if err := node.Decode(&one); err != nil {
+			return err
+		}
+		*s = stringList{one}
+		return nil
+	}
+	var many []string
+	if err := node.Decode(&many); err != nil {
+		return err
+	}
+	*s = many
+	return nil
+}
+
+// parseWorkflow reads a workflow so assertions can be scoped to a job
+// rather than matched against the whole file, where a rule can pass
+// while sitting under the wrong job.
+func parseWorkflow(t *testing.T, name string) workflow {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", name))
+	if err != nil {
+		t.Fatalf("%s is missing: %v", name, err)
+	}
+	var wf workflow
+	if err := yaml.Unmarshal(raw, &wf); err != nil {
+		t.Fatalf("%s is not valid workflow YAML: %v", name, err)
+	}
+	return wf
 }
 
 // TestAutoReleaseNeverWritesToMain: main is branch-protected with

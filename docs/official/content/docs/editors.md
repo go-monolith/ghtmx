@@ -66,10 +66,16 @@ their structure with the standard Go toolchain instead.
 
 They are packaged in CI, though, by `.github/workflows/editors.yml`:
 
-- Every release attaches three artifacts — `ghtmx-vscode-<version>.vsix`,
+- A release attaches three artifacts — `ghtmx-vscode-<version>.vsix`,
   `ghtmx-jetbrains-<version>.zip`, and `ghtmx-nvim-<version>.tar.gz` —
   so an editor can be installed from the release page without a Node or
   JDK toolchain locally.
+- Each is packaged independently, so a packaging failure costs one
+  artifact rather than all three. The JetBrains build is the likeliest
+  to fail: it resolves an IntelliJ platform from JetBrains'
+  repositories. A release can therefore be published with an asset
+  missing — the workflow run goes red, but the release itself carries no
+  sign of it, so check the `editors` run if an expected asset is absent.
 - Each is built from its own manifest, not stamped with the module tag.
   A `0.1.0` extension attached to `v0.1.4` is the versioning policy
   working as intended: any `X.Y.*` extension serves any `vX.Y.*` module.
