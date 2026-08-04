@@ -1,0 +1,153 @@
+name: Editor artifacts
+
+# Packages the three editor integrations and, when called with a tag,
+# attaches them to that release.
+#
+# Each integration is its own job rather than three steps in one: the
+# toolchains are unrelated (Node, JDK + Gradle, none at all), and a
+# JetBrains failure — the heaviest and least predictable of the three,
+# since it resolves an IntelliJ platform from JetBrains' repositories —
+# must not stop the other two from shipping.
+#
+# Versions come from each integration's own manifest and are NOT stamped
+# from the tag. editors/README.md ties an extension to a module SERIES:
+# any X.Y.* extension works with any vX.Y.* module, so an extension whose
+# code did not change keeps its version across module patch releases.
+# editors_test.go pins those versions to the compatibility table.
+"on":
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to attach the artifacts to. Omit to build only."
+        type: string
+        required: false
+  # A PR that touches the editors builds all three for real. Packaging
+  # breaks otherwise surface at release time, which is the worst moment
+  # to find them — and it is the only automated exercise the JetBrains
+  # build gets, since nothing else in CI needs a JDK.
+  pull_request:
+    paths:
+      - "editors/**"
+      - ".github/workflows/editors.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the artifacts to. Omit to build only."
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  vscode:
+    runs-on: ubuntu-latest
+    # Only the upload needs write; a PR build never reaches it.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # npm install rather than npm ci: package-lock.json is gitignored
+      # (editors/vscode/.gitignore), so there is no lockfile to install
+      # from. vsce runs the vscode:prepublish hook, which compiles the
+      # TypeScript, so no separate build step is needed.
+      - name: Package the extension
+        working-directory: editors/vscode
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          # vsce does not create --out; it fails with ENOTDIR.
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          npx @vscode/vsce package --out "$RUNNER_TEMP/artifacts/"
+          ls -l "$RUNNER_TEMP/artifacts/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscode
+          path: ${{ runner.temp }}/artifacts/*.vsix
+          if-no-files-found: error
+      - name: Attach to the release
+        if: inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.vsix --clobber
+
+  jetbrains:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # build.gradle.kts sets jvmToolchain(17).
+          java-version: "17"
+      # No Gradle wrapper is committed (see jetbrains/README.md), so CI
+      # supplies Gradle itself. The action caches Gradle and the
+      # IntelliJ platform it downloads, which dominates this job.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10"
+      - name: Build the plugin
+        working-directory: editors/jetbrains
+        run: |
+          set -euo pipefail
+          gradle --no-daemon buildPlugin
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          cp build/distributions/*.zip "$RUNNER_TEMP/artifacts/"
+          ls -l "$RUNNER_TEMP/artifacts/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jetbrains
+          path: ${{ runner.temp }}/artifacts/*.zip
+          if-no-files-found: error
+      - name: Attach to the release
+        if: inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.zip --clobber
+
+  nvim:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      # Nothing to compile: the plugin is Lua and Vimscript that users
+      # drop on their runtimepath, so the artifact is the directory. It
+      # carries no version of its own — editors_test.go pins the
+      # compatibility table's Neovim row to the VS Code version, so that
+      # is the one it ships under.
+      - name: Archive the plugin
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./editors/vscode/package.json').version")
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          # --transform so the archive extracts to a self-describing
+          # directory rather than a bare nvim/ in someone's downloads.
+          tar -czf "$RUNNER_TEMP/artifacts/ghtmx-nvim-$version.tar.gz" \
+            --transform "s,^nvim,ghtmx-nvim-$version," \
+            -C editors nvim
+          ls -l "$RUNNER_TEMP/artifacts/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nvim
+          path: ${{ runner.temp }}/artifacts/*.tar.gz
+          if-no-files-found: error
+      - name: Attach to the release
+        if: inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP"/artifacts/*.tar.gz --clobber

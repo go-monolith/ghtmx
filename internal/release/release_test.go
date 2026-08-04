@@ -163,6 +163,63 @@ func TestReleaseWorkflowRunsTheGates(t *testing.T) {
 	}
 }
 
+// TestReleaseAttachesEditorArtifacts: a release carries the three
+// editor integrations alongside the binary matrix. The wiring is easy to
+// break silently — a reusable workflow does not inherit the caller's
+// permissions, and an upload without contents: write fails only at
+// release time, on a tag that has already been published.
+func TestReleaseAttachesEditorArtifacts(t *testing.T) {
+	release, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatalf("the release workflow is missing: %v", err)
+	}
+	for _, needle := range []string{
+		"uses: ./.github/workflows/editors.yml",
+		// Packaging must never stand between a green gate set and a
+		// published module, so the artifacts follow the release.
+		"needs: release",
+		"tag: ${{ inputs.tag || github.ref_name }}",
+	} {
+		if !strings.Contains(string(release), needle) {
+			t.Errorf("release.yml lost %q", needle)
+		}
+	}
+
+	editors, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "editors.yml"))
+	if err != nil {
+		t.Fatalf("the editors workflow is missing: %v", err)
+	}
+	workflow := string(editors)
+	for _, needle := range []string{
+		"workflow_call:",
+		// Without this the upload 403s: workflow_call does not inherit
+		// the caller job's permissions, and secrets: inherit does not
+		// carry them either.
+		"contents: write",
+		// One job per integration: the JetBrains build resolves an
+		// IntelliJ platform and is the most likely to fail, and it must
+		// not take the other two artifacts down with it.
+		"  vscode:",
+		"  jetbrains:",
+		"  nvim:",
+		// A PR that touches the editors builds all three for real; it is
+		// the only automated exercise the JDK path gets.
+		"- \"editors/**\"",
+	} {
+		if !strings.Contains(workflow, needle) {
+			t.Errorf("editors.yml lost %q", needle)
+		}
+	}
+	// Every job must actually attach its artifact, and only when called
+	// with a tag — a PR build has no release to upload to.
+	if got := strings.Count(workflow, "gh release upload"); got != 3 {
+		t.Errorf("editors.yml has %d release uploads, want one per integration", got)
+	}
+	if got := strings.Count(workflow, "if: inputs.tag != ''"); got != 3 {
+		t.Errorf("editors.yml guards %d uploads on a tag, want one per integration", got)
+	}
+}
+
 // TestAutoReleaseNeverWritesToMain: main is branch-protected with
 // enforce_admins, so the automation earns its keep only by tagging an
 // off-main prep commit. A push to any branch would break on protection
