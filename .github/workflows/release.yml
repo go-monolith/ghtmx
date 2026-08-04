@@ -157,3 +157,17 @@ jobs:
             gh release create "$TAG" dist/release/* \
               --title "ghtmx $TAG" --generate-notes
           fi
+
+  # After the release exists, never before it: packaging an editor
+  # integration needs Node or a JDK and an IntelliJ platform download,
+  # and none of that should stand between a green gate set and a
+  # published module. A failure here leaves the module released and this
+  # workflow red with the editor artifacts missing — visible, and fixable
+  # by re-running this job alone.
+  editors:
+    needs: release
+    uses: ./.github/workflows/editors.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+    permissions:
+      contents: write

@@ -11,6 +11,9 @@ repositories {
     mavenCentral()
     intellijPlatform {
         defaultRepositories()
+        // Hosts the Java compiler tooling instrumentCode runs;
+        // defaultRepositories() does not cover it.
+        intellijDependencies()
     }
 }
 
@@ -21,6 +24,10 @@ dependencies {
         // instead — see README.md.
         intellijIdeaUltimate("2024.2")
         bundledPlugin("org.jetbrains.plugins.textmate")
+        // buildPlugin runs instrumentCode, which needs a Java compiler
+        // dependency; without this the task fails with "No Java Compiler
+        // dependency found" and no artifact is produced.
+        instrumentationTools()
     }
 }
 

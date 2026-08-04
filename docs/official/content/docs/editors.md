@@ -59,8 +59,25 @@ Current compatibility:
    [`nvim/README.md`](nvim/README.md), and
    [`jetbrains/README.md`](jetbrains/README.md).
 
-The extensions are deliberately excluded from the Go module's build and
-CI toolchain: packaging them needs Node (VS Code) or a JDK (JetBrains),
-and the engine's constitution keeps those out of the module pipeline.
-`editors_test.go` validates the artifacts' structure with the standard
-Go toolchain instead.
+The extensions stay out of the Go module's own build: packaging them
+needs Node (VS Code) or a JDK (JetBrains), and the engine's constitution
+keeps those out of the module pipeline. `editors_test.go` validates
+their structure with the standard Go toolchain instead.
+
+They are packaged in CI, though, by `.github/workflows/editors.yml`:
+
+- A release attaches three artifacts — `ghtmx-vscode-<version>.vsix`,
+  `ghtmx-jetbrains-<version>.zip`, and `ghtmx-nvim-<version>.tar.gz` —
+  so an editor can be installed from the release page without a Node or
+  JDK toolchain locally.
+- Each is packaged independently, so a packaging failure costs one
+  artifact rather than all three. The JetBrains build is the likeliest
+  to fail: it resolves an IntelliJ platform from JetBrains'
+  repositories. A release can therefore be published with an asset
+  missing — the workflow run goes red, but the release itself carries no
+  sign of it, so check the `editors` run if an expected asset is absent.
+- Each is built from its own manifest, not stamped with the module tag.
+  A `0.1.0` extension attached to `v0.1.4` is the versioning policy
+  working as intended: any `X.Y.*` extension serves any `vX.Y.*` module.
+- A pull request touching `editors/` builds all three without uploading,
+  so a packaging break surfaces on the PR rather than mid-release.
