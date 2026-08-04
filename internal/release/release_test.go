@@ -255,12 +255,30 @@ func TestReleaseAttachesEditorArtifacts(t *testing.T) {
 	}
 	uploads := 0
 	for _, step := range attach.Steps {
-		if strings.Contains(step.Run, "gh release upload") {
-			uploads++
+		if !strings.Contains(step.Run, "gh release upload") {
+			continue
+		}
+		uploads++
+		// This job downloads artifacts and never checks out, so gh has
+		// no git remote to infer the repository from. Without GH_REPO it
+		// fails with "not a git repository" — as it did on v0.1.4, which
+		// shipped without its editor artifacts.
+		if step.Env["GH_REPO"] == "" {
+			t.Error("the upload step must set GH_REPO: attach never checks out, so gh cannot infer the repository")
+		}
+		if step.Env["GH_TOKEN"] == "" {
+			t.Error("the upload step must set GH_TOKEN")
 		}
 	}
 	if uploads != 1 {
 		t.Errorf("attach has %d upload steps, want exactly 1", uploads)
+	}
+	// A checkout would also give gh its repository, and would make the
+	// GH_REPO check above meaningless if one were added later.
+	for _, step := range attach.Steps {
+		if strings.Contains(step.Uses, "actions/checkout") {
+			t.Error("attach checks out the repository; drop the GH_REPO assumption if this is intentional")
+		}
 	}
 }
 
@@ -275,7 +293,9 @@ type workflow struct {
 		Needs       stringList        `yaml:"needs"`
 		Permissions permissions       `yaml:"permissions"`
 		Steps       []struct {
-			Run string `yaml:"run"`
+			Run  string            `yaml:"run"`
+			Uses string            `yaml:"uses"`
+			Env  map[string]string `yaml:"env"`
 		} `yaml:"steps"`
 	} `yaml:"jobs"`
 }
