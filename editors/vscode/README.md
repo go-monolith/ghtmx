@@ -1,13 +1,34 @@
 # ghtmx for Visual Studio Code
 
-Language support for `.ghtmx` templates:
+Language support for `.ghtmx` and `.htmx` templates:
 
 - Syntax highlighting for the full template language, including the
   ghtmx-native constructs: `fragment` and `event` declarations, htmx
   attributes, and route bindings (`hx-post={ handlers.CreateItem }`).
+- A file icon, in light and dark variants, for file icon themes that
+  show language-contributed icons.
 - Language-server wiring: the extension launches `ghtmx lsp`, which
   provides live diagnostics, route-aware completion, hover, and go to
   definition, and proxies gopls for the embedded Go.
+
+## File extensions
+
+The extension is chosen per project in `ghtmx.json`:
+
+```json
+{
+  "templateExtension": ".htmx"
+}
+```
+
+`.ghtmx` is the default and needs no configuration; `.htmx` is the one
+alternative. A project uses **exactly one** — with `.htmx` configured, a
+`.ghtmx` file is not a template and is neither generated from nor served
+by the language server.
+
+The editor claims both extensions regardless, so highlighting and the
+icon work either way. Generation and diagnostics follow the configured
+value, so set it to match the files you actually write.
 
 ## Requirements
 

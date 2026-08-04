@@ -17,18 +17,18 @@ type Result struct {
 	ChangesMade bool
 }
 
-func Process(dir string, f func(fileName string) (error, bool), workerCount int, shouldSkip func(string) bool, results chan<- Result) {
+func Process(dir string, ext string, f func(fileName string) (error, bool), workerCount int, shouldSkip func(string) bool, results chan<- Result) {
 	templates := make(chan string)
 	go func() {
 		defer close(templates)
-		if err := FindTemplates(dir, shouldSkip, templates); err != nil {
+		if err := FindTemplates(dir, ext, shouldSkip, templates); err != nil {
 			results <- Result{Error: err}
 		}
 	}()
 	ProcessChannel(templates, dir, f, workerCount, results)
 }
 
-func FindTemplates(srcPath string, shouldSkip func(string) bool, output chan<- string) (err error) {
+func FindTemplates(srcPath, ext string, shouldSkip func(string) bool, output chan<- string) (err error) {
 	return filepath.WalkDir(srcPath, func(currentPath string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -42,7 +42,7 @@ func FindTemplates(srcPath string, shouldSkip func(string) bool, output chan<- s
 			}
 			return nil
 		}
-		if !info.IsDir() && strings.HasSuffix(currentPath, ".ghtmx") {
+		if !info.IsDir() && strings.HasSuffix(currentPath, ext) {
 			output <- currentPath
 		}
 		return nil

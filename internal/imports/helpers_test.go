@@ -48,7 +48,7 @@ func TestConvertTemplToGoURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isTempl, goURI := convertTemplToGoURI(tt.in)
+			isTempl, goURI := convertTemplToGoURI(tt.in, ".ghtmx")
 			if isTempl != tt.wantIs {
 				t.Fatalf("isTemplFile = %v, want %v", isTempl, tt.wantIs)
 			}
@@ -221,7 +221,7 @@ func TestProcessRejectsANonTemplateFilepath(t *testing.T) {
 	}
 	tf.Filepath = "/project/main.go"
 
-	if _, err := Process(tf); err == nil {
+	if _, err := Process(tf, ".ghtmx"); err == nil {
 		t.Error("Process accepted a filepath that is not a template")
 	}
 }
@@ -235,7 +235,7 @@ func TestProcessWithNoFilepathIsANoOp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := Process(tf)
+	got, err := Process(tf, ".ghtmx")
 	if err != nil {
 		t.Fatalf("Process with no filepath: %v", err)
 	}

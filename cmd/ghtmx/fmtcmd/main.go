@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-monolith/ghtmx/cmd/ghtmx/processor"
+	"github.com/go-monolith/ghtmx/internal/config"
 	"github.com/go-monolith/ghtmx/internal/format"
 	"github.com/go-monolith/ghtmx/internal/ignorefile"
 	"github.com/natefinch/atomic"
@@ -25,8 +26,17 @@ type Arguments struct {
 }
 
 func Run(log *slog.Logger, stdin io.Reader, stdout io.Writer, args Arguments) (err error) {
+	// The template extension is project configuration, so the walk below
+	// and the import rewriting must both use it. A missing or unusable
+	// ghtmx.json is not fatal here: formatting still works on the default.
+	cfg := config.Default()
+	if loaded, cfgErr := config.Load("."); cfgErr != nil {
+		log.Warn("ghtmx.json not usable; using defaults", slog.Any("error", cfgErr))
+	} else {
+		cfg = config.Resolve(loaded, config.Flags{})
+	}
 	// If no files are provided, read from stdin and write to stdout.
-	formatterConfig := format.Config{}
+	formatterConfig := format.Config{TemplateExtension: cfg.TemplateExtension}
 	if len(args.Files) == 0 {
 		src, err := io.ReadAll(stdin)
 		if err != nil {
@@ -80,7 +90,7 @@ func Run(log *slog.Logger, stdin io.Reader, stdout io.Writer, args Arguments) (e
 			errs = append(errs, fmt.Errorf("failed to parse .ghtmxignore_fmt in %q: %w", dir, err))
 			continue
 		}
-		if err := NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip).Run(); err != nil {
+		if err := NewFormatter(log, dir, process, args.WorkerCount, args.FailIfChanged, shouldSkip, cfg.TemplateExtension).Run(); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -94,16 +104,20 @@ type Formatter struct {
 	WorkerCount  int
 	FailIfChange bool
 	ShouldSkip   func(string) bool
+	// TemplateExtension is the project's configured template extension,
+	// which decides what the walk treats as a template.
+	TemplateExtension string
 }
 
-func NewFormatter(log *slog.Logger, dir string, process func(fileName string) (error, bool), workerCount int, failIfChange bool, shouldSkip func(string) bool) *Formatter {
+func NewFormatter(log *slog.Logger, dir string, process func(fileName string) (error, bool), workerCount int, failIfChange bool, shouldSkip func(string) bool, templateExtension string) *Formatter {
 	f := &Formatter{
-		Log:          log,
-		Dir:          dir,
-		Process:      process,
-		WorkerCount:  workerCount,
-		FailIfChange: failIfChange,
-		ShouldSkip:   shouldSkip,
+		Log:               log,
+		Dir:               dir,
+		Process:           process,
+		WorkerCount:       workerCount,
+		FailIfChange:      failIfChange,
+		ShouldSkip:        shouldSkip,
+		TemplateExtension: templateExtension,
 	}
 	if f.WorkerCount == 0 {
 		f.WorkerCount = runtime.NumCPU()
@@ -117,7 +131,7 @@ func (f *Formatter) Run() (err error) {
 	start := time.Now()
 	results := make(chan processor.Result)
 	f.Log.Debug("Walking directory", slog.String("path", f.Dir))
-	go processor.Process(f.Dir, f.Process, f.WorkerCount, f.ShouldSkip, results)
+	go processor.Process(f.Dir, f.TemplateExtension, f.Process, f.WorkerCount, f.ShouldSkip, results)
 	var successCount, errorCount int
 	for r := range results {
 		if r.ChangesMade {

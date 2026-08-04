@@ -36,7 +36,7 @@ func discardLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard,
 func serverWithDocument(t *testing.T) *proxy.Server {
 	t.Helper()
 	log := discardLog()
-	s := proxy.NewServer(log, nil, proxy.NewSourceMapCache(), proxy.NewDiagnosticCache(), true, format.Config{})
+	s := proxy.NewServer(log, nil, proxy.NewSourceMapCache(), proxy.NewDiagnosticCache(), true, format.Config{}, proxy.NewTemplateExtension())
 	s.TemplSource.Set(knownURI, proxy.NewDocument(log, templSource))
 	s.GoSource[knownURI] = goSource
 

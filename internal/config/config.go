@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
@@ -32,6 +33,15 @@ const FileName = "ghtmx.json"
 // configured. It must be one of the versions embedded in the htmx surface
 // set.
 const DefaultHtmxVersion = "2.0.10"
+
+// DefaultTemplateExtension is the canonical template file extension.
+const DefaultTemplateExtension = ".ghtmx"
+
+// TemplateExtensions are the extensions a project may configure. The set is
+// closed on purpose: the generator would consume its own output if it
+// walked ".go", and an unrecognised extension is far more likely a typo
+// than an intent, so it is worth rejecting by name.
+var TemplateExtensions = []string{DefaultTemplateExtension, ".htmx"}
 
 // GeneratedPackage identifies the central generated package that receives
 // route constructors and event emitters (solution design D5).
@@ -57,10 +67,14 @@ type Config struct {
 	// GeneratedPackage is where route constructors and event emitters are
 	// emitted.
 	GeneratedPackage GeneratedPackage `json:"generatedPackage"`
-	// GeneratedSuffix is the file-name suffix replacing the .ghtmx
+	// GeneratedSuffix is the file-name suffix replacing the template
 	// extension on generated Go files. Dev-mode hot reload of text literals
 	// requires the default.
 	GeneratedSuffix string `json:"generatedSuffix"`
+	// TemplateExtension is the file extension templates are written with.
+	// A project uses exactly one: files with the other extension are not
+	// templates as far as the toolchain is concerned.
+	TemplateExtension string `json:"templateExtension"`
 	// Checks overrides the severity of warning-class checks by stable
 	// diagnostic ID: "error", "warning", or "off".
 	Checks map[string]diag.Severity `json:"checks"`
@@ -73,12 +87,13 @@ type Config struct {
 // needs no configuration file.
 func Default() Config {
 	return Config{
-		HtmxVersion:      DefaultHtmxVersion,
-		SourceDirs:       []string{"."},
-		RouteScope:       []string{"./..."},
-		GeneratedPackage: GeneratedPackage{Dir: "ghtmxgen", Name: "ghtmxgen"},
-		GeneratedSuffix:  "_ghtmx.go",
-		Checks:           map[string]diag.Severity{},
+		HtmxVersion:       DefaultHtmxVersion,
+		SourceDirs:        []string{"."},
+		RouteScope:        []string{"./..."},
+		GeneratedPackage:  GeneratedPackage{Dir: "ghtmxgen", Name: "ghtmxgen"},
+		GeneratedSuffix:   "_ghtmx.go",
+		TemplateExtension: DefaultTemplateExtension,
+		Checks:            map[string]diag.Severity{},
 	}
 }
 
@@ -129,13 +144,14 @@ func Load(dir string) (Config, error) {
 // allowedKeys is the configuration schema: top-level key to a short
 // description used in error suggestions.
 var allowedKeys = map[string]string{
-	"htmxVersion":      "pinned htmx version, e.g. \"2.0.10\"",
-	"sourceDirs":       "template source directories",
-	"routeScope":       "route discovery package patterns",
-	"generatedPackage": "central generated package {dir, name}",
-	"generatedSuffix":  "generated Go file suffix, default \"_ghtmx.go\"",
-	"checks":           "per-check severity overrides by diagnostic ID",
-	"strictTargets":    "promote dangling target warnings to errors",
+	"htmxVersion":       "pinned htmx version, e.g. \"2.0.10\"",
+	"sourceDirs":        "template source directories",
+	"routeScope":        "route discovery package patterns",
+	"generatedPackage":  "central generated package {dir, name}",
+	"generatedSuffix":   "generated Go file suffix, default \"_ghtmx.go\"",
+	"templateExtension": "template file extension, \".ghtmx\" (default) or \".htmx\"",
+	"checks":            "per-check severity overrides by diagnostic ID",
+	"strictTargets":     "promote dangling target warnings to errors",
 }
 
 // Parse decodes configuration content, validating keys and values with
@@ -313,6 +329,13 @@ func (c Config) Validate() error {
 	if !strings.HasSuffix(c.GeneratedSuffix, ".go") || c.GeneratedSuffix == ".go" || !strings.HasPrefix(c.GeneratedSuffix, "_") {
 		return fmt.Errorf("generatedSuffix %q must start with _ and end with .go, e.g. \"_ghtmx.go\"", c.GeneratedSuffix)
 	}
+	if !slices.Contains(TemplateExtensions, c.TemplateExtension) {
+		quoted := make([]string, len(TemplateExtensions))
+		for i, ext := range TemplateExtensions {
+			quoted[i] = strconv.Quote(ext)
+		}
+		return fmt.Errorf("templateExtension %q must be one of %s", c.TemplateExtension, strings.Join(quoted, " or "))
+	}
 	for id, sev := range c.Checks {
 		check, ok := diag.Registry[id]
 		if !ok {
@@ -366,14 +389,15 @@ func offsetToLineCol(data []byte, offset int64) (line, col int) {
 // Flags holds CLI flag values that override file configuration (FR-073).
 // A nil pointer means the flag was not set.
 type Flags struct {
-	HtmxVersion      *string
-	SourceDirs       []string
-	RouteScope       []string
-	GeneratedPkgDir  *string
-	GeneratedPkgName *string
-	GeneratedSuffix  *string
-	StrictTargets    *bool
-	CheckSeverities  map[string]diag.Severity
+	HtmxVersion       *string
+	SourceDirs        []string
+	RouteScope        []string
+	GeneratedPkgDir   *string
+	GeneratedPkgName  *string
+	GeneratedSuffix   *string
+	TemplateExtension *string
+	StrictTargets     *bool
+	CheckSeverities   map[string]diag.Severity
 }
 
 // Resolve applies precedence flag > file > default and returns the
@@ -397,6 +421,9 @@ func Resolve(fileCfg Config, flags Flags) Config {
 	}
 	if flags.GeneratedSuffix != nil {
 		cfg.GeneratedSuffix = *flags.GeneratedSuffix
+	}
+	if flags.TemplateExtension != nil {
+		cfg.TemplateExtension = *flags.TemplateExtension
 	}
 	if flags.StrictTargets != nil {
 		cfg.StrictTargets = *flags.StrictTargets

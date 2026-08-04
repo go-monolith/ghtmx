@@ -23,7 +23,7 @@ func TestConvertTemplToGoURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isTempl, goURI := convertTemplToGoURI(tt.input)
+			isTempl, goURI := (&Server{templateExtension: NewTemplateExtension()}).convertTemplToGoURI(tt.input)
 			if isTempl != tt.wantIsTempl {
 				t.Errorf("isTemplFile: got %v, expected %v", isTempl, tt.wantIsTempl)
 			}
@@ -47,7 +47,7 @@ func TestConvertTemplGoToTemplURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isTemplGo, templURI := convertTemplGoToTemplURI(tt.input)
+			isTemplGo, templURI := convertTemplGoToTemplURI(".ghtmx", tt.input)
 			if isTemplGo != tt.wantIsTemplGo {
 				t.Errorf("isTemplGoFile: got %v, expected %v", isTemplGo, tt.wantIsTemplGo)
 			}
@@ -144,7 +144,7 @@ func TestConvertLocationResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			convertLocationResults(cache, log, tt.input)
+			convertLocationResults(".ghtmx", cache, log, tt.input)
 			if diff := cmp.Diff(tt.expected, tt.input); diff != "" {
 				t.Errorf("unexpected result (-want +got):\n%s", diff)
 			}
@@ -158,7 +158,7 @@ func TestConvertWorkspaceEdit(t *testing.T) {
 	log := slog.Default()
 
 	t.Run("nil edit", func(t *testing.T) {
-		convertWorkspaceEdit(cache, log, nil)
+		convertWorkspaceEdit(".ghtmx", cache, log, nil)
 	})
 	t.Run("converts DocumentChanges", func(t *testing.T) {
 		edit := &lsp.WorkspaceEdit{
@@ -193,7 +193,7 @@ func TestConvertWorkspaceEdit(t *testing.T) {
 				},
 			},
 		}
-		convertWorkspaceEdit(cache, log, edit)
+		convertWorkspaceEdit(".ghtmx", cache, log, edit)
 		if edit.DocumentChanges[0].TextDocument.URI != "file:///tmp/test.ghtmx" {
 			t.Errorf("expected URI to be converted, got %q", edit.DocumentChanges[0].TextDocument.URI)
 		}
@@ -231,7 +231,7 @@ func TestConvertWorkspaceEdit(t *testing.T) {
 				},
 			},
 		}
-		convertWorkspaceEdit(cache, log, edit)
+		convertWorkspaceEdit(".ghtmx", cache, log, edit)
 		if _, exists := edit.Changes["file:///tmp/test_ghtmx.go"]; exists {
 			t.Error("expected _ghtmx.go key to be removed from Changes map")
 		}

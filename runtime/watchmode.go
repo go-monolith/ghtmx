@@ -38,9 +38,30 @@ func WriteString(w io.Writer, index int, s string) (err error) {
 	return err
 }
 
+// TemplateExtensions are the extensions a project may write templates
+// with, most canonical first. It mirrors config.TemplateExtensions, which
+// this package cannot import: NFR-012 keeps everything an application
+// links standard-library only. TestRuntimeTemplateExtensionsMatchConfig
+// fails if the two drift.
+var TemplateExtensions = []string{".ghtmx", ".htmx"}
+
+// GetDevModeTextFileName returns the sidecar path holding a template's
+// string literals, keyed by a hash of the template's own path.
+//
+// Both sides of dev-mode hot reload must agree on that path. The writer
+// (the generator) knows the real template name; the reader is generated
+// code that knows only its own _ghtmx.go path, so it has to recover the
+// template name from it. Appending the canonical extension unconditionally
+// made a .htmx project hash two different paths on the two sides, and hot
+// reload simply stopped finding its file.
+//
+// The extension is project configuration this package cannot read, so the
+// file on disk is the signal: dev mode runs against the source tree by
+// construction. With no template found the canonical extension still
+// applies, which is exactly the previous behaviour.
 func GetDevModeTextFileName(templFileName string) string {
 	if prefix, ok := strings.CutSuffix(templFileName, "_ghtmx.go"); ok {
-		templFileName = prefix + ".ghtmx"
+		templFileName = prefix + templateExtensionFor(prefix)
 	}
 	absFileName, err := filepath.Abs(templFileName)
 	if err != nil {
@@ -61,6 +82,18 @@ func GetDevModeTextFileName(templFileName string) string {
 	}
 
 	return filepath.Join(root, outputFileName)
+}
+
+// templateExtensionFor picks the extension whose template actually sits
+// beside the generated file. Order matters only when a stale file of the
+// other extension lingers; the canonical one wins.
+func templateExtensionFor(prefix string) string {
+	for _, ext := range TemplateExtensions {
+		if _, err := os.Stat(prefix + ext); err == nil {
+			return ext
+		}
+	}
+	return TemplateExtensions[0]
 }
 
 // normalizePath converts Windows paths to Unix style paths.

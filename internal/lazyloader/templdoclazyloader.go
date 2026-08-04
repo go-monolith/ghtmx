@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-monolith/ghtmx/internal/config"
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
 	"golang.org/x/tools/go/packages"
 )
@@ -39,10 +40,17 @@ type templDocLazyLoader struct {
 type NewParams struct {
 	TemplDocHandler TemplDocHandler
 	OpenDocSources  map[string]string
+	// TemplateExtension is the project's configured template extension.
+	// Empty means the default.
+	TemplateExtension string
 }
 
 // New creates a new lazy loader using the provided arguments.
 func New(params NewParams) TemplDocLazyLoader {
+	templExt := params.TemplateExtension
+	if templExt == "" {
+		templExt = config.DefaultTemplateExtension
+	}
 	return &templDocLazyLoader{
 		loadedPkgs:      make(map[string]*packages.Package),
 		openDocHeaders:  make(map[string]docHeader),
@@ -55,6 +63,7 @@ func New(params NewParams) TemplDocLazyLoader {
 			templDocHandler: params.TemplDocHandler,
 			pkgsRefCount:    make(map[string]int),
 			fileReader:      templFileReader{},
+			templExt:        templExt,
 		},
 		docHeaderParser: &goDocHeaderParser{
 			openDocSources: params.OpenDocSources,

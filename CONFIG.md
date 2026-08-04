@@ -11,11 +11,12 @@ setting exists in `internal/config` without an entry here, or a
 | Setting | Default | CLI flag (`ghtmx generate`) | Meaning |
 | --- | --- | --- | --- |
 | `htmxVersion` | `2.0.10` | `-htmx-version` | The pinned htmx version: attribute validation surface and the `ghtmxgen.HTMXScript()` asset. |
-| `sourceDirs` | `["."]` | `-source-dir` (repeatable) | Directories walked for `.ghtmx` templates. |
+| `sourceDirs` | `["."]` | `-source-dir` (repeatable) | Directories walked for templates. |
 | `routeScope` | `["./..."]` | `-route-scope` (repeatable) | Package patterns route discovery loads. |
 | `generatedPackage.dir` | `ghtmxgen` | `-generated-pkg-dir` | Directory of the central generated package. |
 | `generatedPackage.name` | `ghtmxgen` | `-generated-pkg-name` | Package name of the central generated package. |
 | `generatedSuffix` | `_ghtmx.go` | `-generated-suffix` | Suffix of generated files. |
+| `templateExtension` | `.ghtmx` | `-template-extension` | Extension templates are written with: `.ghtmx` or `.htmx`. A project uses exactly one — files with the other extension are not templates, so they are neither generated from nor served by the language server. |
 | `checks` | `{}` | `-check-severity` (repeatable, `ID=severity`) | Per-check severity overrides (`error`, `warning`, `off`). Warning-class checks only; errors cannot be silenced. See `DIAGNOSTICS.md`. |
 | `strictTargets` | `false` | `-strict-targets` | Promotes `GHTMX-W0201` (dangling targets) to an error. |
 
@@ -32,7 +33,7 @@ Behavioral flags for a single invocation:
 | `-include-version` | `true` | Stamp the generator version into output headers. |
 | `-include-timestamp` | `false` | Stamp generation time into output headers. |
 | `-watch` | `false` | Watch mode: regenerate on change, two-tier invalidation. |
-| `-watch-pattern` | `(.+\.go$)\|(.+\.ghtmx$)` | Regexp of files the watcher observes. |
+| `-watch-pattern` | `(.+\.go$)\|(.+\.ghtmx$)` | Regexp of files the watcher observes. The default follows `templateExtension`. |
 | `-ignore-pattern` | | Regexp of paths the watcher ignores. |
 | `-cmd` | | Command to run (and restart on Go changes) after generation. |
 | `-open-browser` | `true` | Open the proxy URL once serving (with `-proxy`). |

@@ -11,6 +11,29 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `templateExtension` in `ghtmx.json` (flag: `-template-extension`): the
+  file extension templates are written with, `.ghtmx` by default and
+  `.htmx` as the alternative. A project uses exactly one — with `.htmx`
+  configured, a `.ghtmx` file is not a template and is neither generated
+  from nor served by the language server. Any other value is rejected by
+  name; `.go` in particular would make the generator walk its own output.
+  The value salts the build cache key, so switching does not reuse
+  artifacts built for the other extension. The `-watch-pattern` default
+  follows it.
+- Editor support for `.htmx` alongside `.ghtmx` in the VS Code extension,
+  the Neovim plugin, and the JetBrains TextMate bundle, plus a file icon
+  for templates in light and dark variants.
+
+### Fixed
+
+- Dev-mode hot literal reload for projects using a non-default template
+  extension. The generator hashes a template's real path to name its
+  literals sidecar, while generated code recovered that path from its own
+  `_ghtmx.go` name by appending `.ghtmx` unconditionally, so the two
+  sides addressed different files and the reader found nothing.
+
 ## [0.1.0] - 2026-08-02
 
 First tagged release. Before this, the module had no tags at all, so
