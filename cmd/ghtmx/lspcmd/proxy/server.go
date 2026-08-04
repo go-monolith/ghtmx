@@ -482,6 +482,11 @@ func (p *Server) Initialize(ctx context.Context, params *lsp.InitializeParams) (
 		p.templDocLazyLoader = lazyloader.New(lazyloader.NewParams{
 			TemplDocHandler: p,
 			OpenDocSources:  p.GoSource,
+			// Without this the traverser falls back to the default and
+			// never matches a sibling template in a project configured
+			// for the other extension, so -no-preload silently loses
+			// cross-file navigation, hover, and diagnostics.
+			TemplateExtension: p.templateExt(),
 		})
 	} else {
 		p.preload(ctx, params.WorkspaceFolders)

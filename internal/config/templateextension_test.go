@@ -1,8 +1,11 @@
 package config
 
 import (
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/go-monolith/ghtmx/runtime"
 )
 
 // The extension decides what the whole toolchain treats as a template, so
@@ -86,5 +89,21 @@ func TestTemplateExtensionChangesTheConfigHash(t *testing.T) {
 	b.TemplateExtension = ".htmx"
 	if a.Hash() == b.Hash() {
 		t.Error("changing the template extension must change the config hash, or stale output survives the switch")
+	}
+}
+
+// The runtime cannot import this package — NFR-012 keeps everything an
+// application links standard-library only — so it carries its own copy of
+// the extension list for dev-mode path recovery. Drift between the two
+// would break hot reload for whichever extension the runtime had not
+// heard of, silently and only in dev mode.
+func TestRuntimeTemplateExtensionsMatchConfig(t *testing.T) {
+	if !slices.Equal(runtime.TemplateExtensions, TemplateExtensions) {
+		t.Errorf("runtime.TemplateExtensions = %v, config.TemplateExtensions = %v — update runtime/watchmode.go",
+			runtime.TemplateExtensions, TemplateExtensions)
+	}
+	if runtime.TemplateExtensions[0] != DefaultTemplateExtension {
+		t.Errorf("the runtime's fallback %q must be the canonical extension %q",
+			runtime.TemplateExtensions[0], DefaultTemplateExtension)
 	}
 }

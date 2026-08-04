@@ -1,10 +1,14 @@
 package proxy
 
 import (
+	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/format"
+	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
 )
 
 // The Server and Client proxies map URIs in opposite directions and must
@@ -59,5 +63,49 @@ func TestNilHolderReadsTheDefault(t *testing.T) {
 	nilHolder.Set(".htmx") // must not panic
 	if got := nilHolder.Get(); got != ".ghtmx" {
 		t.Errorf("nil holder = %q, want the default", got)
+	}
+}
+
+// Initialize is where ghtmx.json is read, and everything downstream — the
+// URI mappings, the workspace scan, and the lazy loader it constructs in
+// the NoPreload branch — reads the extension from the server. If the
+// config never reached the server, all of them would quietly fall back to
+// the canonical extension and a .htmx project would lose diagnostics with
+// no error shown.
+func TestInitializeTakesTheExtensionFromProjectConfig(t *testing.T) {
+	for _, tc := range []struct{ name, configJSON, want string }{
+		{name: "configured .htmx", configJSON: `{"templateExtension": ".htmx"}`, want: ".htmx"},
+		{name: "absent config", configJSON: "", want: ".ghtmx"},
+		{name: "config without the key", configJSON: `{}`, want: ".ghtmx"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.configJSON != "" {
+				if err := os.WriteFile(filepath.Join(root, "ghtmx.json"), []byte(tc.configJSON), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			s := newTestServer(&mockServer{})
+			s.NoPreload = true
+			if _, err := s.Initialize(context.Background(), &lsp.InitializeParams{
+				RootURI: lsp.DocumentURI("file://" + root),
+			}); err != nil {
+				t.Fatalf("Initialize: %v", err)
+			}
+
+			if got := s.templateExt(); got != tc.want {
+				t.Errorf("server extension = %q, want %q", got, tc.want)
+			}
+			// The NoPreload branch builds the lazy loader from this value.
+			if s.templDocLazyLoader == nil {
+				t.Error("NoPreload must still construct the lazy loader")
+			}
+			// The URI mapping must follow the same value.
+			isTempl, _ := s.convertTemplToGoURI(lsp.DocumentURI("file:///p/page" + tc.want))
+			if !isTempl {
+				t.Errorf("a %s document must be recognised as a template", tc.want)
+			}
+		})
 	}
 }
