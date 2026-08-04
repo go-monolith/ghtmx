@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-monolith/ghtmx/internal/format"
 	lsp "github.com/go-monolith/ghtmx/internal/lsp/protocol"
+	"github.com/go-monolith/ghtmx/internal/lsp/uri"
 )
 
 // The Server and Client proxies map URIs in opposite directions and must
@@ -88,8 +89,11 @@ func TestInitializeTakesTheExtensionFromProjectConfig(t *testing.T) {
 
 			s := newTestServer(&mockServer{})
 			s.NoPreload = true
+			// Built through the URI helper, not by string concatenation:
+			// a Windows temp dir is "C:\\Users\\..." and "file://" + that
+			// is not a parseable URI at all.
 			if _, err := s.Initialize(context.Background(), &lsp.InitializeParams{
-				RootURI: lsp.DocumentURI("file://" + root),
+				RootURI: lsp.DocumentURI(uri.URIFromPath(root)),
 			}); err != nil {
 				t.Fatalf("Initialize: %v", err)
 			}
