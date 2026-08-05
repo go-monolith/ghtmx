@@ -35,8 +35,8 @@ go install golang.org/x/tools/gopls@latest   # embedded-Go support in the LSP
 ```
 
 **From a release archive:** download the archive for your platform
-from the GitHub release, verify it against `checksums.txt`, and put
-the binary on your PATH:
+from the [GitHub release](https://github.com/go-monolith/ghtmx/releases),
+verify it against `checksums.txt`, and put the binary on your PATH:
 
 ```sh
 sha256sum --check --ignore-missing checksums.txt    # macOS: shasum -a 256 --check
@@ -45,6 +45,28 @@ tar -xzf ghtmx_<version>_linux_amd64.tar.gz ghtmx   # .zip on Windows (verify wi
 
 Both paths yield the same single-version binary: `ghtmx version`
 prints the release tag.
+
+## Editor support
+
+The VS Code, Neovim, and JetBrains extensions are attached to the
+[GitHub releases](https://github.com/go-monolith/ghtmx/releases)
+alongside the binaries, from v0.1.5 onward. They are thin clients:
+highlighting is local, and diagnostics, completion, hover, and go to
+definition all come from `ghtmx lsp`, so behavior is the same in all
+three. Each needs `ghtmx` and `gopls` already on your PATH.
+
+| Editor | Release asset | Install |
+| --- | --- | --- |
+| VS Code | `ghtmx-vscode-<ext>.vsix` | `code --install-extension ghtmx-vscode-<ext>.vsix` |
+| JetBrains | `ghtmx-jetbrains-<ext>.zip` | Settings → Plugins → ⚙ → Install Plugin from Disk |
+| Neovim | `ghtmx-nvim-<ext>.tar.gz` | Extract onto your runtimepath |
+
+`<ext>` is the extension version, which is not the release tag: an
+extension versioned `X.Y.*` works with any module `vX.Y.*`, so a `0.1.0`
+extension is the right one to take off the `v0.1.5` release.
+[`editors/README.md`](editors/README.md) has the compatibility table
+and the per-editor setup, including the LSP4IJ requirement on JetBrains
+community editions.
 
 ## Test coverage
 
