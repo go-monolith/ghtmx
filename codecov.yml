@@ -1,0 +1,46 @@
+# Codecov reports the number; internal/covergate is what gates on it.
+# Both statuses stay informational so Codecov can never add a red check
+# to a pull request — the `coverage` job's 90% floor is the only
+# coverage failure that means anything here.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# Comment only when the diff actually moves coverage, so documentation
+# and workflow pull requests stay quiet.
+comment:
+  layout: "condensed_header, diff, files"
+  require_changes: true
+
+# Mirrors the exclusions in internal/covergate (README, "Test
+# coverage"): generated output, the ported LSP and safehtml trees, and
+# the example and fixture programs. Without these, Codecov measures
+# vendoring decisions rather than test discipline and reports a
+# materially lower figure than the floor.
+# A Go profile names files by import path, so every line in cover.out
+# starts `github.com/go-monolith/ghtmx/`. The ignore rules below are
+# root-anchored, so the prefix has to come off first — Codecov's Go
+# processor normally does this, and stating it makes the result the
+# same either way.
+fixes:
+  - "github.com/go-monolith/ghtmx/::"
+
+# Codecov compiles `**/x` to a pattern that requires a parent directory,
+# so the repository-root forms are listed separately. The gate matches
+# these paths anywhere; nothing sits at the root today, and the extra
+# entries keep the two lists equivalent if something does.
+ignore:
+  - "*_ghtmx.go"
+  - "**/*_ghtmx.go"
+  - "internal/lsp/**"
+  - "internal/safehtml/**"
+  - "examples/**"
+  - "fixture/**"
+  - "**/fixture/**"
+  - "testprogram/**"
+  - "**/testprogram/**"

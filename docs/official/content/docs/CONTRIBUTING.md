@@ -58,10 +58,26 @@ the `cmd/ghtmx/lspcmd` tests fail and there is no profile to measure. It
 is only needed once per machine. On failure the gate prints the
 least-covered packages, worst first.
 
-`-coverpkg=./...` matters — it attributes coverage across package
-boundaries, so a package exercised only through its callers still counts.
-Without it the figure is about ten points lower and not comparable to the
-threshold.
+Two flags in that command are load-bearing. `-coverpkg=./...` attributes
+coverage across package boundaries, so a package exercised only through
+its callers still counts; without it the figure is about ten points
+lower and not comparable to the threshold. `-covermode=atomic` is
+required because the suite runs tests in parallel and the other modes
+race on the counter array.
+
+The gate parses the profile itself rather than calling `go tool cover
+-func`, which silently drops coverage blocks inside function literals
+assigned to package-level vars — the parser-combinator shape
+`internal/parser` is built from — and undercounts by roughly eight
+percentage points.
+
+The same job uploads its profile to
+[Codecov](https://codecov.io/gh/go-monolith/ghtmx), which is where the
+badge, the line-by-line report, and a pull request's coverage diff come
+from. Codecov posts its own `codecov/project` and `codecov/patch`
+contexts alongside the twelve checks above; `codecov.yml` marks both
+informational, so neither can fail or block a merge. The 90% floor is
+the only coverage failure that means anything.
 
 ## Build output
 

@@ -1,5 +1,7 @@
 # ghtmx
 
+[![codecov](https://codecov.io/gh/go-monolith/ghtmx/graph/badge.svg?token=8WD6GCUT9G)](https://codecov.io/gh/go-monolith/ghtmx)
+
 A compiled Go template engine where htmx is a first-class,
 compile-checked language concept — a hard fork of
 [templ](https://github.com/a-h/templ) (see `TEMPL_SYNTAX_BASELINE.md`
@@ -33,8 +35,8 @@ go install golang.org/x/tools/gopls@latest   # embedded-Go support in the LSP
 ```
 
 **From a release archive:** download the archive for your platform
-from the GitHub release, verify it against `checksums.txt`, and put
-the binary on your PATH:
+from the [GitHub release](https://github.com/go-monolith/ghtmx/releases),
+verify it against `checksums.txt`, and put the binary on your PATH:
 
 ```sh
 sha256sum --check --ignore-missing checksums.txt    # macOS: shasum -a 256 --check
@@ -44,14 +46,43 @@ tar -xzf ghtmx_<version>_linux_amd64.tar.gz ghtmx   # .zip on Windows (verify wi
 Both paths yield the same single-version binary: `ghtmx version`
 prints the release tag.
 
+## Editor support
+
+The VS Code, Neovim, and JetBrains extensions are attached to the
+[GitHub releases](https://github.com/go-monolith/ghtmx/releases)
+alongside the binaries, from v0.1.5 onward. They are thin clients:
+highlighting is local, and diagnostics, completion, hover, and go to
+definition all come from `ghtmx lsp`, so behavior is the same in all
+three. Each needs `ghtmx` and `gopls` already on your PATH.
+
+| Editor | Release asset | Install |
+| --- | --- | --- |
+| VS Code | `ghtmx-vscode-<ext>.vsix` | `code --install-extension ghtmx-vscode-<ext>.vsix` |
+| JetBrains | `ghtmx-jetbrains-<ext>.zip` | Settings → Plugins → ⚙ → Install Plugin from Disk |
+| Neovim | `ghtmx-nvim-<ext>.tar.gz` | Extract onto your runtimepath |
+
+`<ext>` is the extension version, which is not the release tag: an
+extension versioned `X.Y.*` works with any module `vX.Y.*`, so a `0.1.0`
+extension is the right one to take off the `v0.1.5` release.
+[`editors/README.md`](editors/README.md) has the compatibility table
+and the per-editor setup, including the LSP4IJ requirement on JetBrains
+community editions.
+
 ## Test coverage
 
-Statement coverage of the project's own code is held at **90% or above**
-by the `coverage` CI job, which fails the build below that floor. The
-threshold is a compile-time constant in `internal/covergate`, so lowering
-it is a reviewed diff rather than a workflow edit.
+Every CI run publishes its profile to
+[Codecov](https://codecov.io/gh/go-monolith/ghtmx), which is where the
+badge above, the line-by-line report, and each pull request's coverage
+diff come from. Codecov reports; it does not gate, and its line-coverage
+figure is not the statement-coverage number the gate below measures.
 
-"Own code" is what this project writes and is answerable for. Excluded:
+The gate is the `coverage` CI job, which holds statement coverage of the
+project's own code at **90% or above** and fails the build below that
+floor. The threshold is a compile-time constant in `internal/covergate`,
+so lowering it is a reviewed diff rather than a workflow edit.
+
+"Own code" is what this project writes and is answerable for. Both the
+gate and the Codecov report exclude:
 
 | Excluded | Why |
 | --- | --- |
@@ -61,32 +92,8 @@ it is a reviewed diff rather than a workflow edit.
 | `examples/**` | Documentation; compiled and vetted by `internal/corpusgate` |
 | `**/fixture/**`, `**/testprogram/**` | Test input, not code under test |
 
-Run the same check locally:
-
-```sh
-go install golang.org/x/tools/gopls@v0.23.0
-go test ./... -covermode=atomic -coverpkg=./... -coverprofile=cover.out -timeout 20m
-GHTMX_COVERAGE_GATE=1 go test ./internal/covergate/ -count=1 -v
-```
-
-The `gopls` install is a real prerequisite — without it the
-`cmd/ghtmx/lspcmd` tests fail and there is no profile to measure. It is
-needed once per machine. On failure the gate prints the least-covered
-packages, worst first.
-
-Two flags in that command are load-bearing:
-
-- **`-coverpkg=./...`** attributes coverage across package boundaries, so
-  a package exercised only through its callers still counts. Without it
-  the figure is about ten points lower and not comparable to the floor.
-- **`-covermode=atomic`** — the suite runs tests in parallel, and the
-  other modes race on the counter array.
-
-The gate parses the coverage profile directly rather than calling
-`go tool cover -func`, which silently drops coverage blocks inside
-function literals assigned to package-level vars — the parser-combinator
-shape `internal/parser` is built from — and undercounts by roughly eight
-percentage points.
+`CONTRIBUTING.md` has the command that reproduces the gate locally and
+why its flags are what they are.
 
 ## Stability (pre-1.0)
 

@@ -215,6 +215,25 @@ jobs:
       # it reads is still being written.
       - name: Coverage profile
         run: go test ./... -covermode=atomic -coverpkg=./... -coverprofile=cover.out -timeout 20m
+      # Reporting, not gating — the floor below is the step that can
+      # fail the job. Codecov gets the same profile so a pull request
+      # can show which lines its diff left uncovered, and it runs
+      # before the gate so a failing run still publishes the numbers
+      # that explain it. Pull requests from forks cannot read the
+      # organisation secret, so continue-on-error covers the whole
+      # step: `files` alone only adds to whatever the uploader finds,
+      # and fail_ci_if_error does not cover a failed CLI download.
+      # `slug` is required because CODECOV_TOKEN is an organisation
+      # secret rather than a repository one.
+      - name: Upload coverage to Codecov
+        continue-on-error: true
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: cover.out
+          disable_search: true
+          slug: go-monolith/ghtmx
+          fail_ci_if_error: false
       # The gate parses cover.out directly rather than calling
       # `go tool cover -func`, which drops coverage blocks inside
       # function literals assigned to package-level vars — the shape
