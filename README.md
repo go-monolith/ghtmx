@@ -1,5 +1,7 @@
 # ghtmx
 
+[![codecov](https://codecov.io/gh/go-monolith/ghtmx/graph/badge.svg?token=8WD6GCUT9G)](https://codecov.io/gh/go-monolith/ghtmx)
+
 A compiled Go template engine where htmx is a first-class,
 compile-checked language concept — a hard fork of
 [templ](https://github.com/a-h/templ) (see `TEMPL_SYNTAX_BASELINE.md`
@@ -46,12 +48,19 @@ prints the release tag.
 
 ## Test coverage
 
-Statement coverage of the project's own code is held at **90% or above**
-by the `coverage` CI job, which fails the build below that floor. The
-threshold is a compile-time constant in `internal/covergate`, so lowering
-it is a reviewed diff rather than a workflow edit.
+Every CI run publishes its profile to
+[Codecov](https://codecov.io/gh/go-monolith/ghtmx), which is where the
+badge above, the line-by-line report, and each pull request's coverage
+diff come from. Codecov reports; it does not gate, and its line-coverage
+figure is not the statement-coverage number the gate below measures.
 
-"Own code" is what this project writes and is answerable for. Excluded:
+The gate is the `coverage` CI job, which holds statement coverage of the
+project's own code at **90% or above** and fails the build below that
+floor. The threshold is a compile-time constant in `internal/covergate`,
+so lowering it is a reviewed diff rather than a workflow edit.
+
+"Own code" is what this project writes and is answerable for. Both the
+gate and the Codecov report exclude:
 
 | Excluded | Why |
 | --- | --- |
@@ -61,32 +70,8 @@ it is a reviewed diff rather than a workflow edit.
 | `examples/**` | Documentation; compiled and vetted by `internal/corpusgate` |
 | `**/fixture/**`, `**/testprogram/**` | Test input, not code under test |
 
-Run the same check locally:
-
-```sh
-go install golang.org/x/tools/gopls@v0.23.0
-go test ./... -covermode=atomic -coverpkg=./... -coverprofile=cover.out -timeout 20m
-GHTMX_COVERAGE_GATE=1 go test ./internal/covergate/ -count=1 -v
-```
-
-The `gopls` install is a real prerequisite — without it the
-`cmd/ghtmx/lspcmd` tests fail and there is no profile to measure. It is
-needed once per machine. On failure the gate prints the least-covered
-packages, worst first.
-
-Two flags in that command are load-bearing:
-
-- **`-coverpkg=./...`** attributes coverage across package boundaries, so
-  a package exercised only through its callers still counts. Without it
-  the figure is about ten points lower and not comparable to the floor.
-- **`-covermode=atomic`** — the suite runs tests in parallel, and the
-  other modes race on the counter array.
-
-The gate parses the coverage profile directly rather than calling
-`go tool cover -func`, which silently drops coverage blocks inside
-function literals assigned to package-level vars — the parser-combinator
-shape `internal/parser` is built from — and undercounts by roughly eight
-percentage points.
+`CONTRIBUTING.md` has the command that reproduces the gate locally and
+why its flags are what they are.
 
 ## Stability (pre-1.0)
 

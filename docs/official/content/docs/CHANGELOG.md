@@ -25,6 +25,12 @@ build otherwise. Releases follow `RELEASING.md`.
 - Editor support for `.htmx` alongside `.ghtmx` in the VS Code extension,
   the Neovim plugin, and the JetBrains TextMate bundle, plus a file icon
   for templates in light and dark variants.
+- Published coverage reporting. The `coverage` CI job now uploads its
+  profile to Codecov, so the README carries a live badge and every pull
+  request gets a line-by-line coverage diff. `codecov.yml` mirrors the
+  exclusions `internal/covergate` already enforces and marks Codecov's
+  own statuses informational — the 90% floor remains the only coverage
+  check that can fail a build.
 
 ### Fixed
 
