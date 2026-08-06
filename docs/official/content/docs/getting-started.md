@@ -10,6 +10,14 @@ go install github.com/go-monolith/ghtmx/cmd/ghtmx@latest
 go install golang.org/x/tools/gopls@latest   # embedded-Go support in the LSP
 ```
 
+No Go toolchain, or you would rather take the release binary? On Linux,
+macOS, and WSL, `scripts/install.sh` downloads it, checks it against
+`checksums.txt`, and adds `gopls` when `go` is available:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
+```
+
 ## 2. Create a module
 
 ```sh

@@ -43,6 +43,20 @@ sha256sum --check --ignore-missing checksums.txt    # macOS: shasum -a 256 --che
 tar -xzf ghtmx_<version>_linux_amd64.tar.gz ghtmx   # .zip on Windows (verify with Get-FileHash)
 ```
 
+On Linux, macOS, and WSL, `scripts/install.sh` does those steps for you
+and installs `gopls` alongside when a Go toolchain is present:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
+```
+
+It reads `GHTMX_VERSION` (default: the latest release) and
+`GHTMX_BIN_DIR` (default: `$GOBIN`, then `$GOPATH/bin`, then
+`~/.local/bin`), verifies the checksum before installing anything, and
+tells you what to add to your PATH — it never edits startup files. It is
+a convenience wrapper around the release archive, not a third path;
+native Windows uses the manual steps above.
+
 Both paths yield the same single-version binary: `ghtmx version`
 prints the release tag.
 
@@ -53,7 +67,8 @@ The VS Code, Neovim, and JetBrains extensions are attached to the
 alongside the binaries, from v0.1.5 onward. They are thin clients:
 highlighting is local, and diagnostics, completion, hover, and go to
 definition all come from `ghtmx lsp`, so behavior is the same in all
-three. Each needs `ghtmx` and `gopls` already on your PATH.
+three. Each needs `ghtmx` and `gopls` already on your PATH — installing
+an extension does not install them; `scripts/install.sh` above does.
 
 | Editor | Release asset | Install |
 | --- | --- | --- |

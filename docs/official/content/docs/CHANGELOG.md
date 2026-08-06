@@ -32,6 +32,24 @@ build otherwise. Releases follow `RELEASING.md`.
   own statuses informational — the 90% floor remains the only coverage
   check that can fail a build.
 
+- `scripts/install.sh`, which installs `ghtmx` and `gopls` onto your
+  PATH. Installing an editor extension never installed the binaries the
+  extension needs, and the only route was two `go install` commands
+  found in the README. The script downloads the release archive for your
+  platform, verifies it against `checksums.txt` before writing anything,
+  installs `gopls` when a Go toolchain is present, and prints the exact
+  `export PATH=` line when the install directory is unreachable — it
+  never edits startup files. Configured by `GHTMX_VERSION`,
+  `GHTMX_BIN_DIR`, `GOPLS_VERSION`, and `GHTMX_SKIP_GOPLS`. It is a
+  wrapper around the existing release-archive install path, not a third
+  supported path: bash only, so Linux, macOS, and WSL.
+- A way out of the VS Code extension's "cannot start the server" error.
+  It now names both binaries and offers to run the installer in a
+  terminal — with the command typed but not executed, so nothing runs
+  without a keypress — to open the `ghtmx.path` setting, or to reload
+  the window. The same flow is in the command palette as
+  **ghtmx: Install ghtmx and gopls**.
+
 ### Fixed
 
 - Dev-mode hot literal reload for projects using a non-default template

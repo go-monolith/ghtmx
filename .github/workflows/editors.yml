@@ -64,6 +64,9 @@ jobs:
         run: |
           set -euo pipefail
           npm install --no-audit --no-fund
+          # Runs before packaging so a broken extension is never built:
+          # the test script compiles first, so this also type-checks.
+          npm test
           # vsce does not create --out; it fails with ENOTDIR.
           mkdir -p "$RUNNER_TEMP/artifacts"
           npx @vscode/vsce package --out "$RUNNER_TEMP/artifacts/"

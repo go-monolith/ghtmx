@@ -64,6 +64,20 @@ func Build(root, version, dst string) error {
 	return writeChecksums(dst, archives)
 }
 
+// ArchiveName is the release asset name for one target, extension
+// included: ghtmx_<bare>_<os>_<arch> with .zip on Windows and .tar.gz
+// elsewhere. bare is the version without the "v" prefix. This is the
+// single definition of the naming convention — the release build, the
+// install-path check, and scripts/install.sh all depend on it, and a
+// change here changes what users download.
+func ArchiveName(bare string, target Target) string {
+	ext := ".tar.gz"
+	if target.GOOS == "windows" {
+		ext = ".zip"
+	}
+	return fmt.Sprintf("ghtmx_%s_%s_%s%s", bare, target.GOOS, target.GOARCH, ext)
+}
+
 // BuildOne builds and archives a single target, returning the archive
 // name. The install-path check uses it for the running platform.
 func BuildOne(root, dst, bare string, target Target) (string, error) {
@@ -88,13 +102,10 @@ func BuildOne(root, dst, bare string, target Target) (string, error) {
 		return "", fmt.Errorf("build %s/%s: %w\n%s", target.GOOS, target.GOARCH, err, out)
 	}
 
-	name := fmt.Sprintf("ghtmx_%s_%s_%s", bare, target.GOOS, target.GOARCH)
-	var archive string
+	archive := ArchiveName(bare, target)
 	if target.GOOS == "windows" {
-		archive = name + ".zip"
 		err = zipArchive(filepath.Join(dst, archive), root, binaryPath, binary)
 	} else {
-		archive = name + ".tar.gz"
 		err = tarArchive(filepath.Join(dst, archive), root, binaryPath, binary)
 	}
 	if err != nil {

@@ -48,11 +48,7 @@ func TestReleaseArtifacts(t *testing.T) {
 
 	bare := strings.TrimPrefix(version, "v")
 	for _, target := range Targets {
-		ext := ".tar.gz"
-		if target.GOOS == "windows" {
-			ext = ".zip"
-		}
-		name := fmt.Sprintf("ghtmx_%s_%s_%s%s", bare, target.GOOS, target.GOARCH, ext)
+		name := ArchiveName(bare, target)
 		if _, err := os.Stat(filepath.Join(dst, name)); err != nil {
 			t.Errorf("missing release artifact for %s/%s: %v", target.GOOS, target.GOARCH, err)
 		}

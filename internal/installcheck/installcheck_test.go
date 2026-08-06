@@ -4,6 +4,10 @@
 // breaking-section entry carries a migration note, and the pre-1.0
 // stability posture is stated in the README, the changelog, and the
 // documentation site.
+//
+// installscript_test.go covers scripts/install.sh, which is a wrapper
+// around the release-archive path rather than a third path of its own:
+// it is bash-only, so those tests skip on Windows.
 package installcheck
 
 import (

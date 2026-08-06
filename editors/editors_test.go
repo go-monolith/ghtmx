@@ -12,6 +12,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -30,10 +31,11 @@ func read(t *testing.T, path string) []byte {
 // `ghtmx lsp`.
 func TestVSCodeManifest(t *testing.T) {
 	var manifest struct {
-		Version     string `json:"version"`
-		Main        string `json:"main"`
-		Engines     map[string]string
-		Contributes struct {
+		Version          string   `json:"version"`
+		Main             string   `json:"main"`
+		ActivationEvents []string `json:"activationEvents"`
+		Engines          map[string]string
+		Contributes      struct {
 			Languages []struct {
 				ID            string   `json:"id"`
 				Extensions    []string `json:"extensions"`
@@ -52,6 +54,10 @@ func TestVSCodeManifest(t *testing.T) {
 			Configuration struct {
 				Properties map[string]json.RawMessage `json:"properties"`
 			} `json:"configuration"`
+			Commands []struct {
+				Command string `json:"command"`
+				Title   string `json:"title"`
+			} `json:"commands"`
 		} `json:"contributes"`
 	}
 	if err := json.Unmarshal(read(t, "vscode/package.json"), &manifest); err != nil {
@@ -59,6 +65,14 @@ func TestVSCodeManifest(t *testing.T) {
 	}
 	if manifest.Main != "./out/extension.js" {
 		t.Errorf("main = %q, want the compiled extension entry point", manifest.Main)
+	}
+	// Spelled out rather than left to VS Code's auto-generation from
+	// contributes: opening a template is what has to wake the client, and
+	// declaring only the command event would silently take that away.
+	for _, event := range []string{"onLanguage:ghtmx", "onCommand:ghtmx.installTools"} {
+		if !slices.Contains(manifest.ActivationEvents, event) {
+			t.Errorf("the extension must activate on %s, got %v", event, manifest.ActivationEvents)
+		}
 	}
 	// Both template extensions map to the one ghtmx language: .ghtmx is
 	// canonical, .htmx is accepted because some projects prefer it.
@@ -101,7 +115,18 @@ func TestVSCodeManifest(t *testing.T) {
 	if _, ok := manifest.Contributes.Configuration.Properties["ghtmx.path"]; !ok {
 		t.Error("the ghtmx.path setting must exist so users can point at a specific binary")
 	}
-	for _, path := range []string{"vscode/language-configuration.json", "vscode/src/extension.ts", "vscode/README.md", "vscode/CHANGELOG.md", "vscode/.vscodeignore", "vscode/LICENSE"} {
+	// The .vsix ships no binaries, so the one recovery path from "the
+	// server will not start" is the installer the palette exposes.
+	declared := false
+	for _, command := range manifest.Contributes.Commands {
+		if command.Command == "ghtmx.installTools" {
+			declared = true
+		}
+	}
+	if !declared {
+		t.Errorf("the extension must contribute ghtmx.installTools, got %+v", manifest.Contributes.Commands)
+	}
+	for _, path := range []string{"vscode/language-configuration.json", "vscode/src/extension.ts", "vscode/src/install.ts", "vscode/README.md", "vscode/CHANGELOG.md", "vscode/.vscodeignore", "vscode/LICENSE"} {
 		read(t, path)
 	}
 	// The client must launch the module's LSP entry point, honouring the
@@ -113,6 +138,28 @@ func TestVSCodeManifest(t *testing.T) {
 	if !strings.Contains(src, `config.get<string>("path") || "ghtmx"`) {
 		t.Error("extension.ts must resolve the binary from the ghtmx.path setting")
 	}
+	if !strings.Contains(src, `registerCommand("ghtmx.installTools"`) {
+		t.Error("extension.ts must register the contributed ghtmx.installTools command")
+	}
+	// sendText's false suppresses the newline: the install line is typed
+	// into the terminal and the user runs it. A downloaded script must
+	// never execute on the extension's say-so.
+	if !strings.Contains(src, "terminal.sendText(installCommand(), false)") {
+		t.Error("extension.ts must type the install command without executing it")
+	}
+	// The install button hands the user a raw.githubusercontent.com URL.
+	// Renaming or moving the script would break that button and every
+	// doc that repeats the one-liner, with nothing else to notice.
+	installSrc := string(read(t, "vscode/src/install.ts"))
+	const marker = "/go-monolith/ghtmx/main/"
+	_, after, found := strings.Cut(installSrc, marker)
+	if !found {
+		t.Fatalf("install.ts must point at a raw file URL containing %q", marker)
+	}
+	scriptPath := strings.TrimSpace(strings.Split(after, `"`)[0])
+	if _, err := os.Stat("../" + scriptPath); err != nil {
+		t.Errorf("install.ts points at %s, which is not in the repository: %v", scriptPath, err)
+	}
 	// Build artifacts and dependencies stay out of the repository.
 	ignored := string(read(t, "vscode/.gitignore"))
 	for _, entry := range []string{"node_modules/", "out/", "*.vsix"} {
@@ -122,10 +169,16 @@ func TestVSCodeManifest(t *testing.T) {
 	}
 	// The icons must reach the .vsix; excluding them would leave the
 	// contribution pointing at files that are not in the package.
-	for line := range strings.SplitSeq(string(read(t, "vscode/.vscodeignore")), "\n") {
+	vscodeignore := string(read(t, "vscode/.vscodeignore"))
+	for line := range strings.SplitSeq(vscodeignore, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "icons") {
 			t.Errorf(".vscodeignore must not exclude the icons: %q", strings.TrimSpace(line))
 		}
+	}
+	// Compiled unit tests land in out/ beside the extension entry point
+	// and would otherwise ship to every user.
+	if !strings.Contains(vscodeignore, "out/**/*.test.js") {
+		t.Error(".vscodeignore must keep the compiled tests out of the .vsix")
 	}
 }
 
