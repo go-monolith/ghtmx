@@ -22,11 +22,11 @@ build-time compiler with live-reload watch mode, an LSP with
 route-aware completion, and editor extensions for VS Code, Neovim, and
 JetBrains.
 
-Start with [Getting started](getting-started.html), then the
-[Syntax](syntax.html) specification. The
-[Diagnostics](diagnostics.html) catalogue explains every error the
-toolchain can raise, [Configuration](config.html) covers `ghtmx.json`
-and the CLI, and [Build targets](build-targets.html) states what is
+Start with [Getting started](/getting-started), then the
+[Syntax](/docs/syntax) specification. The
+[Diagnostics](/docs/diagnostics) catalogue explains every error the
+toolchain can raise, [Configuration](/docs/config) covers `ghtmx.json`
+and the CLI, and [Build targets](/docs/build-targets) states what is
 supported where — including the WebAssembly guarantee.
 
 ## Stability (pre-1.0)

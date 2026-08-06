@@ -16,11 +16,14 @@ and a server-driven event contract, with a stdlib-only runtime.
 - `event` declarations generate the only symbols that can emit
   `HX-Trigger`, with typed payloads.
 
-Documentation: `SYNTAX.md` (the language), `DIAGNOSTICS.md` (every
-diagnostic), `CONFIG.md` (settings and flags), `docs/site/` (the
-published site, including getting started), and `docs/official/` (the
-official documentation site — itself a ghtmx application, serving
-these documents and every example, compiled natively or to wasm).
+Documentation: [ghtmx.dev](https://ghtmx.dev) is the published site,
+built from `docs/official/` — itself a ghtmx application, serving these
+documents and every example, compiled natively or to wasm. The sources
+it renders are `SYNTAX.md` (the language), `DIAGNOSTICS.md` (every
+diagnostic), `CONFIG.md` (settings and flags), and the site-only pages
+under `docs/official/pages/` (the landing page, getting started, build
+targets). The Go API reference is on
+[pkg.go.dev](https://pkg.go.dev/github.com/go-monolith/ghtmx).
 
 ## Install
 

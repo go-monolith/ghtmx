@@ -13,7 +13,8 @@
 - After changing anything under `examples/` or the reference docs
   (README.md, SYNTAX.md, DIAGNOSTICS.md, CONFIG.md, CONFORMANCE.md,
   TEMPL_SYNTAX_BASELINE.md, CHANGELOG.md, CONTRIBUTING.md, RELEASING.md,
-  docs/site/*.md — the full list is docs/official/internal/sync/manifest.go),
+  docs/official/pages/*.md — the full list is
+  docs/official/internal/sync/manifest.go),
   refresh the
   docs site's embedded copies: `cd docs/official && go run ./internal/sync`
   — then commit the updated files under `docs/official/content/`. CI's

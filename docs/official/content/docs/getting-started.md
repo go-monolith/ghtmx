@@ -134,6 +134,6 @@ page — the compile-time fragment guarantee.
 
 - `ghtmx generate -watch -cmd 'go run .' -proxy http://localhost:8080`
   gives live reload with a dev proxy.
-- The [Syntax](syntax.html) specification covers every construct;
+- The [Syntax](/docs/syntax) specification covers every construct;
   `examples/crud` in the repository is the full reference application
   with events, typed constructors, and inline editing.
