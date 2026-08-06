@@ -15,6 +15,27 @@ All three highlight the ghtmx-native constructs: `templ`, `fragment`,
 and `event` declarations, htmx attributes, and route bindings
 (`hx-post={ handlers.CreateItem }`).
 
+## The binaries are not bundled
+
+Installing an extension installs no binaries. Every integration spawns
+`ghtmx lsp` off your PATH, and that server in turn needs `gopls` for the
+embedded Go — it looks on PATH, then in `~/go/bin`, then in
+`~/.local/bin`. Those last two are where a default Go toolchain puts
+things, so it usually just works; with a customized `GOBIN` or `GOPATH`,
+put that directory on your PATH. Install both first (Linux, macOS, WSL):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
+```
+
+That script is a wrapper around the release-archive install path; see
+the root [`README.md`](../README.md) for the manual steps and the
+Windows route. The VS Code extension also offers to run it from the
+error it shows when the server will not start, and from the command
+palette as **ghtmx: Install ghtmx and gopls**. It installs the newest
+release, which pre-1.0 is not guaranteed to fall in the module series
+the extension was tested against — set `GHTMX_VERSION` to pin.
+
 The VS Code TextMate grammar
 (`vscode/syntaxes/ghtmx.tmLanguage.json`) is the single source of
 truth; the JetBrains bundle ships a byte-identical copy, enforced by

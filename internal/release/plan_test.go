@@ -159,7 +159,7 @@ func TestReleasePlanDecidesTheVersion(t *testing.T) {
 		name: "docs-only changes since the tag do not ship",
 		history: func(t *testing.T, dir string) {
 			commit(t, dir, "README.md", "more docs\n", "#2 docs")
-			commit(t, dir, "docs/site/index.md", "page\n", "#3 more docs")
+			commit(t, dir, "docs/official/pages/index.md", "page\n", "#3 more docs")
 		},
 		release: "false",
 	}, {

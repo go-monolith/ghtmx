@@ -10,6 +10,14 @@ go install github.com/go-monolith/ghtmx/cmd/ghtmx@latest
 go install golang.org/x/tools/gopls@latest   # embedded-Go support in the LSP
 ```
 
+No Go toolchain, or you would rather take the release binary? On Linux,
+macOS, and WSL, `scripts/install.sh` downloads it, checks it against
+`checksums.txt`, and adds `gopls` when `go` is available:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
+```
+
 ## 2. Create a module
 
 ```sh
@@ -126,6 +134,6 @@ page — the compile-time fragment guarantee.
 
 - `ghtmx generate -watch -cmd 'go run .' -proxy http://localhost:8080`
   gives live reload with a dev proxy.
-- The [Syntax](syntax.html) specification covers every construct;
+- The [Syntax](/docs/syntax) specification covers every construct;
   `examples/crud` in the repository is the full reference application
   with events, typed constructors, and inline editing.

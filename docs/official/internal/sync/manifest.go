@@ -20,10 +20,15 @@ type Entry struct {
 	Dst string
 }
 
-// referenceDocs are the single-source markdown files presented on the
-// site: repo-root-relative source → file name under content/docs.
-// Distinct destination names disambiguate colliding base names
+// referenceDocs are the markdown files presented on the site:
+// repo-root-relative source → file name under content/docs. Distinct
+// destination names disambiguate colliding base names
 // (editors/README.md vs the root README.md).
+//
+// Two kinds of source. Repository documents live at the root and are
+// single-source: the site renders what the gates keep honest. The
+// pages/ entries are site-only, written for the site and copied in like
+// the rest so that content/docs stays the one directory embed.go needs.
 var referenceDocs = []struct {
 	Src string
 	Dst string
@@ -38,9 +43,9 @@ var referenceDocs = []struct {
 	{"CONTRIBUTING.md", "CONTRIBUTING.md"},
 	{"RELEASING.md", "RELEASING.md"},
 	{"editors/README.md", "editors.md"},
-	{"docs/site/index.md", "index.md"},
-	{"docs/site/getting-started.md", "getting-started.md"},
-	{"docs/site/build-targets.md", "build-targets.md"},
+	{"docs/official/pages/index.md", "index.md"},
+	{"docs/official/pages/getting-started.md", "getting-started.md"},
+	{"docs/official/pages/build-targets.md", "build-targets.md"},
 }
 
 // exampleDirs are the example applications shown on the site,

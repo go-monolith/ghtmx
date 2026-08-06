@@ -25,58 +25,99 @@ func repoRoot(t *testing.T) string {
 	return filepath.Dir(filepath.Dir(filepath.Dir(file)))
 }
 
-// TestSiteBuilds: the site renders every page with the content the
-// acceptance criteria name — the pinned htmx version and range, the
-// WASM guarantee and its limits, and a getting-started flow reaching a
-// rendered fragment.
-func TestSiteBuilds(t *testing.T) {
-	dst := t.TempDir()
-	if err := Build(repoRoot(t), dst); err != nil {
-		t.Fatalf("site build failed: %v", err)
-	}
-
-	pages := map[string]string{}
-	for _, page := range Pages {
-		raw, err := os.ReadFile(filepath.Join(dst, page.Slug+".html"))
+// TestDocumentedInvariantsHold: the documents the site presents still
+// state what the acceptance criteria name. This reads the markdown
+// rather than rendered HTML — the assertions were always about the
+// prose, and docs/official is what renders it now.
+func TestDocumentedInvariantsHold(t *testing.T) {
+	root := repoRoot(t)
+	read := func(parts ...string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(append([]string{root}, parts...)...))
 		if err != nil {
-			t.Fatalf("page %s missing: %v", page.Slug, err)
+			t.Fatalf("documented source missing: %v", err)
 		}
-		pages[page.Slug] = string(raw)
+		return string(raw)
 	}
-
-	assertContains := func(slug string, needles ...string) {
+	assertContains := func(name, doc string, needles ...string) {
 		t.Helper()
 		for _, needle := range needles {
-			if !strings.Contains(pages[slug], needle) {
-				t.Errorf("%s.html must contain %q", slug, needle)
+			if !strings.Contains(doc, needle) {
+				t.Errorf("%s must contain %q", name, needle)
 			}
 		}
 	}
 
-	assertContains("index", "getting-started.html", "syntax.html", "build-targets.html")
-	assertContains("getting-started",
-		"go install github.com/go-monolith/ghtmx/cmd/ghtmx",
-		"ghtmx generate",
-		"HX-Request",
-		"Hello, htmx!")
 	// The pinned version and range derive from the source of truth, so
 	// a pin advance stales the page loudly instead of silently. The
 	// root helper sorts numerically (a lexical sort puts 2.0.9 after
-	// 2.0.10).
+	// 2.0.10). This is the one assertion here with no substitute
+	// anywhere else: it is the only thing tying prose to Go constants.
 	supported := ghtmx.SupportedHtmxVersions()
-	assertContains("build-targets",
+	assertContains("build-targets.md", read("docs", "official", "pages", "build-targets.md"),
 		config.DefaultHtmxVersion,
 		supported[0]+" – "+supported[len(supported)-1],
 		"GOOS=js GOARCH=wasm",
 		"wasip1",
 		"fiber",
 		"Compile-time guarantee only")
-	assertContains("syntax", "TEMPL_SYNTAX_BASELINE")
-	assertContains("diagnostics", "GHTMX-E0101")
-	assertContains("config", "htmxVersion")
-	// Cross-links between repository documents rewrite to site pages.
-	assertContains("diagnostics", `href="config.html"`)
+
+	assertContains("getting-started.md", read("docs", "official", "pages", "getting-started.md"),
+		"go install github.com/go-monolith/ghtmx/cmd/ghtmx",
+		"ghtmx generate",
+		"HX-Request",
+		"Hello, htmx!")
+	// The landing page has to reach the rest of the site. It used to
+	// link to <slug>.html, which only resolved in a builder that no
+	// longer exists; docs/official serves /getting-started and
+	// /docs/<slug>, so those are the targets to hold it to.
+	assertContains("index.md", read("docs", "official", "pages", "index.md"),
+		"](/getting-started)",
+		"](/docs/syntax)",
+		"](/docs/build-targets)")
+	assertContains("SYNTAX.md", read("SYNTAX.md"), "TEMPL_SYNTAX_BASELINE")
+	assertContains("DIAGNOSTICS.md", read("DIAGNOSTICS.md"), "GHTMX-E0101")
+	assertContains("CONFIG.md", read("CONFIG.md"), "htmxVersion")
 }
+
+// TestSitePagesLinkToRealRoutes: a .html link target is a leftover from
+// the retired builder and would 404 on ghtmx.dev, which serves clean
+// paths. Nothing else catches it — the markdown renders either way.
+func TestSitePagesLinkToRealRoutes(t *testing.T) {
+	pages, err := filepath.Glob(filepath.Join(repoRoot(t), "docs", "official", "pages", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pages) == 0 {
+		t.Fatal("no site pages found")
+	}
+	for _, page := range pages {
+		raw, err := os.ReadFile(page)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, target := range linkTargets(string(raw)) {
+			if strings.HasPrefix(target, "http") {
+				continue // someone else's site, someone else's URL shape
+			}
+			if strings.HasSuffix(target, ".html") {
+				t.Errorf("%s links to %q; the site serves clean paths, not .html",
+					filepath.Base(page), target)
+			}
+		}
+	}
+}
+
+// linkTargets returns the destinations of every inline markdown link.
+func linkTargets(doc string) []string {
+	var targets []string
+	for _, match := range linkPattern.FindAllStringSubmatch(doc, -1) {
+		targets = append(targets, match[1])
+	}
+	return targets
+}
+
+var linkPattern = regexp.MustCompile(`\]\(([^)\s]+)`)
 
 // fence returns the single ```info fence of the guide; requiring
 // exactly one keeps an added example from silently shifting which
@@ -99,7 +140,7 @@ func TestGettingStartedGuideCompilesAndRenders(t *testing.T) {
 		t.Skip("builds a scratch module")
 	}
 	root := repoRoot(t)
-	raw, err := os.ReadFile(filepath.Join(root, "docs", "site", "getting-started.md"))
+	raw, err := os.ReadFile(filepath.Join(root, "docs", "official", "pages", "getting-started.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

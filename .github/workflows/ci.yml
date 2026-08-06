@@ -136,10 +136,12 @@ jobs:
       # reference are derived from the in-repo sources and cannot drift.
       - name: Diagnostic and config catalogue coverage (FR-045/FR-071)
         run: go test ./internal/catalogcheck/ -count=1 -v
-      # The documentation site builds on every CI run (publishing
-      # the official site at ghtmx.dev deploys via deploy-docs.yml); the test also compiles and
-      # renders the getting-started guide's own code.
-      - name: Documentation site build (NFR-013/NFR-014)
+      # The getting-started guide's own code is compiled and rendered on
+      # every CI run, and the prose that restates a Go constant — the
+      # pinned htmx version above all — is checked against it. The site
+      # itself is docs/official, deployed to ghtmx.dev by
+      # deploy-docs.yml and built by its own job.
+      - name: Documentation gates (NFR-013/NFR-014)
         run: go test ./internal/docsite/ -count=1 -v
       # NFR-010: the changelog discipline, named and visible. The
       # install-path assertions are skipped by -short here: they run —

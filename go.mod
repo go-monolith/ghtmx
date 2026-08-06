@@ -12,7 +12,6 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/natefinch/atomic v1.0.1
 	github.com/stretchr/testify v1.11.1
-	github.com/yuin/goldmark v1.8.5
 	golang.org/x/mod v0.26.0
 	golang.org/x/net v0.56.0
 	golang.org/x/sync v0.16.0

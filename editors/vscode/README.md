@@ -32,10 +32,33 @@ value, so set it to match the files you actually write.
 
 ## Requirements
 
+Installing this extension does **not** install any binaries. It needs:
+
 - The `ghtmx` binary on PATH (or set `ghtmx.path`):
   `go install github.com/go-monolith/ghtmx/cmd/ghtmx@latest`
-- `gopls` on PATH for embedded-Go support:
+- `gopls` for embedded-Go support:
   `go install golang.org/x/tools/gopls@latest`
+  (`ghtmx lsp` looks for it on PATH, then in `~/go/bin`, then in
+  `~/.local/bin`. The script below pins the version this repository
+  tests against rather than taking `@latest`.)
+
+On Linux, macOS, and WSL, one command does both — it takes `ghtmx` from
+the release archive, so no Go toolchain is needed for that half:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
+```
+
+If the server fails to start, the extension offers to run that for you;
+it is also in the command palette as **ghtmx: Install ghtmx and gopls**.
+The command opens a terminal with the line typed but not executed — you
+press Enter. On Windows it points at the manual steps instead, since the
+script is bash-only.
+
+The script installs the newest release. Pre-1.0 that is not guaranteed
+to be in the module series this extension was tested against (see the
+compatibility table in [`editors/README.md`](../README.md)); set
+`GHTMX_VERSION` to pin a tag.
 
 ## Settings
 

@@ -4,6 +4,10 @@
 // breaking-section entry carries a migration note, and the pre-1.0
 // stability posture is stated in the README, the changelog, and the
 // documentation site.
+//
+// installscript_test.go covers scripts/install.sh, which is a wrapper
+// around the release-archive path rather than a third path of its own:
+// it is bash-only, so those tests skip on Windows.
 package installcheck
 
 import (
@@ -140,7 +144,7 @@ func TestChangelogDiscipline(t *testing.T) {
 	for _, doc := range []struct{ name, path, needle string }{
 		{"CHANGELOG.md", "CHANGELOG.md", "Pre-1.0 stability posture"},
 		{"README.md", "README.md", "pre-1.0"},
-		{"docs site index", filepath.Join("docs", "site", "index.md"), "pre-1.0"},
+		{"docs site index", filepath.Join("docs", "official", "pages", "index.md"), "pre-1.0"},
 		{"README.md install", "README.md", "go install github.com/go-monolith/ghtmx/cmd/ghtmx"},
 		{"README.md checksums", "README.md", "checksums.txt"},
 	} {
