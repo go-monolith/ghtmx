@@ -99,6 +99,7 @@ type jsonRoute struct {
 	Origin       string   `json:"origin"`
 	Recognizer   string   `json:"recognizer"`
 	Source       string   `json:"source"`
+	NavOnly      bool     `json:"navOnly,omitempty"`
 }
 
 func writeJSON(w io.Writer, table *routes.Table) error {
@@ -118,6 +119,7 @@ func writeJSON(w io.Writer, table *routes.Table) error {
 			Origin:       string(r.Origin),
 			Recognizer:   r.Recognizer,
 			Source:       r.Pos.String(),
+			NavOnly:      r.NavOnly,
 		}
 		for _, p := range r.Params {
 			name := p.Name

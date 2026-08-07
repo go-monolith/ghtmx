@@ -262,6 +262,12 @@ func (s *SetAnalysis) Check(table *routes.Table, sink *diag.Sink) {
 		if bound[string(r.Verb)+" "+r.Path] {
 			continue
 		}
+		// Navigation-only routes (<a href>, native form posts) are declared
+		// as such on their annotation; the check's "every route is bound
+		// from a template" model does not apply to them.
+		if r.NavOnly {
+			continue
+		}
 		verb := string(r.Verb)
 		if r.Verb == routes.AnyVerb {
 			verb = "ANY"
@@ -269,6 +275,6 @@ func (s *SetAnalysis) Check(table *routes.Table, sink *diag.Sink) {
 		sink.Add(diag.UnboundRoute,
 			diag.Position{File: r.Pos.File, Line: max(r.Pos.Line, 1), Col: max(r.Pos.Col, 1)},
 			fmt.Sprintf("route %s %s (%s) is never bound from any template", verb, r.Path, r.Handler),
-			"bind it with an hx-* attribute, or silence this check with GHTMX-W0104=off")
+			"bind it with an hx-* attribute, mark its //ghtmx:route annotation with a trailing nav if it is navigation-only, or silence this check with GHTMX-W0104=off")
 	}
 }

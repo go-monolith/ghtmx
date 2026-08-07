@@ -13,6 +13,13 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- A trailing `nav` marker on `//ghtmx:route` annotations
+  (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
+  navigation-only route — reached by `<a href>` or a native form post —
+  exempting that route from the `GHTMX-W0104` unbound-route warning
+  without silencing the check project-wide. Server-rendered portals
+  previously had to turn `GHTMX-W0104` off globally, losing orphan
+  detection everywhere.
 - `htmxScript` in `ghtmx.json` (flag: `-htmx-script`): set `false` to omit
   the `HTMXScript()` helper from the central generated package, for
   projects that use ghtmx purely as a server-side template engine and

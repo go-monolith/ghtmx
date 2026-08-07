@@ -47,7 +47,7 @@ hygiene.
 | `GHTMX-W0101` | A fragment is never rendered or bound from any template or handler. Go-source calls to the generated `<name>Fragment(...)` entry point count as rendering (detected name-based by route discovery's syntax-only scan, so it must be a direct or qualified call within the route scope). | Reference it with `@name(...)` in a template, render `nameFragment(...)` from a handler, or delete it. |
 | `GHTMX-W0102` | A declared event is never referenced by any template listener. | Listen with `hx-on:<wire>` or `hx-trigger`, or accept the warning if only handler-side emission is intended. |
 | `GHTMX-W0103` | Reserved for a fragment-scope heuristic that is not yet emitted; today the fragment-scope contract is enforced solely by the Go compile error (see the D9 table below). | Add the value to the fragment's parameter list. |
-| `GHTMX-W0104` | A discovered route is never bound from any template. | Bind it with an `hx-*` attribute, or accept the warning for full-page routes. |
+| `GHTMX-W0104` | A discovered route is never bound from any template. | Bind it with an `hx-*` attribute, or accept the warning for full-page routes. A route declared with `//ghtmx:route` can carry a trailing `nav` marker — `//ghtmx:route GET /audit handlers.AuditLog nav` — exempting that route without turning the check off project-wide. |
 | `GHTMX-W0201` | A constant `hx-target`/`hx-select` selector matches no static `id` in the compiled set. | Fix the selector or the id; computed selectors are exempt. Promote to error with `strictTargets`. |
 | `GHTMX-W0301` | A generated file on disk does not match what the compiler would emit (hand-edited or stale). | Run `ghtmx generate`; in `-check` mode this is the drift report and exits non-zero. |
 
