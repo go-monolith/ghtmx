@@ -43,6 +43,7 @@ const (
 	DuplicateEvent         = "GHTMX-E0305"
 	CircularReference      = "GHTMX-E0306"
 	DuplicateComponentName = "GHTMX-E0307"
+	ReservedImport         = "GHTMX-E0308"
 
 	// Route discovery errors.
 	DuplicateRoute       = "GHTMX-E0401"
@@ -91,6 +92,7 @@ var Registry = map[string]Check{
 	DuplicateEvent:         {DuplicateEvent, Error, "duplicate event name across the compiled set"},
 	CircularReference:      {CircularReference, Error, "circular component or fragment reference"},
 	DuplicateComponentName: {DuplicateComponentName, Error, "duplicate component name within a package"},
+	ReservedImport:         {ReservedImport, Error, "template import collides with an import every generated file declares"},
 
 	DuplicateRoute:       {DuplicateRoute, Error, "two registrations of the same verb and path"},
 	UnresolvableRoute:    {UnresolvableRoute, Error, "route registration cannot be resolved by syntax-only analysis; declare it with a //ghtmx:route annotation"},

@@ -20,7 +20,12 @@ build otherwise. Releases follow `RELEASING.md`.
   silently, so a binding could generate an unexpected URL with no
   diagnostic. Warning-class: projects that deliberately serve one
   handler at several URLs can set `GHTMX-W0105=off`.
-
+- `GHTMX-E0308`: importing the ghtmx root package in a template file —
+  or aliasing any import as `ghtmx` or `ghtmxruntime` — is now reported
+  at the import line the author wrote, with the alias escape hatch in
+  the message. Previously the collision surfaced as a Go redeclaration
+  error inside generated code, pointing at a line nobody can edit. The
+  check runs in both `ghtmx generate` and the language server.
 - A trailing `nav` marker on `//ghtmx:route` annotations
   (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
   navigation-only route — reached by `<a href>` or a native form post —
