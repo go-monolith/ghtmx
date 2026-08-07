@@ -147,7 +147,8 @@ func (g *Graph) BoundFiles() []string {
 }
 
 // RoutesChanged reports whether two route tables differ observably:
-// verbs, paths, handlers, parameters, or order-independent membership.
+// verbs, paths, handlers, parameters, nav markers, or order-independent
+// membership.
 func RoutesChanged(old, updated *routes.Table) bool {
 	return routesFingerprint(old) != routesFingerprint(updated)
 }
@@ -159,7 +160,11 @@ func routesFingerprint(t *routes.Table) string {
 	all := t.All()
 	lines := make([]string, 0, len(all))
 	for _, r := range all {
-		line := fmt.Sprintf("%q %q %q.%q", r.Verb, r.Path, r.Handler.PkgPath, r.Handler.Name)
+		// NavOnly never reaches generated code, but watch mode swaps in a
+		// rediscovered table only when the fingerprint changes and the
+		// whole-set diagnostics read that table — so a nav toggle must
+		// count as a change or W0104 keeps reporting the stale state.
+		line := fmt.Sprintf("%q %q %q.%q nav:%t", r.Verb, r.Path, r.Handler.PkgPath, r.Handler.Name, r.NavOnly)
 		for _, p := range r.Params {
 			line += fmt.Sprintf("/%q:%t", p.Name, p.Wildcard)
 		}

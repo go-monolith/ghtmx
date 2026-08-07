@@ -200,3 +200,38 @@ func TestUnboundRouteWarns(t *testing.T) {
 		t.Errorf("warning must name the registration site, got %+v", d)
 	}
 }
+
+func TestNavOnlyRouteExemptFromUnboundWarning(t *testing.T) {
+	table := routes.NewTable()
+	if _, ok := table.Add(routes.Route{
+		Verb: routes.GET, Path: "/admin/audit",
+		Handler: routes.SymbolRef{PkgPath: "example.com/app", Name: "AuditLog"},
+		Pos:     routes.Position{File: "main.go", Line: 5, Col: 2},
+		NavOnly: true,
+	}); !ok {
+		t.Fatal("add failed")
+	}
+	if _, ok := table.Add(routes.Route{
+		Verb: routes.GET, Path: "/orphan",
+		Handler: routes.SymbolRef{PkgPath: "example.com/app", Name: "Orphan"},
+		Pos:     routes.Position{File: "main.go", Line: 6, Col: 2},
+	}); !ok {
+		t.Fatal("add failed")
+	}
+
+	sa := NewSetAnalysis()
+	sink := diag.NewSink(nil)
+	sa.Check(table, sink)
+	diags := sink.Diagnostics()
+	// The nav-marked route is exempt; the unmarked one still warns, so the
+	// check stays on for genuinely orphaned routes.
+	if len(diags) != 1 {
+		t.Fatalf("expected exactly the non-nav route to warn, got %+v", diags)
+	}
+	if !strings.Contains(diags[0].Message, "GET /orphan") {
+		t.Errorf("the warning must be about the unmarked route, got %+v", diags[0])
+	}
+	if !strings.Contains(diags[0].Suggest, "nav") {
+		t.Errorf("the remedy must mention the nav marker, got %q", diags[0].Suggest)
+	}
+}
