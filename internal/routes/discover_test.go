@@ -382,6 +382,7 @@ import "example.com/app/handlers"
 
 //ghtmx:route GET /admin/users/{id} handlers.AdminUserShow
 //ghtmx:route POST /webhooks localHook
+//ghtmx:route GET /admin/audit handlers.AuditLog nav
 
 func localHook() {}
 `})
@@ -390,8 +391,15 @@ func localHook() {}
 		if r.Origin != Declared || r.Recognizer != "annotation" {
 			t.Errorf("origin/recognizer = %s/%s", r.Origin, r.Recognizer)
 		}
+		if r.NavOnly {
+			t.Error("an unmarked annotation must not be nav-only")
+		}
 		// A bare symbol resolves to the file's own package.
 		requireRoute(t, table, POST, "/webhooks", "example.com/app.localHook")
+		// The trailing nav marker declares a navigation-only route.
+		if r := requireRoute(t, table, GET, "/admin/audit", "example.com/app/handlers.AuditLog"); !r.NavOnly {
+			t.Error("the nav marker must set NavOnly")
+		}
 	})
 	t.Run("malformed annotations are E0403", func(t *testing.T) {
 		_, diags := discoverSrc(t, map[string]string{"main.go": `
@@ -401,9 +409,15 @@ package app
 //ghtmx:route GET nopath handlers.A
 //ghtmx:route GET /x notimported.A
 //ghtmx:route GET /x
+//ghtmx:route GET /x localHook wat
+//ghtmx:route GET /y localHook NAV
+
+func localHook() {}
 `})
-		if len(diags) != 4 {
-			t.Fatalf("expected 4 diagnostics, got %+v", diags)
+		// The marker set is closed and case-sensitive: "wat" and "NAV" are
+		// both unknown markers, not silently-ignored tokens.
+		if len(diags) != 6 {
+			t.Fatalf("expected 6 diagnostics, got %+v", diags)
 		}
 		for _, d := range diags {
 			if d.ID != diag.MalformedAnnotation {

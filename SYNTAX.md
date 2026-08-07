@@ -332,7 +332,11 @@ statically) or a generated constructor
 (`hx-get={ ghtmxgen.GetUser(id) }`, parameters percent-encoded),
 resolved at build time against routes discovered from Go source
 (FR-020/FR-021). Registrations the discoverer cannot resolve use the
-escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`.
+escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`. An
+annotation may carry a trailing `nav` marker
+(`//ghtmx:route GET /audit handlers.AuditLog nav`) declaring a
+navigation-only route — reached by `<a href>` or a native form post —
+which exempts it from the `GHTMX-W0104` unbound-route warning.
 Other `hx-*` attributes are validated against the pinned htmx
 version's surface (`internal/htmxsurface`).
 

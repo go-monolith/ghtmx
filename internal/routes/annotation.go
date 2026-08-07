@@ -13,10 +13,17 @@ import (
 //
 //	//ghtmx:route GET /admin/users/{id} handlers.AdminUserShow
 //	//ghtmx:route GET /files/{path...} files.Serve
+//	//ghtmx:route GET /admin/audit handlers.AuditLog nav
 //
 // The handler symbol is resolved through the file's import declarations; a
-// bare name refers to the file's own package.
+// bare name refers to the file's own package. The optional trailing "nav"
+// marker declares the route as navigation-only, exempting it from
+// GHTMX-W0104.
 const annotationPrefix = "//ghtmx:route"
+
+// annotationHint is the expected-form suggestion attached to every
+// GHTMX-E0403.
+const annotationHint = "expected: //ghtmx:route <VERB> </path> <pkg.Handler> [nav]"
 
 // collectAnnotations scans a file's comments for //ghtmx:route declarations
 // and returns the declared routes. Malformed annotations produce
@@ -32,7 +39,7 @@ func collectAnnotations(pkg *Package, file *ast.File, imports importMap, sink *d
 			rest := strings.TrimSpace(strings.TrimPrefix(c.Text, annotationPrefix))
 			r, errMsg := parseAnnotation(rest, pkg, imports)
 			if errMsg != "" {
-				sink.Add(diag.MalformedAnnotation, diag.Position{File: pos.File, Line: pos.Line, Col: pos.Col}, errMsg, "expected: //ghtmx:route <VERB> </path> <pkg.Handler>")
+				sink.Add(diag.MalformedAnnotation, diag.Position{File: pos.File, Line: pos.Line, Col: pos.Col}, errMsg, annotationHint)
 				continue
 			}
 			r.Pos = pos
@@ -44,8 +51,19 @@ func collectAnnotations(pkg *Package, file *ast.File, imports importMap, sink *d
 
 func parseAnnotation(s string, pkg *Package, imports importMap) (Route, string) {
 	fields := strings.Fields(s)
-	if len(fields) != 3 {
-		return Route{}, fmt.Sprintf("malformed //ghtmx:route annotation: expected 3 fields (verb, path, handler), got %d", len(fields))
+	if len(fields) < 3 || len(fields) > 4 {
+		return Route{}, fmt.Sprintf("malformed //ghtmx:route annotation: expected 3 fields (verb, path, handler) and an optional marker, got %d", len(fields))
+	}
+	navOnly := false
+	if len(fields) == 4 {
+		// A closed marker set: an unknown word is far more likely a typo'd
+		// handler or a stray token than a new intent.
+		switch fields[3] {
+		case "nav":
+			navOnly = true
+		default:
+			return Route{}, fmt.Sprintf("malformed //ghtmx:route annotation: unknown marker %q (supported: nav)", fields[3])
+		}
 	}
 	verb := Verb(strings.ToUpper(fields[0]))
 	switch verb {
@@ -86,6 +104,7 @@ func parseAnnotation(s string, pkg *Package, imports importMap) (Route, string) 
 		Handler:      handler,
 		Origin:       Declared,
 		Recognizer:   "annotation",
+		NavOnly:      navOnly,
 	}, ""
 }
 
