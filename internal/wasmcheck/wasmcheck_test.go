@@ -33,13 +33,18 @@ var wasmTargets = []struct{ goos, goarch string }{
 	{"wasip1", "wasm"},
 }
 
-// adapterMatrix is the explicit AC record: every first-party adapter is
-// either in the WASM matrix or excluded with its documented upstream
-// reason.
+// adapterMatrix is the explicit AC record: every first-party adapter is,
+// per WASM target, either in the matrix or excluded with its documented
+// upstream reason. Exclusions are per-GOOS because upstreams gain
+// support one port at a time — fiber v3's fasthttp compiles for js/wasm
+// while wasip1 still fails.
 var adapterMatrix = []struct {
-	name            string
-	dir             string
-	exclusionReason string
+	name string
+	dir  string
+	// exclusions maps a WASM GOOS to the documented upstream reason the
+	// adapter cannot compile for it; a missing key means the adapter
+	// must compile for that target.
+	exclusions map[string]string
 }{
 	{name: "nethttp", dir: "adapters/nethttp"},
 	{name: "chi", dir: "adapters/chi"},
@@ -48,8 +53,17 @@ var adapterMatrix = []struct {
 	{
 		name: "fiber",
 		dir:  "adapters/fiber",
-		exclusionReason: "fasthttp's tcplisten uses raw socket syscalls the WASM ports lack " +
-			"(js: syscall.SOCK_NONBLOCK/SOCK_CLOEXEC; wasip1: syscall.ForkLock)",
+		exclusions: map[string]string{
+			"js":     "fasthttp's tcplisten uses raw socket syscalls the js port lacks (syscall.SOCK_NONBLOCK/SOCK_CLOEXEC)",
+			"wasip1": "fasthttp's tcplisten uses raw socket syscalls the wasip1 port lacks (syscall.ForkLock)",
+		},
+	},
+	{
+		name: "fiberv3",
+		dir:  "adapters/fiberv3",
+		exclusions: map[string]string{
+			"wasip1": "fiber v3's fasthttp (>=1.72) vendors tcplisten with build tags that exclude wasip1, so the build fails with 'build constraints exclude all Go files in .../tcplisten'; its js port compiles",
+		},
 	},
 }
 
@@ -105,7 +119,8 @@ func TestAdapterWASMMatrix(t *testing.T) {
 		for _, target := range wasmTargets {
 			t.Run(adapter.name+"-"+target.goos, func(t *testing.T) {
 				out, err := wasmBuild(t, filepath.Join(root, adapter.dir), target.goos, target.goarch, false)
-				if adapter.exclusionReason == "" {
+				reason := adapter.exclusions[target.goos]
+				if reason == "" {
 					if err != nil {
 						t.Errorf("the %s adapter no longer compiles for %s/%s:\n%s", adapter.name, target.goos, target.goarch, out)
 					}
@@ -113,7 +128,7 @@ func TestAdapterWASMMatrix(t *testing.T) {
 				}
 				if err == nil {
 					t.Errorf("the %s adapter now compiles for %s/%s — upstream gained WASM support; move it into the matrix and drop the exclusion (was: %s)",
-						adapter.name, target.goos, target.goarch, adapter.exclusionReason)
+						adapter.name, target.goos, target.goarch, reason)
 					return
 				}
 				// The failure must be the DOCUMENTED one: a transient
@@ -121,7 +136,7 @@ func TestAdapterWASMMatrix(t *testing.T) {
 				// as the exclusion and hide a real transition.
 				if !strings.Contains(out, "tcplisten") {
 					t.Errorf("the %s exclusion failed for a different reason than documented (%s); investigate and refresh the record:\n%s",
-						adapter.name, adapter.exclusionReason, out)
+						adapter.name, reason, out)
 				}
 			})
 		}
