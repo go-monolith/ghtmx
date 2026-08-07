@@ -20,6 +20,19 @@ build otherwise. Releases follow `RELEASING.md`.
   lockstep as `adapters/fiberv3/vX.Y.Z`. The directory is `fiberv3`
   rather than `fiber/v3` because Go reads a trailing `/v3` as a module
   major-version suffix and would demand `v3.x.x` tags.
+- `GHTMX-W0105`: warns when one handler symbol is registered for the
+  same verb at more than one path — typically a route both discovered
+  and declared by annotation — naming every site and the path template
+  bindings actually resolve to. Previously `Lookup` picked a winner
+  silently, so a binding could generate an unexpected URL with no
+  diagnostic. Warning-class: projects that deliberately serve one
+  handler at several URLs can set `GHTMX-W0105=off`.
+- `GHTMX-E0308`: importing the ghtmx root package in a template file —
+  or aliasing any import as `ghtmx` or `ghtmxruntime` — is now reported
+  at the import line the author wrote, with the alias escape hatch in
+  the message. Previously the collision surfaced as a Go redeclaration
+  error inside generated code, pointing at a line nobody can edit. The
+  check runs in both `ghtmx generate` and the language server.
 - A trailing `nav` marker on `//ghtmx:route` annotations
   (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
   navigation-only route — reached by `<a href>` or a native form post —
