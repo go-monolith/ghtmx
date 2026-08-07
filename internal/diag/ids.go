@@ -43,6 +43,7 @@ const (
 	DuplicateEvent         = "GHTMX-E0305"
 	CircularReference      = "GHTMX-E0306"
 	DuplicateComponentName = "GHTMX-E0307"
+	ReservedImport         = "GHTMX-E0308"
 
 	// Route discovery errors.
 	DuplicateRoute       = "GHTMX-E0401"
@@ -64,6 +65,7 @@ const (
 	UnemittedEvent    = "GHTMX-W0102"
 	FragmentScopeHint = "GHTMX-W0103"
 	UnboundRoute      = "GHTMX-W0104"
+	MultiPathHandler  = "GHTMX-W0105"
 
 	// Target warnings.
 	DanglingTarget = "GHTMX-W0201"
@@ -90,6 +92,7 @@ var Registry = map[string]Check{
 	DuplicateEvent:         {DuplicateEvent, Error, "duplicate event name across the compiled set"},
 	CircularReference:      {CircularReference, Error, "circular component or fragment reference"},
 	DuplicateComponentName: {DuplicateComponentName, Error, "duplicate component name within a package"},
+	ReservedImport:         {ReservedImport, Error, "template import collides with an import every generated file declares"},
 
 	DuplicateRoute:       {DuplicateRoute, Error, "two registrations of the same verb and path"},
 	UnresolvableRoute:    {UnresolvableRoute, Error, "route registration cannot be resolved by syntax-only analysis; declare it with a //ghtmx:route annotation"},
@@ -107,6 +110,7 @@ var Registry = map[string]Check{
 	UnemittedEvent:    {UnemittedEvent, Warning, "event is declared but never emitted or referenced"},
 	FragmentScopeHint: {FragmentScopeHint, Warning, "fragment body references an enclosing template identifier that is not a fragment parameter"},
 	UnboundRoute:      {UnboundRoute, Warning, "discovered route is never bound from any template"},
+	MultiPathHandler:  {MultiPathHandler, Warning, "handler is registered for the same verb at more than one path; template bindings resolve to one of them"},
 
 	DanglingTarget: {DanglingTarget, Warning, "hx-target or hx-select literal ID selector matches no literal ID in the compiled template set"},
 

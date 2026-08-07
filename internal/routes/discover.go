@@ -277,7 +277,100 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 			}
 		}
 	}
+	reportMultiPathHandlers(table, sink)
 	return table
+}
+
+// reportMultiPathHandlers emits GHTMX-W0105 when one handler symbol is
+// registered for the same effective verb at more than one path — for
+// example a route both discovered and declared by annotation. The table
+// keys conflicts on (verb, path), so these pairs coexist without E0401,
+// and Lookup silently resolves a template binding to whichever route
+// wins — a URL the author may not expect. Warning-class: a project that
+// genuinely serves one handler at several URLs can turn it off.
+func reportMultiPathHandlers(table *Table, sink *diag.Sink) {
+	seen := map[SymbolRef]bool{}
+	for _, first := range table.All() {
+		if seen[first.Handler] {
+			continue
+		}
+		seen[first.Handler] = true
+		rs := table.ByHandler(first.Handler)
+		if len(rs) < 2 {
+			continue
+		}
+		verb, ok := handlerVerbConflict(rs)
+		if !ok {
+			continue
+		}
+		winner, _ := table.Lookup(verb, first.Handler)
+		// Only the routes actually serving the conflicting verb belong in
+		// the message; a route on an unrelated verb is not part of the
+		// ambiguity.
+		var conflicting []Route
+		for _, r := range rs {
+			if servesVerb(r, verb) {
+				conflicting = append(conflicting, r)
+			}
+		}
+		sites := make([]string, 0, len(conflicting))
+		for _, r := range conflicting {
+			sites = append(sites, fmt.Sprintf("%s %s (%s)", verbLabel(r.Verb), r.Path, r.Pos))
+		}
+		resolution := fmt.Sprintf("a %s template binding resolves to %s", verb, winner.Path)
+		if verb == AnyVerb {
+			// No binding is literally ANY; every concrete verb resolves
+			// through the same first any-verb route.
+			resolution = fmt.Sprintf("template bindings resolve to %s", winner.Path)
+		}
+		// Anchored at the last conflicting registration in discovery
+		// order, matching how E0401 blames the later site.
+		last := conflicting[len(conflicting)-1]
+		sink.Add(diag.MultiPathHandler,
+			diag.Position{File: last.Pos.File, Line: max(last.Pos.Line, 1), Col: max(last.Pos.Col, 1)},
+			fmt.Sprintf("handler %s is registered for the same verb at more than one path: %s; %s",
+				first.Handler, strings.Join(sites, ", "), resolution),
+			"remove one registration, or silence this check with GHTMX-W0105=off if one handler deliberately serves several URLs")
+	}
+}
+
+// servesVerb reports whether the route can serve requests for verb; an
+// any-verb route serves every verb.
+func servesVerb(r Route, verb Verb) bool {
+	return r.Verb == verb || (verb != AnyVerb && r.Verb == AnyVerb)
+}
+
+// handlerVerbConflict reports the first verb (in BindableVerbs order,
+// then any-verb) that the handler's routes serve at more than one
+// DISTINCT path. Same-path pairs are not conflicts — an exact-verb
+// route pinning one verb of an any-verb registration at the same path
+// resolves every lookup to that one path.
+func handlerVerbConflict(rs []Route) (Verb, bool) {
+	verbs := append(append([]Verb{}, BindableVerbs...), AnyVerb)
+	for _, v := range verbs {
+		exact := 0
+		paths := map[string]bool{}
+		for _, r := range rs {
+			if !servesVerb(r, v) {
+				continue
+			}
+			if r.Verb == v {
+				exact++
+			}
+			paths[r.Path] = true
+		}
+		if exact >= 1 && len(paths) >= 2 {
+			return v, true
+		}
+	}
+	return "", false
+}
+
+func verbLabel(v Verb) string {
+	if v == AnyVerb {
+		return "ANY"
+	}
+	return string(v)
 }
 
 // applyMounts moves routes registered on mounted variables under their
