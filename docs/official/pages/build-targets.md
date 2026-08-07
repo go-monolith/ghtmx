@@ -43,11 +43,14 @@ a WASM target is caught at the point of introduction.
   depends on the WASI host. Rendering to any `io.Writer` works
   everywhere.
 - **Adapter matrix.** `nethttp`, `chi`, `echo`, and `gin` compile for
-  both targets. **`fiber` is excluded**: its fasthttp engine uses raw
-  socket syscalls the WASM ports lack (`SOCK_NONBLOCK`/`SOCK_CLOEXEC`
-  on js; `ForkLock` on wasip1). The exclusion record is self-honest —
-  if fasthttp gains WASM support, the matrix test demands the entry be
-  updated.
+  both targets. **`fiber` is excluded** on both: its fasthttp engine
+  uses raw socket syscalls the WASM ports lack
+  (`SOCK_NONBLOCK`/`SOCK_CLOEXEC` on js; `ForkLock` on wasip1).
+  **`fiberv3` compiles for `js/wasm`** — its newer fasthttp carries the
+  needed port — **but stays excluded on `wasip1`**, where fasthttp's
+  tcplisten is excluded by build constraints. The exclusion record is
+  self-honest and per-target — when an upstream gains a port, the
+  matrix test demands the entry be updated.
 - **Tooling is out of scope.** The `ghtmx` CLI, LSP, and dev server
   target the native platforms above, not WASM.
 

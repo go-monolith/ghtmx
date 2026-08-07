@@ -13,7 +13,6 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
-<<<<<<< HEAD
 - The `routetable` package and `ghtmx routes -check-against
   <file.json>`, which turn annotation-versus-reality drift into a test.
   `generate -check` verifies template-versus-generated-code drift; it
@@ -25,6 +24,13 @@ build otherwise. Releases follow `RELEASING.md`.
   copy that could drift, and `Diff` reports missing, unexpected, and
   handler-mismatched routes. `routes -json` now emits the package's own
   type, so CLI output and the type it unmarshals into cannot diverge.
+- `adapters/fiberv3`, a first-party render adapter for fiber's v3 major
+  version — the same thin bridge over `adapters/nethttp` as the fiber v2
+  adapter, ported to v3's `fiber.Ctx` interface and `Context()`
+  accessor. A nested module like the other adapters, released in
+  lockstep as `adapters/fiberv3/vX.Y.Z`. The directory is `fiberv3`
+  rather than `fiber/v3` because Go reads a trailing `/v3` as a module
+  major-version suffix and would demand `v3.x.x` tags.
 - `GHTMX-W0105`: warns when one handler symbol is registered for the
   same verb at more than one path — typically a route both discovered
   and declared by annotation — naming every site and the path template

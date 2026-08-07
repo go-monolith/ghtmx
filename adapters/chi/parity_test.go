@@ -43,10 +43,11 @@ func TestOptionParityAcrossAdapters(t *testing.T) {
 		t.Fatal("no option constructors found in the nethttp adapter — the parser lost them")
 	}
 	adapters := map[string]string{
-		"chi":   "chi.go",
-		"echo":  filepath.Join("..", "echo", "echo.go"),
-		"gin":   filepath.Join("..", "gin", "gin.go"),
-		"fiber": filepath.Join("..", "fiber", "fiber.go"),
+		"chi":     "chi.go",
+		"echo":    filepath.Join("..", "echo", "echo.go"),
+		"gin":     filepath.Join("..", "gin", "gin.go"),
+		"fiber":   filepath.Join("..", "fiber", "fiber.go"),
+		"fiberv3": filepath.Join("..", "fiberv3", "fiberv3.go"),
 	}
 	for name, path := range adapters {
 		t.Run(name, func(t *testing.T) {
