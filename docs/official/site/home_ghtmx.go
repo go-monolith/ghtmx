@@ -20,14 +20,7 @@ func ghtmxFragmentBody_homeBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<article id=\"home\" class=\"home\"><div class=\"hero\"><h1 class=\"hero-title\">ghtmx <span class=\"hero-accent\">— build HTML with Go and htmx</span></h1><p class=\"hero-tagline\">A templ-compatible template engine that makes htmx a compile-checked language concept: every URL, fragment, and server event in your templates is verified against your Go code at build time.</p><p class=\"hero-actions\"><a class=\"btn btn-primary\" href=\"")
@@ -105,14 +98,7 @@ func homePage(intro string) ghtmx.Component {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
 		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-		if !ghtmx_7f3b9d1a_IsBuffer {
-			defer func() {
-				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-				if ghtmx_7f3b9d1a_Err == nil {
-					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-				}
-			}()
-		}
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var4 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var4 == nil {
@@ -122,14 +108,7 @@ func homePage(intro string) ghtmx.Component {
 		ghtmx_7f3b9d1a_Var5 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-			if !ghtmx_7f3b9d1a_IsBuffer {
-				defer func() {
-					ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-					if ghtmx_7f3b9d1a_Err == nil {
-						ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-					}
-				}()
-			}
+			defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 			ctx = ghtmx.InitializeContext(ctx)
 			ghtmx_7f3b9d1a_Err = homeBody(intro).Render(ctx, ghtmx_7f3b9d1a_Buffer)
 			if ghtmx_7f3b9d1a_Err != nil {
