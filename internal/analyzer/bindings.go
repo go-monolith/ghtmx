@@ -362,8 +362,14 @@ func registeredVerbs(rs []routes.Route) []string {
 
 // constructorName mirrors the naming the central generated package will use
 // for a route's typed constructor: the handler symbol's name.
+// constructorName is the symbol the generated central package will
+// carry for a route, which is what the E0103 suggestion has to name.
+// It goes through the generator's own transform rather than using the
+// handler name raw: an unexported handler is exported there (getUser →
+// GetUser), and a method handler's dotted name is folded
+// (Handlers.ListUsers → HandlersListUsers).
 func constructorName(r routes.Route) string {
-	return r.Handler.Name
+	return central.ConstructorBaseName(r.Handler.Name)
 }
 
 // templateImports extracts the template file's Go import declarations by

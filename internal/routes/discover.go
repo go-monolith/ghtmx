@@ -211,21 +211,41 @@ type funcState struct {
 	locals map[string]bool // locally (re)defined identifiers, shadowing package consts
 	// recvTypes maps a local variable to the named type it holds, so a
 	// method value registered as a handler (h.ListUsers) resolves to
-	// Handlers.ListUsers. Populated only from same-file syntax — a
-	// parameter's declared type, a var with an explicit type, a
-	// composite literal, or new(T) — which is the same conservative
-	// single-file inference paramFlavour performs for router variables.
+	// Handlers.ListUsers. Populated only from same-file syntax — the
+	// enclosing method's receiver, a parameter's declared type, a var
+	// with an explicit type, a composite literal, or new(T) — which is
+	// the same conservative single-function inference paramFlavour
+	// performs for router variables.
 	recvTypes map[string]SymbolRef
-	pending   []pendingRoute
-	mounts    []mountEdge
+	// typeParams are the enclosing function's type-parameter names.
+	// They read as named types syntactically but denote no method set,
+	// so a value of one must not resolve to T.Method.
+	typeParams map[string]bool
+	pending    []pendingRoute
+	mounts     []mountEdge
 }
 
 func newFuncState() *funcState {
 	return &funcState{
-		env:       map[string]binding{},
-		locals:    map[string]bool{},
-		recvTypes: map[string]SymbolRef{},
+		env:        map[string]binding{},
+		locals:     map[string]bool{},
+		recvTypes:  map[string]SymbolRef{},
+		typeParams: map[string]bool{},
 	}
+}
+
+// typeParamNames collects a function's type-parameter names.
+func typeParamNames(ft *ast.FuncType) map[string]bool {
+	out := map[string]bool{}
+	if ft == nil || ft.TypeParams == nil {
+		return out
+	}
+	for _, field := range ft.TypeParams.List {
+		for _, name := range field.Names {
+			out[name.Name] = true
+		}
+	}
+	return out
 }
 
 // Discover walks the loaded packages and produces the route table plus
@@ -275,10 +295,27 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 					continue
 				}
 				st := newFuncState()
+				// A generic function's type parameters are names in type
+				// position that denote no method set here, so T.Method
+				// must not resolve.
+				st.typeParams = typeParamNames(fn.Type)
+				// func (s *Server) Routes(): s.ListUsers is the most
+				// ordinary way a handler reaches its dependencies.
+				if fn.Recv != nil {
+					for _, field := range fn.Recv.List {
+						recv, hasRecv := d.namedTypeRef(field.Type, st)
+						for _, name := range field.Names {
+							st.locals[name.Name] = true
+							if hasRecv {
+								st.recvTypes[name.Name] = recv
+							}
+						}
+					}
+				}
 				if fn.Type.Params != nil {
 					for _, field := range fn.Type.Params.List {
 						fl := d.paramFlavour(field.Type)
-						recv, hasRecv := d.namedTypeRef(field.Type)
+						recv, hasRecv := d.namedTypeRef(field.Type, st)
 						for _, name := range field.Names {
 							st.locals[name.Name] = true
 							if fl != nil {
@@ -288,6 +325,8 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 							// method value on a type this file names.
 							if hasRecv {
 								st.recvTypes[name.Name] = recv
+							} else {
+								delete(st.recvTypes, name.Name)
 							}
 						}
 					}
@@ -508,7 +547,30 @@ func (d *discoverer) walkBody(body *ast.BlockStmt, st *funcState, env map[string
 			// Group closures are walked explicitly with their own scope;
 			// other closures (goroutines, handlers) share the enclosing
 			// bindings.
-			return !handledClosures[n]
+			if handledClosures[n] {
+				return false
+			}
+			// Its parameters shadow the enclosing scope, and their types
+			// are the closure's own: a parameter named like an outer
+			// receiver must not keep the outer type, which would register
+			// a handler on the wrong one.
+			if n.Type.Params != nil {
+				for _, field := range n.Type.Params.List {
+					recv, hasRecv := d.namedTypeRef(field.Type, st)
+					for _, name := range field.Names {
+						if name.Name == "_" {
+							continue
+						}
+						st.locals[name.Name] = true
+						if hasRecv {
+							st.recvTypes[name.Name] = recv
+						} else {
+							delete(st.recvTypes, name.Name)
+						}
+					}
+				}
+			}
+			return true
 		case *ast.DeclStmt:
 			// Local var/const declarations shadow package consts.
 			if gd, ok := n.Decl.(*ast.GenDecl); ok {
@@ -519,14 +581,14 @@ func (d *discoverer) walkBody(body *ast.BlockStmt, st *funcState, env map[string
 						// otherwise the initialiser may.
 						recv, hasRecv := SymbolRef{}, false
 						if vs.Type != nil {
-							recv, hasRecv = d.namedTypeRef(vs.Type)
+							recv, hasRecv = d.namedTypeRef(vs.Type, st)
 						}
 						for i, name := range vs.Names {
 							st.locals[name.Name] = true
 							value := recv
 							ok := hasRecv
 							if !ok && i < len(vs.Values) {
-								value, ok = d.receiverTypeOf(vs.Values[i])
+								value, ok = d.receiverTypeOf(vs.Values[i], st)
 							}
 							if ok {
 								st.recvTypes[name.Name] = value
@@ -541,12 +603,41 @@ func (d *discoverer) walkBody(body *ast.BlockStmt, st *funcState, env map[string
 		case *ast.AssignStmt:
 			d.handleAssign(n, st, env)
 			return true
+		case *ast.RangeStmt:
+			// A range variable's type comes from the ranged expression,
+			// which is not syntactic. Clearing is what keeps an outer
+			// receiver of the same name from being read as this one's
+			// type — silently registering the wrong handler.
+			clearBound(n.Key, st, env)
+			clearBound(n.Value, st, env)
+			return true
+		case *ast.TypeSwitchStmt:
+			// The bound name has a different type per clause.
+			if assign, ok := n.Assign.(*ast.AssignStmt); ok {
+				for _, lhs := range assign.Lhs {
+					clearBound(lhs, st, env)
+				}
+			}
+			return true
 		case *ast.CallExpr:
 			d.handleCall(n, st, env, handledClosures)
 			return true
 		}
 		return true
 	})
+}
+
+// clearBound records a name as a local and drops whatever the analysis
+// believed it held. Used where a binding's type is not knowable from
+// syntax: range variables and type-switch guards.
+func clearBound(expr ast.Expr, st *funcState, env map[string]binding) {
+	id, ok := expr.(*ast.Ident)
+	if !ok || id.Name == "_" {
+		return
+	}
+	st.locals[id.Name] = true
+	delete(env, id.Name)
+	delete(st.recvTypes, id.Name)
 }
 
 // handleAssign tracks router bindings: constructor calls, group creation,
@@ -561,6 +652,7 @@ func (d *discoverer) handleAssign(n *ast.AssignStmt, st *funcState, env map[stri
 			if id, ok := lhs.(*ast.Ident); ok && id.Name != "_" {
 				st.locals[id.Name] = true
 				delete(env, id.Name)
+				delete(st.recvTypes, id.Name)
 			}
 		}
 		return
@@ -573,7 +665,7 @@ func (d *discoverer) handleAssign(n *ast.AssignStmt, st *funcState, env map[stri
 		st.locals[lhs.Name] = true
 		// Receiver tracking is independent of router tracking: a
 		// rebinding replaces or clears whichever type the name held.
-		if recv, ok := d.receiverTypeOf(rhs); ok {
+		if recv, ok := d.receiverTypeOf(rhs, st); ok {
 			st.recvTypes[lhs.Name] = recv
 		} else {
 			delete(st.recvTypes, lhs.Name)
@@ -859,14 +951,19 @@ func (d *discoverer) resolveHandler(expr ast.Expr, st *funcState) (SymbolRef, bo
 // *pkg.T to the imported package's T. Anything else — an interface
 // literal, a generic instantiation, a func type — yields nothing, and
 // its method values keep failing with GHTMX-E0402.
-func (d *discoverer) namedTypeRef(expr ast.Expr) (SymbolRef, bool) {
+func (d *discoverer) namedTypeRef(expr ast.Expr, st *funcState) (SymbolRef, bool) {
 	switch e := expr.(type) {
 	case *ast.ParenExpr:
-		return d.namedTypeRef(e.X)
+		return d.namedTypeRef(e.X, st)
 	case *ast.StarExpr:
-		return d.namedTypeRef(e.X)
+		return d.namedTypeRef(e.X, st)
 	case *ast.Ident:
 		if !token.IsExported(e.Name) && !isTypeNameCandidate(e.Name) {
+			return SymbolRef{}, false
+		}
+		// A type parameter is a name in type position with no method
+		// set of its own here.
+		if st != nil && st.typeParams[e.Name] {
 			return SymbolRef{}, false
 		}
 		return SymbolRef{PkgPath: d.pkg.PkgPath, Name: e.Name}, true
@@ -901,24 +998,24 @@ func isTypeNameCandidate(name string) bool {
 // for `h := Handlers{...}`, `&Handlers{...}`, and `new(Handlers)`. A
 // constructor call (NewHandlers()) yields nothing: its return type is
 // not knowable from syntax alone.
-func (d *discoverer) receiverTypeOf(expr ast.Expr) (SymbolRef, bool) {
+func (d *discoverer) receiverTypeOf(expr ast.Expr, st *funcState) (SymbolRef, bool) {
 	switch e := expr.(type) {
 	case *ast.ParenExpr:
-		return d.receiverTypeOf(e.X)
+		return d.receiverTypeOf(e.X, st)
 	case *ast.UnaryExpr:
 		if e.Op != token.AND {
 			return SymbolRef{}, false
 		}
-		return d.receiverTypeOf(e.X)
+		return d.receiverTypeOf(e.X, st)
 	case *ast.CompositeLit:
 		if e.Type == nil {
 			return SymbolRef{}, false
 		}
-		return d.namedTypeRef(e.Type)
+		return d.namedTypeRef(e.Type, st)
 	case *ast.CallExpr:
 		// new(T) is the one call whose result type is syntactic.
 		if fn, ok := e.Fun.(*ast.Ident); ok && fn.Name == "new" && len(e.Args) == 1 && !d.pkgDeclares(fn.Name) {
-			return d.namedTypeRef(e.Args[0])
+			return d.namedTypeRef(e.Args[0], st)
 		}
 		return SymbolRef{}, false
 	}

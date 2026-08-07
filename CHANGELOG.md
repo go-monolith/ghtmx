@@ -27,9 +27,12 @@ build otherwise. Releases follow `RELEASING.md`.
   call result) keeps reporting `GHTMX-E0402`.
 - `//ghtmx:route` annotations accept `Type.Method` and
   `pkg.Type.Method`, so the escape hatch covers what discovery cannot.
-  Generated constructors fold the dot away —
-  `ghtmxgen.HandlersListUsers(id)` — and a name that collides with
-  another handler's still reports `GHTMX-E0404`.
+  A method is not a symbol a template can name, so these routes bind
+  through their generated central symbols, which fold the dot away:
+  `ghtmxgen.HandlersListUsersPath` without parameters,
+  `ghtmxgen.HandlersGetUser(id)` with. A folded name that collides with
+  another handler's still reports `GHTMX-E0404`, and the language
+  server offers the generated symbol rather than the method.
 
 - `//ghtmx:routeprefix /admin/user`, a package-scoped directive
   declaring the mount prefix a sub-application's routes are served

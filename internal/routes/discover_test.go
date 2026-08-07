@@ -490,6 +490,119 @@ func inClosuresAndWraps(r chi.Router, h *Handlers) {
 		}
 	})
 
+	t.Run("resolves the enclosing method's own receiver", func(t *testing.T) {
+		// func (s *Server) Routes() is the most ordinary way a handler
+		// reaches its dependencies, and the shape this feature exists
+		// for.
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Server struct{}
+
+func (s *Server) Routes(r chi.Router) {
+	r.Get("/pointer", s.Pointer)
+}
+
+func (s Server) More(r chi.Router) {
+	r.Get("/value", s.Value)
+}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/pointer", "example.com/app.Server.Pointer")
+		requireRoute(t, table, GET, "/value", "example.com/app.Server.Value")
+	})
+
+	t.Run("a range variable shadows an outer receiver", func(t *testing.T) {
+		// A range variable's type comes from the ranged expression,
+		// which is not syntactic — keeping the outer binding would
+		// register the wrong handler silently, which is worse than the
+		// error this used to produce.
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Handlers struct{}
+type Other struct{}
+
+var others []Other
+
+func routes(r chi.Router) {
+	h := Handlers{}
+	r.Get("/a", h.List)
+	for _, h := range others {
+		r.Get("/b", h.List)
+	}
+}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+			t.Fatalf("the range variable must not inherit the outer type, got %+v", diags)
+		}
+	})
+
+	t.Run("a closure parameter shadows an outer receiver", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Admin struct{}
+type User struct{}
+
+func forEach(f func(*User)) {}
+
+func routes(r chi.Router, h *Admin) {
+	r.Get("/a", h.Index)
+	forEach(func(h *User) {
+		r.Get("/b", h.Show)
+	})
+}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/a", "example.com/app.Admin.Index")
+		// The closure's own parameter type wins inside it.
+		requireRoute(t, table, GET, "/b", "example.com/app.User.Show")
+	})
+
+	t.Run("a multi-value assignment clears the receiver", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Handlers struct{}
+
+func get() (Handlers, error) { return Handlers{}, nil }
+
+func routes(r chi.Router) {
+	h := Handlers{}
+	h, err := get()
+	_ = err
+	r.Get("/x", h.List)
+}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+			t.Fatalf("a multi-value rebinding must clear the receiver, got %+v", diags)
+		}
+	})
+
+	t.Run("a type parameter is not a receiver type", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+func mount[T any](r chi.Router, h T) {
+	r.Get("/x", h.List)
+}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+			t.Fatalf("a type parameter names no method set here, got %+v", diags)
+		}
+	})
+
 	t.Run("round-trips through Lookup", func(t *testing.T) {
 		table, diags := discoverSrc(t, map[string]string{"main.go": `
 package app

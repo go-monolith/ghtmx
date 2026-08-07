@@ -335,9 +335,11 @@ resolved at build time against routes discovered from Go source
 escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`, whose
 symbol may also name a method — `Handlers.Show` or `pkg.Handlers.Show`.
 Handlers registered as method values (`r.Get("/users", h.ListUsers)`) are
-discovered whenever the receiver's type is named in the same function,
-and bind as `Handlers.ListUsers`; their generated constructors fold the
-dot away (`ghtmxgen.HandlersListUsers(id)`).
+discovered whenever the receiver's type is named in the same function.
+A method is not a symbol a template can name, so these routes bind
+through their generated central symbols, which fold the dot away:
+`hx-get={ ghtmxgen.HandlersListUsersPath }` for a route without
+parameters, `hx-get={ ghtmxgen.HandlersGetUser(id) }` for one with.
 A package whose routes are served under a mount prefix declares it once
 with `//ghtmx:routeprefix /admin/user` — a sub-application mounted at a
 variable prefix cannot be recognised syntactically, so every route the

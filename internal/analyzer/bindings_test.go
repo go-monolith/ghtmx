@@ -411,3 +411,63 @@ func TestCarveOutsExemptDynamicKeysAndNonVerbAttributes(t *testing.T) {
 		t.Fatalf("dynamic keys and non-verb attributes are exempt, got %+v", diags)
 	}
 }
+
+// TestMethodRouteBindsThroughGeneratedSymbols pins the binding path a
+// method-value route actually takes (FR-1). Its handler symbol is dotted
+// — Handlers.ListUsers — which is not a name a template can write, so
+// the route binds through the generated central symbols instead, and
+// binding is what marks it reachable for GHTMX-W0104.
+func TestMethodRouteBindsThroughGeneratedSymbols(t *testing.T) {
+	table := routes.NewTable()
+	for _, r := range []routes.Route{
+		{Verb: routes.GET, Path: "/admin/users", Handler: routes.SymbolRef{PkgPath: "example.com/app", Name: "Handlers.ListUsers"}},
+		{Verb: routes.GET, Path: "/admin/users/{id}", Handler: routes.SymbolRef{PkgPath: "example.com/app", Name: "Handlers.GetUser"}, Params: []routes.RouteParam{{Name: "id"}}},
+	} {
+		if _, ok := table.Add(r); !ok {
+			t.Fatalf("duplicate fixture route %s %s", r.Verb, r.Path)
+		}
+	}
+	constructors, conflicts := central.Naming(table)
+	if len(conflicts) != 0 {
+		t.Fatalf("fixture routes must not collide: %+v", conflicts)
+	}
+	surface, err := htmxsurface.ForVersion("2.0.10")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tf, err := parser.ParseString(`package main
+
+templ page(id string) {
+	<div hx-get={ ghtmxgen.HandlersListUsersPath }></div>
+	<div hx-get={ ghtmxgen.HandlersGetUser(id) }></div>
+}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tf.Filepath = "app/page.ghtmx"
+	sa := NewSetAnalysis()
+	sink := diag.NewSink(nil)
+	ResolveBindings(tf, BindingEnv{
+		Table:            table,
+		Surface:          surface,
+		PkgPath:          "example.com/app",
+		GeneratedPkgName: "ghtmxgen",
+		Constructors:     constructors,
+		SetAnalysis:      sa,
+	}, sink)
+	if diags := sink.Diagnostics(); len(diags) != 0 {
+		t.Fatalf("the generated symbols must bind cleanly, got %+v", diags)
+	}
+
+	// Both routes are now reachable, so neither draws an unbound-route
+	// warning.
+	checkSink := diag.NewSink(nil)
+	sa.Check(table, checkSink)
+	for _, d := range checkSink.Diagnostics() {
+		if d.ID == diag.UnboundRoute {
+			t.Errorf("a bound method route must not warn: %s", d.Message)
+		}
+	}
+}

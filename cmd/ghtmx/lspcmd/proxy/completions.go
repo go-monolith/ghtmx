@@ -150,18 +150,39 @@ func (p *Server) routeBindingCompletions(cctx completionContext) []lsp.Completio
 		if r.Verb != cctx.verb && r.Verb != routes.AnyVerb {
 			continue
 		}
-		if len(r.Params) == 0 {
-			// Zero-parameter routes bind by handler symbol.
-			label := symbolLabel(r.Handler)
-			if !strings.HasPrefix(label, cctx.partial) && !strings.HasPrefix(r.Handler.Name, cctx.partial) {
+		if len(r.Params) != 0 {
+			continue
+		}
+		// Zero-parameter routes bind by handler symbol — except a
+		// method handler, whose dotted name is not a symbol a template
+		// can name. That route binds through the generated path
+		// constant, so offering the symbol would suggest something the
+		// analyzer rejects.
+		if strings.Contains(r.Handler.Name, ".") {
+			name, ok := constructorFor(constructors, r)
+			if !ok {
+				continue
+			}
+			qualified := generatedPkg + "." + name + "Path"
+			if !strings.HasPrefix(qualified, cctx.partial) && !strings.HasPrefix(name, cctx.partial) {
 				continue
 			}
 			items = append(items, lsp.CompletionItem{
-				Label:  label,
-				Kind:   lsp.CompletionItemKindFunction,
-				Detail: fmt.Sprintf("%s %s", r.Verb, r.Path),
+				Label:  qualified,
+				Kind:   lsp.CompletionItemKindConstant,
+				Detail: fmt.Sprintf("%s %s (%s)", r.Verb, r.Path, r.Handler),
 			})
+			continue
 		}
+		label := symbolLabel(r.Handler)
+		if !strings.HasPrefix(label, cctx.partial) && !strings.HasPrefix(r.Handler.Name, cctx.partial) {
+			continue
+		}
+		items = append(items, lsp.CompletionItem{
+			Label:  label,
+			Kind:   lsp.CompletionItemKindFunction,
+			Detail: fmt.Sprintf("%s %s", r.Verb, r.Path),
+		})
 	}
 	// Parameterised routes bind through their generated constructors,
 	// inserted with parameter placeholders.
@@ -253,6 +274,18 @@ func (p *Server) attributeValueCompletions(cctx completionContext) []lsp.Complet
 // TODO: derive the qualifier from the open template's import block (the
 // AST is in astCache) and add an import edit when absent, like the gopls
 // path does; the package-base guess breaks on aliased imports.
+// constructorFor finds the generated symbol a route contributes, which
+// is the disambiguated name central.Naming settled on rather than one
+// recomputed from the handler.
+func constructorFor(constructors map[string]central.Constructor, r routes.Route) (string, bool) {
+	for name, c := range constructors {
+		if c.Route.Verb == r.Verb && c.Route.Path == r.Path && c.Route.Handler == r.Handler {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 func symbolLabel(s routes.SymbolRef) string {
 	base := pkgBase(s.PkgPath)
 	if base == "" || base == "main" {
