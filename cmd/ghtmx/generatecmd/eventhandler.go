@@ -396,6 +396,7 @@ func (h *FSEventHandler) analyze(t *parser.TemplateFile, fileName string) error 
 		analyzer.ValidateAttributes(t, h.surface, sink)
 	}
 	analyzer.ValidateFragments(t, sink)
+	analyzer.ValidateImports(t, sink)
 	h.bindingMu.RLock()
 	table, constructors := h.routeTable, h.constructors
 	h.bindingMu.RUnlock()

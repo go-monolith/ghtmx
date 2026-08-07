@@ -313,13 +313,19 @@ var RuntimeImports = []string{
 	"github.com/go-monolith/ghtmx/runtime",
 }
 
+// RuntimeImportAlias is the alias writeImports gives RuntimeImports[1].
+// The analyzer's reserved-import check (GHTMX-E0308) flags template
+// imports that would collide with it — keep the two in sync through this
+// constant.
+const RuntimeImportAlias = "ghtmxruntime"
+
 func (g *generator) writeImports() error {
 	var err error
 	// Always import templ because it's the interface type of all templates.
 	if _, err = g.w.Write("import \"" + RuntimeImports[0] + "\"\n"); err != nil {
 		return err
 	}
-	if _, err = g.w.Write("import ghtmxruntime \"" + RuntimeImports[1] + "\"\n"); err != nil {
+	if _, err = g.w.Write("import " + RuntimeImportAlias + " \"" + RuntimeImports[1] + "\"\n"); err != nil {
 		return err
 	}
 	if _, err = g.w.Write("\n"); err != nil {

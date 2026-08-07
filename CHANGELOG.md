@@ -13,6 +13,13 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- `GHTMX-E0308`: importing the ghtmx root package in a template file —
+  or aliasing any import as `ghtmx` or `ghtmxruntime` — is now reported
+  at the import line the author wrote, with the alias escape hatch in
+  the message. Previously the collision surfaced as a Go redeclaration
+  error inside generated code, pointing at a line nobody can edit. The
+  check runs in both `ghtmx generate` and the language server.
+
 - `htmxScript` in `ghtmx.json` (flag: `-htmx-script`): set `false` to omit
   the `HTMXScript()` helper from the central generated package, for
   projects that use ghtmx purely as a server-side template engine and
