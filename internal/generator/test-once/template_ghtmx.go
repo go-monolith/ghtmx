@@ -15,8 +15,8 @@ func hello(label, name string) ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var1 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var1 == nil {
@@ -25,8 +25,8 @@ func hello(label, name string) ghtmx.Component {
 		ctx = ghtmx.ClearChildren(ctx)
 		ghtmx_7f3b9d1a_Var2 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
-			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-			defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+			defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 			ctx = ghtmx.InitializeContext(ctx)
 			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<script>\n\t\t\tfunction hello(name) {\n\t\t\t\talert(\"Hello, \" + name + \"!\");\n\t\t\t}\n\t\t</script>")
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -78,8 +78,8 @@ func render() ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var5 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var5 == nil {

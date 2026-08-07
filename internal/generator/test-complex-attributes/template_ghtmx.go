@@ -13,8 +13,8 @@ func ComplexAttributes() ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var1 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var1 == nil {

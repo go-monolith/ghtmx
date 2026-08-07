@@ -13,8 +13,8 @@ func listItem() ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var1 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var1 == nil {
@@ -43,8 +43,8 @@ func list() ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var2 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var2 == nil {
@@ -73,8 +73,8 @@ func main() ghtmx.Component {
 		if ghtmx_7f3b9d1a_CtxErr := ctx.Err(); ghtmx_7f3b9d1a_CtxErr != nil {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
-		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-		defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var3 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var3 == nil {
@@ -83,13 +83,13 @@ func main() ghtmx.Component {
 		ctx = ghtmx.ClearChildren(ctx)
 		ghtmx_7f3b9d1a_Var4 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
-			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-			defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+			defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 			ctx = ghtmx.InitializeContext(ctx)
 			ghtmx_7f3b9d1a_Var5 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 				ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
-				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-				defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+				defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 				ctx = ghtmx.InitializeContext(ctx)
 				ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "<u>Item 1</u>")
 				if ghtmx_7f3b9d1a_Err != nil {
@@ -103,8 +103,8 @@ func main() ghtmx.Component {
 			}
 			ghtmx_7f3b9d1a_Var6 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 				ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
-				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-				defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+				defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 				ctx = ghtmx.InitializeContext(ctx)
 				ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 6, "<u>Item 2</u>")
 				if ghtmx_7f3b9d1a_Err != nil {
@@ -118,8 +118,8 @@ func main() ghtmx.Component {
 			}
 			ghtmx_7f3b9d1a_Var7 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 				ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
-				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
-				defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+				ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
+				defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 				ctx = ghtmx.InitializeContext(ctx)
 				ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 7, "<u>Item 3</u>")
 				if ghtmx_7f3b9d1a_Err != nil {

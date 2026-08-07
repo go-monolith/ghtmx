@@ -653,8 +653,13 @@ func TestDocumentSymbol(t *testing.T) {
 						Kind: protocol.SymbolKindFunction,
 						Location: protocol.Location{
 							Range: protocol.Range{
+								// The end of a whole-component span has no
+								// sourcemap entry, so the raw generated-Go
+								// line passes through: this number tracks
+								// the size of the emitted prologue, not
+								// anything in the .ghtmx file.
 								Start: protocol.Position{Line: 11, Character: 0},
-								End:   protocol.Position{Line: 50, Character: 1},
+								End:   protocol.Position{Line: 43, Character: 1},
 							},
 						},
 					},
@@ -706,8 +711,11 @@ func TestDocumentSymbol(t *testing.T) {
 						Kind: protocol.SymbolKindFunction,
 						Location: protocol.Location{
 							Range: protocol.Range{
+								// Unmapped whole-component spans, so these are
+								// raw generated-Go lines that shift with the
+								// emitted prologue's size (see test-0).
 								Start: protocol.Position{Line: 9, Character: 0},
-								End:   protocol.Position{Line: 35, Character: 1},
+								End:   protocol.Position{Line: 28, Character: 1},
 							},
 						},
 					},
@@ -718,8 +726,8 @@ func TestDocumentSymbol(t *testing.T) {
 						Kind: protocol.SymbolKindFunction,
 						Location: protocol.Location{
 							Range: protocol.Range{
-								Start: protocol.Position{Line: 37, Character: 0},
-								End:   protocol.Position{Line: 63, Character: 1},
+								Start: protocol.Position{Line: 30, Character: 0},
+								End:   protocol.Position{Line: 49, Character: 1},
 							},
 						},
 					},

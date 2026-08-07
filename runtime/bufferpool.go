@@ -42,30 +42,31 @@ func ReleaseBuffer(w io.Writer) (err error) {
 	return err
 }
 
-// AcquireBuffer returns the buffer to render into and the release func
-// to defer. It is the whole buffer prologue of a generated render
-// function, concentrated here rather than repeated in every one of
-// them: the generated code's statements are the ones a consuming
-// project's coverage tools count, and this is the largest block nobody
-// wrote.
+// ReleaseAcquiredBuffer is the deferred half of a generated render
+// function's buffer prologue, taking GetBuffer's two results and a
+// pointer to the render's named error return:
 //
-// The returned release takes a pointer to the caller's named error
-// return so a flush failure is reported when the render itself
-// succeeded, without overwriting a render error. It is a no-op when the
-// writer was already a buffer — that buffer belongs to an outer
-// component, which releases it.
+//	ghtmxBuffer, ghtmxExisting := ghtmxruntime.GetBuffer(w)
+//	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmxBuffer, ghtmxExisting, &err)
 //
-//	buf, release := ghtmxruntime.AcquireBuffer(w)
-//	defer release(&err)
-func AcquireBuffer(w io.Writer) (buf *Buffer, release func(*error)) {
-	b, existing := GetBuffer(w)
+// existing reports that the writer was already a buffer, which means it
+// belongs to an outer component: this call then does nothing, and that
+// component releases it. Otherwise the buffer is drained and returned to
+// the pool, and a flush failure becomes the render's error — but only
+// when the render itself succeeded, so a render error is never
+// overwritten.
+//
+// It is a plain function rather than a closure returned alongside the
+// buffer so the generated defer keeps a statically-known callee: the
+// compiler open-codes it onto the stack, where a deferred func value
+// would cost an allocation on every component render (NFR-002 holds
+// allocation counts exactly).
+func ReleaseAcquiredBuffer(b *Buffer, existing bool, err *error) {
 	if existing {
-		return b, func(*error) {}
+		return
 	}
-	return b, func(err *error) {
-		bufErr := ReleaseBuffer(b)
-		if err != nil && *err == nil {
-			*err = bufErr
-		}
+	bufErr := ReleaseBuffer(b)
+	if err != nil && *err == nil {
+		*err = bufErr
 	}
 }

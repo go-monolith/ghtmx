@@ -59,17 +59,17 @@ func TestBufferPool(t *testing.T) {
 	})
 }
 
-// AcquireBuffer is the buffer prologue every generated render function
-// runs, so its contract is the one that has to hold: write through to
-// the underlying writer, release exactly once at the outermost
-// component, and report a flush failure without ever masking a render
-// error.
-func TestAcquireBuffer(t *testing.T) {
+// ReleaseAcquiredBuffer is the deferred half of the buffer prologue
+// every generated render function runs, so its contract is the one that
+// has to hold: write through to the underlying writer, release exactly
+// once at the outermost component, and report a flush failure without
+// ever masking a render error.
+func TestReleaseAcquiredBuffer(t *testing.T) {
 	t.Run("writes through to the underlying writer on release", func(t *testing.T) {
 		var sink bytes.Buffer
 		func() (err error) {
-			buf, release := AcquireBuffer(&sink)
-			defer release(&err)
+			buf, existing := GetBuffer(&sink)
+			defer ReleaseAcquiredBuffer(buf, existing, &err)
 			if _, err := buf.WriteString("hello"); err != nil {
 				t.Fatal(err)
 			}
@@ -86,8 +86,11 @@ func TestAcquireBuffer(t *testing.T) {
 
 	t.Run("an inner component does not release the outer buffer", func(t *testing.T) {
 		var sink bytes.Buffer
-		outer, releaseOuter := AcquireBuffer(&sink)
-		inner, releaseInner := AcquireBuffer(outer)
+		outer, outerExisting := GetBuffer(&sink)
+		inner, innerExisting := GetBuffer(outer)
+		if outerExisting || !innerExisting {
+			t.Errorf("ownership = outer %v, inner %v; want the outer component to own the buffer", outerExisting, innerExisting)
+		}
 		if inner != outer {
 			t.Error("an inner component must render into the same buffer")
 		}
@@ -95,7 +98,7 @@ func TestAcquireBuffer(t *testing.T) {
 			t.Fatal(err)
 		}
 		var innerErr error
-		releaseInner(&innerErr)
+		ReleaseAcquiredBuffer(inner, innerExisting, &innerErr)
 		if innerErr != nil {
 			t.Errorf("inner release = %v, want nil", innerErr)
 		}
@@ -105,7 +108,7 @@ func TestAcquireBuffer(t *testing.T) {
 			t.Errorf("the inner release flushed the outer buffer: %q", sink.String())
 		}
 		var outerErr error
-		releaseOuter(&outerErr)
+		ReleaseAcquiredBuffer(outer, outerExisting, &outerErr)
 		if outerErr != nil {
 			t.Errorf("outer release = %v, want nil", outerErr)
 		}
@@ -117,8 +120,8 @@ func TestAcquireBuffer(t *testing.T) {
 	t.Run("a flush failure is reported when the render succeeded", func(t *testing.T) {
 		var err error
 		func() {
-			buf, release := AcquireBuffer(failingWriter{})
-			defer release(&err)
+			buf, existing := GetBuffer(failingWriter{})
+			defer ReleaseAcquiredBuffer(buf, existing, &err)
 			if _, werr := buf.WriteString("x"); werr != nil {
 				t.Fatal(werr)
 			}
@@ -132,8 +135,8 @@ func TestAcquireBuffer(t *testing.T) {
 		sentinel := errRender
 		err := sentinel
 		func() {
-			buf, release := AcquireBuffer(failingWriter{})
-			defer release(&err)
+			buf, existing := GetBuffer(failingWriter{})
+			defer ReleaseAcquiredBuffer(buf, existing, &err)
 			if _, werr := buf.WriteString("x"); werr != nil {
 				t.Fatal(werr)
 			}
@@ -145,11 +148,11 @@ func TestAcquireBuffer(t *testing.T) {
 
 	t.Run("a nil error pointer is tolerated", func(t *testing.T) {
 		var sink bytes.Buffer
-		buf, release := AcquireBuffer(&sink)
+		buf, existing := GetBuffer(&sink)
 		if _, err := buf.WriteString("x"); err != nil {
 			t.Fatal(err)
 		}
-		release(nil)
+		ReleaseAcquiredBuffer(buf, existing, nil)
 		if got := sink.String(); got != "x" {
 			t.Errorf("underlying writer = %q, want x", got)
 		}
