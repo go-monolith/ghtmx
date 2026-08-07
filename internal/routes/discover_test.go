@@ -427,6 +427,168 @@ func localHook() {}
 	})
 }
 
+func TestRoutePrefix(t *testing.T) {
+	t.Run("prefixes discovered and declared routes alike", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /admin/user
+package app
+
+import (
+	"github.com/go-chi/chi/v5"
+
+	"example.com/app/handlers"
+)
+
+//ghtmx:route GET /preferences handlers.Preferences
+
+func routes(r chi.Router) {
+	r.Get("/profiles/{id}", handlers.Profile)
+	r.Route("/mcp", func(r chi.Router) {
+		r.Post("/servers", handlers.AddServer)
+	})
+}
+`})
+		requireNoDiagnostics(t, diags)
+		// A route registered inside a sub-app mounted at /admin/user is
+		// discovered at its sub-app-relative path; the directive supplies
+		// the mount point no syntactic recognizer could find.
+		r := requireRoute(t, table, GET, "/admin/user/profiles/{id}", "example.com/app/handlers.Profile")
+		if len(r.Params) != 1 || r.Params[0].Name != "id" {
+			t.Errorf("prefixing must not disturb params, got %+v", r.Params)
+		}
+		if r.OriginalPath != "/admin/user/profiles/{id}" {
+			t.Errorf("OriginalPath must carry the prefix too, got %q", r.OriginalPath)
+		}
+		// Group prefixes compose under the package prefix.
+		requireRoute(t, table, POST, "/admin/user/mcp/servers", "example.com/app/handlers.AddServer")
+		// Annotations are prefixed as well, so the two stay consistent.
+		requireRoute(t, table, GET, "/admin/user/preferences", "example.com/app/handlers.Preferences")
+	})
+
+	t.Run("applies across every file in the package", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{
+			"prefix.go": `
+//ghtmx:routeprefix /billing
+package app
+`,
+			"routes.go": `
+package app
+
+//ghtmx:route GET /invoices localHook
+
+func localHook() {}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/billing/invoices", "example.com/app.localHook")
+	})
+
+	t.Run("a trailing slash is not a path segment", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /admin/
+package app
+
+//ghtmx:route GET /users localHook
+
+func localHook() {}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/admin/users", "example.com/app.localHook")
+	})
+
+	t.Run("a root prefix adds nothing", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /
+package app
+
+//ghtmx:route GET /users localHook
+
+func localHook() {}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/users", "example.com/app.localHook")
+	})
+
+	t.Run("malformed directives are E0403 and apply no prefix", func(t *testing.T) {
+		for name, src := range map[string]string{
+			"no argument":     "//ghtmx:routeprefix",
+			"two arguments":   "//ghtmx:routeprefix /a /b",
+			"not rooted":      "//ghtmx:routeprefix admin",
+			"parameterised":   "//ghtmx:routeprefix /tenants/{id}",
+			"colon parameter": "//ghtmx:routeprefix /tenants/:id",
+		} {
+			t.Run(name, func(t *testing.T) {
+				table, diags := discoverSrc(t, map[string]string{"main.go": src + `
+package app
+
+//ghtmx:route GET /users localHook
+
+func localHook() {}
+`})
+				if len(diags) != 1 || diags[0].ID != diag.MalformedAnnotation {
+					t.Fatalf("expected one E0403, got %+v", diags)
+				}
+				if !strings.Contains(diags[0].Suggest, "routeprefix") {
+					t.Errorf("the remedy must show the directive's form, got %q", diags[0].Suggest)
+				}
+				// No guessed prefix: silently moving every route in the
+				// package would be worse than leaving them where they are.
+				requireRoute(t, table, GET, "/users", "example.com/app.localHook")
+			})
+		}
+	})
+
+	t.Run("conflicting prefixes are E0403 naming both sites", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{
+			"a.go": `
+//ghtmx:routeprefix /admin
+package app
+`,
+			"b.go": `
+//ghtmx:routeprefix /billing
+package app
+`})
+		if len(diags) != 1 || diags[0].ID != diag.MalformedAnnotation {
+			t.Fatalf("expected one E0403, got %+v", diags)
+		}
+		for _, want := range []string{"/admin", "/billing", ".go"} {
+			if !strings.Contains(diags[0].Message, want) {
+				t.Errorf("message must name both sites, missing %q in %q", want, diags[0].Message)
+			}
+		}
+	})
+
+	t.Run("the same prefix repeated is not a conflict", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{
+			"a.go": `
+//ghtmx:routeprefix /admin
+package app
+
+//ghtmx:route GET /one localA
+
+func localA() {}
+`,
+			"b.go": `
+//ghtmx:routeprefix /admin
+package app
+
+//ghtmx:route GET /two localB
+
+func localB() {}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/admin/one", "example.com/app.localA")
+		requireRoute(t, table, GET, "/admin/two", "example.com/app.localB")
+	})
+
+	t.Run("the directive is not read as a malformed route annotation", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /admin
+package app
+`})
+		requireNoDiagnostics(t, diags)
+	})
+}
+
 func TestDuplicateRoutes(t *testing.T) {
 	_, diags := discoverSrc(t, map[string]string{"main.go": `
 package app

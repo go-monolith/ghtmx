@@ -13,6 +13,16 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- `//ghtmx:routeprefix /admin/user`, a package-scoped directive
+  declaring the mount prefix a sub-application's routes are served
+  under. Routes registered inside a sub-app are discovered at their
+  sub-app-relative path, and a mount site using a variable prefix and a
+  cross-package router value cannot be recognised syntactically — so the
+  prefix is declared rather than inferred. Every route the package
+  registers, discovered or annotated, composes under it; group prefixes
+  still nest inside. The prefix must be static, and two files declaring
+  different prefixes for one package is `GHTMX-E0403`.
+
 - A trailing `nav` marker on `//ghtmx:route` annotations
   (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
   navigation-only route — reached by `<a href>` or a native form post —

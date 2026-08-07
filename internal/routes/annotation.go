@@ -21,9 +21,24 @@ import (
 // GHTMX-W0104.
 const annotationPrefix = "//ghtmx:route"
 
+// prefixDirective declares a package-scoped mount prefix (FR-013):
+//
+//	//ghtmx:routeprefix /admin/user
+//	package adminpages
+//
+// Every route in the package — discovered or declared — is registered
+// under it. A sub-application mounted at a variable prefix from another
+// package cannot be recognised syntactically, so the prefix is declared
+// rather than inferred: reviewable in a diff, versioned with the code.
+const prefixDirective = "//ghtmx:routeprefix"
+
 // annotationHint is the expected-form suggestion attached to every
-// GHTMX-E0403.
+// GHTMX-E0403 raised by a //ghtmx:route annotation.
 const annotationHint = "expected: //ghtmx:route <VERB> </path> <pkg.Handler> [nav]"
+
+// prefixHint is the expected-form suggestion for a malformed
+// //ghtmx:routeprefix directive.
+const prefixHint = "expected: //ghtmx:routeprefix </static/prefix>"
 
 // collectAnnotations scans a file's comments for //ghtmx:route declarations
 // and returns the declared routes. Malformed annotations produce
@@ -32,6 +47,12 @@ func collectAnnotations(pkg *Package, file *ast.File, imports importMap, sink *d
 	var out []Route
 	for _, group := range file.Comments {
 		for _, c := range group.List {
+			// The prefix directive shares the //ghtmx:route stem, so it
+			// must be taken out of the running before the route check
+			// claims it and reports it as malformed.
+			if strings.HasPrefix(c.Text, prefixDirective) {
+				continue
+			}
 			if !strings.HasPrefix(c.Text, annotationPrefix) {
 				continue
 			}
@@ -106,6 +127,69 @@ func parseAnnotation(s string, pkg *Package, imports importMap) (Route, string) 
 		Recognizer:   "annotation",
 		NavOnly:      navOnly,
 	}, ""
+}
+
+// collectRoutePrefix scans every file in the package for
+// //ghtmx:routeprefix and returns the declared prefix, normalized to a
+// leading slash and no trailing slash ("" when none is declared). A
+// malformed directive, or two files declaring different prefixes,
+// produces GHTMX-E0403 and yields no prefix — applying a guess would
+// silently move every route in the package.
+func collectRoutePrefix(pkg *Package, sink *diag.Sink) string {
+	prefix := ""
+	declaredAt := Position{}
+	conflict := false
+	for _, file := range pkg.Files {
+		for _, group := range file.Comments {
+			for _, c := range group.List {
+				if !strings.HasPrefix(c.Text, prefixDirective) {
+					continue
+				}
+				pos := position(pkg.Fset, c.Pos())
+				at := diag.Position{File: pos.File, Line: pos.Line, Col: pos.Col}
+				value, errMsg := parseRoutePrefix(strings.TrimPrefix(c.Text, prefixDirective))
+				if errMsg != "" {
+					sink.Add(diag.MalformedAnnotation, at, errMsg, prefixHint)
+					conflict = true
+					continue
+				}
+				if prefix != "" && value != prefix {
+					sink.Add(diag.MalformedAnnotation, at,
+						fmt.Sprintf("conflicting //ghtmx:routeprefix for package %s: %q here, %q at %s", pkg.PkgPath, value, prefix, declaredAt),
+						"declare one prefix per package")
+					conflict = true
+					continue
+				}
+				prefix, declaredAt = value, pos
+			}
+		}
+	}
+	if conflict {
+		return ""
+	}
+	return prefix
+}
+
+// parseRoutePrefix validates a directive's argument: exactly one field,
+// rooted, and static. Parameters are rejected because a prefix applies
+// to every route in the package, so a parameter in it would have to be
+// threaded into every generated constructor.
+func parseRoutePrefix(s string) (string, string) {
+	fields := strings.Fields(s)
+	if len(fields) != 1 {
+		return "", fmt.Sprintf("malformed //ghtmx:routeprefix directive: expected 1 field (the prefix), got %d", len(fields))
+	}
+	prefix := fields[0]
+	if !strings.HasPrefix(prefix, "/") {
+		return "", fmt.Sprintf("malformed //ghtmx:routeprefix directive: prefix %q must start with /", prefix)
+	}
+	if strings.ContainsAny(prefix, "{}:*") {
+		return "", fmt.Sprintf("malformed //ghtmx:routeprefix directive: prefix %q must be static (no path parameters)", prefix)
+	}
+	// "/" adds nothing; treat it as absent rather than as a prefix that
+	// JoinPaths would have to special-case.
+	prefix = strings.TrimRight(prefix, "/")
+	return prefix, ""
 }
 
 func position(fset *token.FileSet, p token.Pos) Position {

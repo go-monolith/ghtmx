@@ -32,7 +32,7 @@ hygiene.
 | `GHTMX-E0307` | A template and another template or fragment in the package share a name. | Rename one declaration. |
 | `GHTMX-E0401` | Two registrations claim the same verb and path. | Remove or change one registration; the message names both sites. |
 | `GHTMX-E0402` | A route registration cannot be resolved statically (dynamic path, unresolvable handler expression), or a package in `routeScope` cannot be fully analyzed (parse errors). | Restructure to a literal path and named handler, declare it with `//ghtmx:route VERB /path pkg.Handler`, or fix the package's parse errors. |
-| `GHTMX-E0403` | A `//ghtmx:route` annotation is malformed. | Use `//ghtmx:route VERB /path pkg.Handler`; the symbol resolves through the file's imports. |
+| `GHTMX-E0403` | A `//ghtmx:route` annotation is malformed, a `//ghtmx:routeprefix` directive is malformed, or two files in one package declare different prefixes. | Use `//ghtmx:route VERB /path pkg.Handler` (the symbol resolves through the file's imports) or `//ghtmx:routeprefix /static/prefix`, one prefix per package. |
 | `GHTMX-E0404` | Two generated central-package symbols would collide (routes and/or events), or a route claims a reserved central symbol (`HTMXScript`). | Rename a handler or event; base-package prefixing is applied before this fires. |
 | `GHTMX-E0501` | An `hx-*` construct requires a newer htmx than the pinned `htmxVersion`. | Raise `htmxVersion` or avoid the construct. |
 | `GHTMX-E0502` | The configured `htmxVersion` has no pinned script asset. | Use a version from `ghtmx.SupportedHtmxVersions`. |

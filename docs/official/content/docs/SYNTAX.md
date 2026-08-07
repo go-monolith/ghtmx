@@ -332,8 +332,13 @@ statically) or a generated constructor
 (`hx-get={ ghtmxgen.GetUser(id) }`, parameters percent-encoded),
 resolved at build time against routes discovered from Go source
 (FR-020/FR-021). Registrations the discoverer cannot resolve use the
-escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`. An
-annotation may carry a trailing `nav` marker
+escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`.
+A package whose routes are served under a mount prefix declares it once
+with `//ghtmx:routeprefix /admin/user` — a sub-application mounted at a
+variable prefix cannot be recognised syntactically, so every route the
+package registers, discovered or annotated, is composed under the
+declared prefix (FR-013). The prefix must be static; one per package.
+An annotation may carry a trailing `nav` marker
 (`//ghtmx:route GET /audit handlers.AuditLog nav`) declaring a
 navigation-only route — reached by `<a href>` or a native form post —
 which exempts it from the `GHTMX-W0104` unbound-route warning.
