@@ -11,6 +11,20 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- Generated render functions acquire their buffer with one `GetBuffer`
+  call and one deferred `ghtmxruntime.ReleaseAcquiredBuffer`, replacing
+  the nine-statement acquire-and-conditionally-release block every one
+  of them used to carry. Behaviour is identical — the buffer is still
+  released only by the outermost component, a flush error is still
+  reported only when the render itself succeeded — but generated
+  statements land in a consuming project's coverage figures, and this
+  was the largest block of code nobody wrote. Migration: run
+  `ghtmx generate` and commit the result; `generate -check` reports the
+  stale files otherwise. Hand-written code is unaffected, and
+  `GetBuffer`/`ReleaseBuffer` remain exported.
+
 ### Added
 
 - Method values are discoverable as route handlers:
@@ -34,6 +48,17 @@ build otherwise. Releases follow `RELEASING.md`.
   another handler's still reports `GHTMX-E0404`, and the language
   server offers the generated symbol rather than the method.
 
+- The `routetable` package and `ghtmx routes -check-against
+  <file.json>`, which turn annotation-versus-reality drift into a test.
+  `generate -check` verifies template-versus-generated-code drift; it
+  cannot see whether the paths the toolchain believes in are the paths
+  the framework serves, which is exactly what a project taking the
+  `//ghtmx:route` escape hatch outside `routeScope` gives up. `Load`
+  returns the same table `ghtmx routes` prints, `Normalize` converts a
+  router's own path syntax with the toolchain's normalizer rather than a
+  copy that could drift, and `Diff` reports missing, unexpected, and
+  handler-mismatched routes. `routes -json` now emits the package's own
+  type, so CLI output and the type it unmarshals into cannot diverge.
 - `//ghtmx:routeprefix /admin/user`, a package-scoped directive
   declaring the mount prefix a sub-application's routes are served
   under. Routes registered inside a sub-app are discovered at their

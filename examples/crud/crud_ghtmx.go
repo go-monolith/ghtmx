@@ -25,14 +25,7 @@ func todoPage(todos []Todo, total int, done int) ghtmx.Component {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
 		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-		if !ghtmx_7f3b9d1a_IsBuffer {
-			defer func() {
-				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-				if ghtmx_7f3b9d1a_Err == nil {
-					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-				}
-			}()
-		}
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var1 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var1 == nil {
@@ -87,14 +80,7 @@ func ghtmxFragmentBody_statsPanel(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCom
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 5, "<div id=\"todo-stats\" hx-get=\"/todos/stats\" hx-trigger=\"todo-created from:body, todo-toggled from:body, todo-deleted from:body, todos-bulk-changed from:body\" hx-swap=\"outerHTML\"><span>")
@@ -168,14 +154,7 @@ func ghtmxFragmentBody_todoList(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<table id=\"todo-list\">")
@@ -224,14 +203,7 @@ func ghtmxFragmentBody_todoRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompon
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 12, "<tr id=\"")
@@ -393,14 +365,7 @@ func ghtmxFragmentBody_todoEditRow(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 25, "<tr id=\"")

@@ -161,6 +161,15 @@ func (p *Server) boundRoute(symbol string, verb routes.Verb) (routes.Route, bool
 		if c, found := constructors[name]; found {
 			return c.Route, true
 		}
+		// A route without parameters is bound through its generated
+		// path constant, which is the constructor's name plus Path —
+		// the only form available to a method handler, whose own symbol
+		// is dotted.
+		if base, isPath := strings.CutSuffix(name, "Path"); isPath {
+			if c, found := constructors[base]; found {
+				return c.Route, true
+			}
+		}
 		return routes.Route{}, false
 	}
 	if !qualified {

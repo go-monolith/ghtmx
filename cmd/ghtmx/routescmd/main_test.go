@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/routes"
+	"github.com/go-monolith/ghtmx/routetable"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -134,13 +135,13 @@ func TestWriteJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var got []jsonRoute
+	var got []routetable.Route
 	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
 	}
 
 	// All() sorts by path, then verb.
-	want := []jsonRoute{
+	want := []routetable.Route{
 		{
 			Verb: "*", Path: "/files/{rest...}", OriginalPath: "/files/*",
 			Params:     []string{"rest..."},
@@ -383,6 +384,24 @@ func Handler() {}
 func main() {}
 `
 
+// checkAgainstSource is a module whose routes are registered normally,
+// so the discovered table is what a consumer would compare their router
+// against.
+const checkAgainstSource = `package main
+
+import "net/http"
+
+func ListUsers(w http.ResponseWriter, r *http.Request) {}
+func GetUser(w http.ResponseWriter, r *http.Request)   {}
+
+func routes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /users", ListUsers)
+	mux.HandleFunc("GET /users/{id}", GetUser)
+}
+
+func main() {}
+`
+
 // TestRunLogsWarningsWithoutFailing pins the other half of the reporting
 // loop: a warning explains something worth knowing but does not make the
 // table unusable, so the command prints it and still succeeds.
@@ -405,6 +424,77 @@ func TestRunLogsWarningsWithoutFailing(t *testing.T) {
 	if !strings.Contains(stdout.String(), "/a") {
 		t.Errorf("the table must still print:\n%s", stdout.String())
 	}
+}
+
+// TestRunCheckAgainst covers FR-064's annotation-versus-reality gate:
+// `generate -check` cannot see whether the paths the toolchain believes
+// in are the paths the framework serves, and this is what closes it.
+func TestRunCheckAgainst(t *testing.T) {
+	dir := writeModule(t, checkAgainstSource, "")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	dump := func(t *testing.T, content string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "routes.json")
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+
+	t.Run("an agreeing dump passes and prints nothing", func(t *testing.T) {
+		file := dump(t, `[
+			{"verb": "GET", "path": "/users"},
+			{"verb": "GET", "path": "/users/{id}"}
+		]`)
+		var stdout bytes.Buffer
+		if err := Run(log, &stdout, Arguments{Dir: dir, CheckAgainst: file}); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if stdout.String() != "" {
+			t.Errorf("agreement must print nothing, got:\n%s", stdout.String())
+		}
+	})
+
+	t.Run("a disagreeing dump fails and names every mismatch", func(t *testing.T) {
+		file := dump(t, `[
+			{"verb": "GET", "path": "/users"},
+			{"verb": "GET", "path": "/legacy"}
+		]`)
+		var stdout bytes.Buffer
+		err := Run(log, &stdout, Arguments{Dir: dir, CheckAgainst: file})
+		if err == nil {
+			t.Fatal("a mismatch must fail the command")
+		}
+		out := stdout.String()
+		// /users/{id} is declared but unserved; /legacy is served but
+		// undeclared. Both directions matter: the first 404s at runtime,
+		// the second cannot be bound from a template at all.
+		if !strings.Contains(out, "/users/{id}") || !strings.Contains(out, "/legacy") {
+			t.Errorf("both mismatches must be reported, got:\n%s", out)
+		}
+	})
+
+	t.Run("an unreadable or malformed file is an error", func(t *testing.T) {
+		var stdout bytes.Buffer
+		if err := Run(log, &stdout, Arguments{Dir: dir, CheckAgainst: filepath.Join(dir, "nope.json")}); err == nil {
+			t.Error("a missing file must fail")
+		}
+		if err := Run(log, &stdout, Arguments{Dir: dir, CheckAgainst: dump(t, "not json")}); err == nil {
+			t.Error("a malformed file must fail")
+		}
+	})
+
+	t.Run("it round-trips this command's own -json output", func(t *testing.T) {
+		var emitted bytes.Buffer
+		if err := Run(log, &emitted, Arguments{Dir: dir, JSON: true}); err != nil {
+			t.Fatal(err)
+		}
+		var stdout bytes.Buffer
+		if err := Run(log, &stdout, Arguments{Dir: dir, CheckAgainst: dump(t, emitted.String())}); err != nil {
+			t.Fatalf("-json output must satisfy -check-against: %v\n%s", err, stdout.String())
+		}
+	})
 }
 
 // rowFor returns the output line containing the given path.

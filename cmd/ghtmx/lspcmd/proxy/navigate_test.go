@@ -251,6 +251,33 @@ func TestConstructorDefinitionOpensGo(t *testing.T) {
 	}
 }
 
+// TestPathConstantDefinitionOpensGo: a route without parameters binds
+// through its generated path constant, which is the only form open to a
+// method handler — its own symbol is dotted and cannot be written in a
+// template. Navigation has to follow that form to the registration.
+func TestPathConstantDefinitionOpensGo(t *testing.T) {
+	s := navServer(t)
+	table, _, _ := s.routeState()
+	table.Add(routes.Route{
+		Verb: routes.GET, Path: "/admin/users",
+		Handler: routes.SymbolRef{PkgPath: "example.com/app", Name: "Handlers.ListUsers"},
+		Pos:     routes.Position{File: "/app/admin.go", Line: 12, Col: 2},
+	})
+	byName, _ := central.Naming(table)
+	s.constructors = byName
+	const doc = "file:///page.ghtmx"
+	setLine(s, doc, `	<div hx-get={ ghtmxgen.HandlersListUsersPath }></div>`)
+
+	locations, handled := s.ghtmxDefinition(doc, lsp.Position{Line: 0, Character: 30})
+	if !handled || len(locations) != 1 {
+		t.Fatalf("expected the registration site, got handled=%v %v", handled, locations)
+	}
+	loc := locations[0]
+	if !strings.HasSuffix(string(loc.URI), "admin.go") || loc.Range.Start.Line != 11 {
+		t.Errorf("expected admin.go line 11 (0-based), got %s %+v", loc.URI, loc.Range.Start)
+	}
+}
+
 // TestHoverWithoutPositionOmitsRegisteredAt: routes with no recorded
 // position must not render a zero position.
 func TestHoverWithoutPositionOmitsRegisteredAt(t *testing.T) {

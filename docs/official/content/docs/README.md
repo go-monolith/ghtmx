@@ -118,6 +118,25 @@ alongside `ghtmx generate -check`:
   of recomputing it.
 - `ghtmx fmt -fail` writes nothing and exits non-zero if any template
   would change: the CI form of `ghtmx fmt`.
+- `ghtmx routes -check-against routes.json` compares that table against
+  the routes your own router reports, and fails on any disagreement. The
+  [`routetable`](https://pkg.go.dev/github.com/go-monolith/ghtmx/routetable)
+  package is the same thing for a Go test — `Load` reads the table,
+  `Normalize` brings your framework's path syntax into line, and `Diff`
+  reports what the two disagree about:
+
+  ```go
+  declared, err := routetable.Load(".")
+  actual := routetable.Normalize(fromMyRouter(), routetable.ColonStyle)
+  if report := routetable.Report(routetable.Diff(declared, actual)); report != "" {
+      t.Errorf("route table and router disagree:\n%s", report)
+  }
+  ```
+
+  This matters most once you take the `//ghtmx:route` escape hatch:
+  `generate -check` verifies template-versus-generated-code drift, but
+  only this verifies that the paths ghtmx believes in are the paths your
+  framework actually serves.
 
 `CONFIG.md` documents both, along with the dev-mode environment
 variables that let a running application hot-reload template text

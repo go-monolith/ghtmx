@@ -18,14 +18,7 @@ func ghtmxFragmentBody_examplesBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedC
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 1, "<section id=\"examples\"><h1>Examples</h1><p>Every example ships in the repository under <code>examples/</code> and runs with <code>ghtmx generate && go run ./cmd</code></p><div class=\"example-grid\">")
@@ -127,14 +120,7 @@ func examplesPage(list []Example) ghtmx.Component {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
 		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-		if !ghtmx_7f3b9d1a_IsBuffer {
-			defer func() {
-				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-				if ghtmx_7f3b9d1a_Err == nil {
-					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-				}
-			}()
-		}
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var6 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var6 == nil {
@@ -144,14 +130,7 @@ func examplesPage(list []Example) ghtmx.Component {
 		ghtmx_7f3b9d1a_Var7 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-			if !ghtmx_7f3b9d1a_IsBuffer {
-				defer func() {
-					ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-					if ghtmx_7f3b9d1a_Err == nil {
-						ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-					}
-				}()
-			}
+			defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 			ctx = ghtmx.InitializeContext(ctx)
 			ghtmx_7f3b9d1a_Err = examplesBody(list).Render(ctx, ghtmx_7f3b9d1a_Buffer)
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -179,14 +158,7 @@ func ghtmxFragmentBody_exampleBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 		return ghtmx_7f3b9d1a_CtxErr
 	}
 	ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if !ghtmx_7f3b9d1a_IsBuffer {
-		defer func() {
-			ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-			if ghtmx_7f3b9d1a_Err == nil {
-				ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-			}
-		}()
-	}
+	defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 	ctx = ghtmx.InitializeContext(ctx)
 	ctx = ghtmx.ClearChildren(ctx)
 	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 9, "<article id=\"example\" class=\"doc-article\"><h1>")
@@ -333,14 +305,7 @@ func examplePage(e Example, files []SourceFile, readme string) ghtmx.Component {
 			return ghtmx_7f3b9d1a_CtxErr
 		}
 		ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-		if !ghtmx_7f3b9d1a_IsBuffer {
-			defer func() {
-				ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-				if ghtmx_7f3b9d1a_Err == nil {
-					ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-				}
-			}()
-		}
+		defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 		ctx = ghtmx.InitializeContext(ctx)
 		ghtmx_7f3b9d1a_Var16 := ghtmx.GetChildren(ctx)
 		if ghtmx_7f3b9d1a_Var16 == nil {
@@ -350,14 +315,7 @@ func examplePage(e Example, files []SourceFile, readme string) ghtmx.Component {
 		ghtmx_7f3b9d1a_Var17 := ghtmxruntime.GeneratedTemplate(func(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedComponentInput) (ghtmx_7f3b9d1a_Err error) {
 			ghtmx_7f3b9d1a_W, ctx := ghtmx_7f3b9d1a_Input.Writer, ghtmx_7f3b9d1a_Input.Context
 			ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-			if !ghtmx_7f3b9d1a_IsBuffer {
-				defer func() {
-					ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-					if ghtmx_7f3b9d1a_Err == nil {
-						ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-					}
-				}()
-			}
+			defer ghtmxruntime.ReleaseAcquiredBuffer(ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer, &ghtmx_7f3b9d1a_Err)
 			ctx = ghtmx.InitializeContext(ctx)
 			ghtmx_7f3b9d1a_Err = exampleBody(e, files, readme).Render(ctx, ghtmx_7f3b9d1a_Buffer)
 			if ghtmx_7f3b9d1a_Err != nil {

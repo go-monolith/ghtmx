@@ -13,6 +13,7 @@ import (
 	"github.com/go-monolith/ghtmx/internal/config"
 	"github.com/go-monolith/ghtmx/internal/diag"
 	"github.com/go-monolith/ghtmx/internal/routes"
+	"github.com/go-monolith/ghtmx/routetable"
 )
 
 type Arguments struct {
@@ -20,6 +21,11 @@ type Arguments struct {
 	JSON bool
 	// Dir is the module root; empty means the current directory.
 	Dir string
+	// CheckAgainst is a JSON file holding the routes the application's
+	// own router serves; when set, the command compares the discovered
+	// table against it instead of printing, and exits non-zero on any
+	// mismatch.
+	CheckAgainst string
 }
 
 func Run(log *slog.Logger, stdout io.Writer, args Arguments) error {
@@ -42,12 +48,21 @@ func Run(log *slog.Logger, stdout io.Writer, args Arguments) error {
 	}
 	table := routes.Discover(pkgs, sink)
 
-	if args.JSON {
+	mismatched := false
+	switch {
+	case args.CheckAgainst != "":
+		mismatched, err = checkAgainst(stdout, table, args.CheckAgainst)
+		if err != nil {
+			return err
+		}
+	case args.JSON:
 		if err := writeJSON(stdout, table); err != nil {
 			return err
 		}
-	} else if err := writeText(stdout, table); err != nil {
-		return err
+	default:
+		if err := writeText(stdout, table); err != nil {
+			return err
+		}
 	}
 
 	for _, d := range sink.Diagnostics() {
@@ -64,7 +79,34 @@ func Run(log *slog.Logger, stdout io.Writer, args Arguments) error {
 	if sink.HasErrors() {
 		return fmt.Errorf("route discovery reported errors")
 	}
+	if mismatched {
+		return fmt.Errorf("the discovered route table does not match %s", args.CheckAgainst)
+	}
 	return nil
+}
+
+// checkAgainst compares the discovered table against a JSON list of the
+// routes the application's router actually serves, printing every
+// mismatch. It reports whether any were found (FR-064): the annotation
+// escape hatch moves registration outside routeScope, and this is what
+// keeps the two from drifting apart unnoticed.
+func checkAgainst(w io.Writer, table *routes.Table, path string) (bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to read %s: %w", path, err)
+	}
+	var actual []routetable.Route
+	if err := json.Unmarshal(data, &actual); err != nil {
+		return false, fmt.Errorf("failed to parse %s: %w", path, err)
+	}
+	mismatches := routetable.Diff(routetable.FromTable(table), actual)
+	if len(mismatches) == 0 {
+		return false, nil
+	}
+	if _, err := io.WriteString(w, routetable.Report(mismatches)); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func writeText(w io.Writer, table *routes.Table) error {
@@ -89,48 +131,11 @@ func writeText(w io.Writer, table *routes.Table) error {
 	return tw.Flush()
 }
 
-type jsonRoute struct {
-	Verb         string   `json:"verb"`
-	Path         string   `json:"path"`
-	OriginalPath string   `json:"originalPath"`
-	Params       []string `json:"params,omitempty"`
-	HandlerPkg   string   `json:"handlerPackage"`
-	HandlerName  string   `json:"handlerName"`
-	Origin       string   `json:"origin"`
-	Recognizer   string   `json:"recognizer"`
-	Source       string   `json:"source"`
-	NavOnly      bool     `json:"navOnly,omitempty"`
-}
-
+// writeJSON emits the public routetable.Route shape, so the command's
+// output and the package a consumer unmarshals it into cannot describe
+// the same route differently.
 func writeJSON(w io.Writer, table *routes.Table) error {
-	all := table.All()
-	out := make([]jsonRoute, 0, len(all))
-	for _, r := range all {
-		verb := string(r.Verb)
-		if r.Verb == routes.AnyVerb {
-			verb = "*"
-		}
-		jr := jsonRoute{
-			Verb:         verb,
-			Path:         r.Path,
-			OriginalPath: r.OriginalPath,
-			HandlerPkg:   r.Handler.PkgPath,
-			HandlerName:  r.Handler.Name,
-			Origin:       string(r.Origin),
-			Recognizer:   r.Recognizer,
-			Source:       r.Pos.String(),
-			NavOnly:      r.NavOnly,
-		}
-		for _, p := range r.Params {
-			name := p.Name
-			if p.Wildcard {
-				name += "..."
-			}
-			jr.Params = append(jr.Params, name)
-		}
-		out = append(out, jr)
-	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	return enc.Encode(routetable.FromTable(table))
 }
