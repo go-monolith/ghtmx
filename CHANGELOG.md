@@ -43,6 +43,16 @@ build otherwise. Releases follow `RELEASING.md`.
   `GHTMX_BIN_DIR`, `GOPLS_VERSION`, and `GHTMX_SKIP_GOPLS`. It is a
   wrapper around the existing release-archive install path, not a third
   supported path: bash only, so Linux, macOS, and WSL.
+- The VS Code extension in that same one-liner. After the binaries are
+  in place the script looks for the `code` CLI and, when the ghtmx
+  extension is not installed, asks whether to add it and installs the
+  `.vsix` from the same release — so a VS Code user goes from nothing to
+  a working setup in one command. It only ever asks: any answer but `y`
+  installs nothing, and a run with no terminal to ask on skips the
+  question rather than blocking. `--no-interactive` turns off every
+  prompt (the extension passes it when it runs the script itself),
+  `GHTMX_INSTALL_VSCODE` answers yes in advance, and `GHTMX_SKIP_VSCODE`
+  leaves the editor alone.
 - A way out of the VS Code extension's "cannot start the server" error.
   It now names both binaries and offers to run the installer in a
   terminal — with the command typed but not executed, so nothing runs

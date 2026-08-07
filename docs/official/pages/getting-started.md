@@ -18,6 +18,19 @@ macOS, and WSL, `scripts/install.sh` downloads it, checks it against
 curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
 ```
 
+On VS Code that one line is also the editor setup: the script finds the
+`code` CLI, and if the ghtmx extension is missing it asks before
+installing the `.vsix` from the same release.
+
+```text
+Install the ghtmx VS Code extension (syntax highlighting, diagnostics, completion)? [y/N]
+```
+
+Nothing is installed unless you answer `y`, and a run with no terminal
+to ask on skips the question. `--no-interactive` turns off every prompt,
+`GHTMX_INSTALL_VSCODE=1` answers yes in advance, and
+`GHTMX_SKIP_VSCODE=1` leaves the editor alone.
+
 ## 2. Create a module
 
 ```sh

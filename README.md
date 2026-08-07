@@ -60,6 +60,24 @@ tells you what to add to your PATH — it never edits startup files. It is
 a convenience wrapper around the release archive, not a third path;
 native Windows uses the manual steps above.
 
+**VS Code users:** that same line is the whole setup. When it finds the
+`code` CLI and the ghtmx extension is not installed yet, it asks whether
+to add it, and installs the `.vsix` from the same release if you say
+yes:
+
+```text
+Install the ghtmx VS Code extension (syntax highlighting, diagnostics, completion)? [y/N]
+```
+
+It only ever asks — answering anything but `y` installs nothing, and a
+run with no terminal to ask on (a pipeline, CI) skips the question. Pass
+`--no-interactive` to turn every prompt off, `GHTMX_INSTALL_VSCODE=1` to
+say yes in advance, or `GHTMX_SKIP_VSCODE=1` to never be asked:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash -s -- --no-interactive
+```
+
 Both paths yield the same single-version binary: `ghtmx version`
 prints the release tag.
 
@@ -71,7 +89,9 @@ alongside the binaries, from v0.1.5 onward. They are thin clients:
 highlighting is local, and diagnostics, completion, hover, and go to
 definition all come from `ghtmx lsp`, so behavior is the same in all
 three. Each needs `ghtmx` and `gopls` already on your PATH — installing
-an extension does not install them; `scripts/install.sh` above does.
+an extension does not install them; `scripts/install.sh` above does. It
+installs the VS Code extension as well, so the table below is the route
+for the other two editors and for picking a specific version by hand.
 
 | Editor | Release asset | Install |
 | --- | --- | --- |
