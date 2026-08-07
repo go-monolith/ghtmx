@@ -76,3 +76,25 @@ func TestSupportedHtmxVersionsNumericOrder(t *testing.T) {
 		t.Errorf("2.0.10 must sort last numerically, got %v", versions)
 	}
 }
+
+func TestHTMXScriptIntegrity(t *testing.T) {
+	integrity, ok := HTMXScriptIntegrity("2.0.10")
+	if !ok {
+		t.Fatal("2.0.10 must have a pinned integrity hash")
+	}
+	if !strings.HasPrefix(integrity, "sha384-") {
+		t.Errorf("integrity = %q, want a sha384 pin", integrity)
+	}
+	// The accessor exists so tests can assert a vendored file against the
+	// pin without scraping HTML; the rendered tag must agree with it.
+	var sb strings.Builder
+	if err := HTMXScriptTag("2.0.10").Render(context.Background(), &sb); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sb.String(), `integrity="`+integrity+`"`) {
+		t.Errorf("rendered tag does not carry the pinned hash %q:\n%s", integrity, sb.String())
+	}
+	if _, ok := HTMXScriptIntegrity("1.9.12"); ok {
+		t.Error("an unpinned version must report ok=false")
+	}
+}

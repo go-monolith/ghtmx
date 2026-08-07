@@ -245,3 +245,57 @@ func TestDefaultHtmxVersionIsEmbedded(t *testing.T) {
 		t.Errorf("DefaultHtmxVersion %s is not in the embedded surface set %v", DefaultHtmxVersion, htmxsurface.SupportedVersions())
 	}
 }
+
+func TestHtmxScriptKey(t *testing.T) {
+	if !Default().EmitHtmxScript() {
+		t.Error("EmitHtmxScript() must default to true")
+	}
+	cfg, err := Parse("ghtmx.json", []byte(`{"htmxScript": false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.EmitHtmxScript() {
+		t.Error("htmxScript: false must disable the helper")
+	}
+	cfg, err = Parse("ghtmx.json", []byte(`{"htmxScript": true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.EmitHtmxScript() {
+		t.Error("htmxScript: true must keep the helper")
+	}
+}
+
+func TestHtmxScriptWrongTypeIsFriendlyError(t *testing.T) {
+	_, err := Parse("ghtmx.json", []byte("{\n\t\"htmxScript\": \"nope\"\n}"))
+	if err == nil || !strings.Contains(err.Error(), "true or false") {
+		t.Fatalf("expected a friendly type error, got %v", err)
+	}
+}
+
+func TestHtmxScriptFlagPrecedence(t *testing.T) {
+	file, err := Parse("ghtmx.json", []byte(`{"htmxScript": true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	cfg := Resolve(file, Flags{HtmxScript: &off})
+	if cfg.EmitHtmxScript() {
+		t.Error("flag must beat file")
+	}
+}
+
+func TestHashCanonicalizesNilHtmxScript(t *testing.T) {
+	on := true
+	explicit := Default()
+	explicit.HtmxScript = &on
+	if Default().Hash() != explicit.Hash() {
+		t.Error("an absent htmxScript must hash like an explicit true")
+	}
+	off := false
+	disabled := Default()
+	disabled.HtmxScript = &off
+	if Default().Hash() == disabled.Hash() {
+		t.Error("htmxScript: false must change the hash")
+	}
+}

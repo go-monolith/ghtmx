@@ -1201,3 +1201,17 @@ func TestStaleSeverityOffSilencesButStillFails(t *testing.T) {
 		t.Errorf("=off must silence the log line, got:\n%s", log.String())
 	}
 }
+
+func TestHtmxScriptFlagWinsOverConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "ghtmx.json", `{"htmxScript": true}`)
+	t.Chdir(dir)
+
+	args, _, _, err := NewArguments(io.Discard, io.Discard, []string{"-htmx-script=false"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args.Config.EmitHtmxScript() {
+		t.Error("-htmx-script=false must beat the file")
+	}
+}

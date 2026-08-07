@@ -744,8 +744,16 @@ func (cmd *Generate) writeCentralPackage(table *routes.Table, modRoot string, ev
 	dir := filepath.Dir(cmd.centralFilePath(modRoot))
 	target := cmd.centralFilePath(modRoot)
 	// A configured htmx version counts as content: HTMXScript() must
-	// exist even in a project with no routes and no events yet.
-	if len(table.All()) == 0 && len(events) == 0 && cmd.Args.Config.HtmxVersion == "" {
+	// exist even in a project with no routes and no events yet — unless
+	// htmxScript is off, in which case the helper is the only thing the
+	// version would have contributed. An already-existing central package
+	// is regenerated (to a boilerplate-only file) rather than deleted:
+	// generate never removes files it did not just orphan.
+	htmxVersion := cmd.Args.Config.HtmxVersion
+	if !cmd.Args.Config.EmitHtmxScript() {
+		htmxVersion = ""
+	}
+	if len(table.All()) == 0 && len(events) == 0 && htmxVersion == "" {
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			return nil
 		}
@@ -754,7 +762,7 @@ func (cmd *Generate) writeCentralPackage(table *routes.Table, modRoot string, ev
 	if cmd.Args.IncludeVersion {
 		version = ghtmx.Version()
 	}
-	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: cmd.Args.Config.HtmxVersion})
+	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: htmxVersion})
 	if err != nil {
 		return err
 	}

@@ -40,6 +40,15 @@ func SupportedHtmxVersions() []string {
 	return out
 }
 
+// HTMXScriptIntegrity returns the pinned subresource-integrity hash for
+// version, and whether the version has one. It lets a project that serves
+// htmx itself (WithScriptSrc) assert in a test that the vendored file is
+// the exact published build the tag pins, without scraping rendered HTML.
+func HTMXScriptIntegrity(version string) (string, bool) {
+	integrity, ok := htmxIntegrity[version]
+	return integrity, ok
+}
+
 // versionLess compares dotted versions numerically segment by segment.
 func versionLess(a, b string) bool {
 	as, bs := strings.Split(a, "."), strings.Split(b, ".")

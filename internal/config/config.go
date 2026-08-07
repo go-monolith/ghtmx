@@ -81,6 +81,18 @@ type Config struct {
 	// StrictTargets promotes the dangling swap target warning
 	// (GHTMX-W0201) to an error (FR-042).
 	StrictTargets bool `json:"strictTargets"`
+	// HtmxScript controls whether the central generated package emits the
+	// HTMXScript() helper. Nil means true. False supports projects that use
+	// ghtmx purely as a server-side template engine and load no htmx at
+	// all; HtmxVersion keeps driving attribute validation regardless.
+	HtmxScript *bool `json:"htmxScript"`
+}
+
+// EmitHtmxScript reports whether the generated central package should
+// include the HTMXScript() helper: true unless htmxScript is explicitly
+// false.
+func (c Config) EmitHtmxScript() bool {
+	return c.HtmxScript == nil || *c.HtmxScript
 }
 
 // Default returns the documented defaults (FR-072): a conventional project
@@ -115,6 +127,10 @@ func (c Config) SeverityOverrides() map[string]diag.Severity {
 func (c Config) Hash() string {
 	if c.Checks == nil {
 		c.Checks = map[string]diag.Severity{}
+	}
+	if c.HtmxScript == nil {
+		enabled := true
+		c.HtmxScript = &enabled
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -152,6 +168,7 @@ var allowedKeys = map[string]string{
 	"templateExtension": "template file extension, \".ghtmx\" (default) or \".htmx\"",
 	"checks":            "per-check severity overrides by diagnostic ID",
 	"strictTargets":     "promote dangling target warnings to errors",
+	"htmxScript":        "emit the ghtmxgen.HTMXScript() helper, default true",
 }
 
 // Parse decodes configuration content, validating keys and values with
@@ -397,6 +414,7 @@ type Flags struct {
 	GeneratedSuffix   *string
 	TemplateExtension *string
 	StrictTargets     *bool
+	HtmxScript        *bool
 	CheckSeverities   map[string]diag.Severity
 }
 
@@ -427,6 +445,10 @@ func Resolve(fileCfg Config, flags Flags) Config {
 	}
 	if flags.StrictTargets != nil {
 		cfg.StrictTargets = *flags.StrictTargets
+	}
+	if flags.HtmxScript != nil {
+		v := *flags.HtmxScript
+		cfg.HtmxScript = &v
 	}
 	if len(flags.CheckSeverities) > 0 {
 		if cfg.Checks == nil {
