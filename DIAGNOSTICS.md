@@ -19,7 +19,7 @@ hygiene.
 | `GHTMX-E0101` | A verb attribute binds a handler symbol or constructor no discovered route registers — or the symbol's package is not imported by the template file. | Register the route in Go code within `routeScope`, fix the symbol, add the missing import, or declare the route with a `//ghtmx:route` annotation. |
 | `GHTMX-E0102` | A constructor binding's route verb disagrees with the attribute (`hx-get={ ghtmxgen.CreateUser(...) }` on a POST route). | Use the verb attribute matching the route, or bind the right constructor. |
 | `GHTMX-E0103` | A bare handler-symbol binding names a parameterised route, which needs arguments. | Bind through the generated constructor: `hx-get={ ghtmxgen.GetUser(id) }`. |
-| `GHTMX-E0104` | A constructor call's argument count differs from the route's parameters. | Match the constructor signature; run `ghtmx routes` to see it. |
+| `GHTMX-E0104` | A constructor call's argument count differs from the route's parameters. | Match the constructor signature; run `ghtmx routes` (or `ghtmx routes -json` for scripting) to see it. |
 | `GHTMX-E0201` | An `hx-*` attribute name is unknown to the pinned htmx version. | Fix the typo (the message suggests the nearest name) or adjust `htmxVersion`. |
 | `GHTMX-E0202` | A constant `hx-*` attribute value is invalid for its attribute grammar. | Use a value the pinned htmx version's grammar accepts; interpolated values are exempt. |
 | `GHTMX-E0203` | Two attributes on one element conflict per the htmx surface rules. | Remove one of the conflicting attributes. |

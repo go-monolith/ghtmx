@@ -55,6 +55,33 @@ The ignore files `.ghtmxignore_generate` and `.ghtmxignore_fmt` (glob
 patterns, directory-prefix matched) exclude paths from the generate
 walk and `ghtmx fmt` respectively.
 
-Other subcommands (`fmt`, `routes`, `lsp`) document their flags in
-`ghtmx <cmd> -help`; the LSP's are also listed in
-`editors/vscode/README.md`.
+## Other subcommands
+
+The flags most likely to end up in a Makefile or CI job:
+
+| Command | Flag | Meaning |
+| --- | --- | --- |
+| `ghtmx fmt` | `-fail` | Write nothing; exit non-zero if any file would change — the CI form of `ghtmx fmt`. |
+| `ghtmx routes` | `-json` | Print the discovered route table as JSON (verb, path, handler, origin, recognizer, source position) instead of text. |
+
+The full flag lists are in `ghtmx <cmd> -help`; the LSP's are also
+listed in `editors/vscode/README.md`.
+
+## Dev-mode environment variables
+
+In watch mode the generator writes each template's string literals to a
+sidecar text file, and generated code re-reads them at render time —
+so edits to template text show up on the next request without
+recompiling (Go-code changes still rebuild). `ghtmx generate -watch
+-cmd <run your app>` sets the variables for the child process
+automatically; set them by hand only when running the application some
+other way during development:
+
+| Variable | Meaning |
+| --- | --- |
+| `GHTMX_DEV_MODE` | `true` makes generated code read string literals from the sidecar files. |
+| `GHTMX_DEV_MODE_WATCH_ROOT` | Directory tree whose templates participate; files outside it render their compiled strings. |
+| `GHTMX_DEV_MODE_ROOT` | Where sidecar files live (default: the OS temp directory). |
+
+Never set `GHTMX_DEV_MODE` in production: it trades rendering speed for
+reloadability.
