@@ -3,7 +3,7 @@ module github.com/go-monolith/ghtmx/adapters/fiberv3
 go 1.25.0
 
 require (
-	github.com/go-monolith/ghtmx v0.1.0
+	github.com/go-monolith/ghtmx v0.1.17
 	github.com/gofiber/fiber/v3 v3.4.0
 )
 
