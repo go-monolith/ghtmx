@@ -228,10 +228,29 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 	}
 	for _, pkg := range pkgs {
 		consts := packageStringConsts(pkg)
+		// A package-scoped //ghtmx:routeprefix moves every route the
+		// package registers, discovered or declared, under the mount
+		// point the framework serves it at.
+		prefix := collectRoutePrefix(pkg, sink)
+		addPrefixed := add
+		if prefix != "" {
+			addPrefixed = func(r Route) {
+				// A ServeMux pattern may carry a host ("example.com/x"),
+				// which the recognizer deliberately passes through
+				// unrooted. Prefixing one would produce
+				// "/admin/example.com/x" — a path, not a host match — so
+				// such a route is left alone.
+				if strings.HasPrefix(r.Path, "/") {
+					r.Path = JoinPaths(prefix, r.Path)
+					r.OriginalPath = JoinPaths(prefix, r.OriginalPath)
+				}
+				add(r)
+			}
+		}
 		for _, file := range pkg.Files {
 			imports := fileImports(file)
 			for _, r := range collectAnnotations(pkg, file, imports, sink) {
-				add(r)
+				addPrefixed(r)
 			}
 			d := &discoverer{pkg: pkg, imports: imports, consts: consts, sink: sink}
 			for _, decl := range file.Decls {
@@ -253,7 +272,7 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 				}
 				d.walkBody(fn.Body, st, st.env)
 				for _, r := range applyMounts(st) {
-					add(r.route)
+					addPrefixed(r.route)
 				}
 			}
 		}
