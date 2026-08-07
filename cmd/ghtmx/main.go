@@ -254,7 +254,8 @@ func fmtCmd(stdin io.Reader, stdout, stderr io.Writer, args []string) (code int)
 const routesUsageText = `usage: ghtmx routes [<args> ...]
 
 Prints the route table discovered from the application's Go source,
-including escape-hatch //ghtmx:route declarations.
+including escape-hatch //ghtmx:route declarations and any package-scoped
+//ghtmx:routeprefix.
 
 Args:
   -json
