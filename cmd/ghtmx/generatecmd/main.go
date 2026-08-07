@@ -94,6 +94,9 @@ Args:
     Override a warning-class check severity, e.g. -check-severity GHTMX-W0101=off; repeatable.
   -strict-targets
     Promote dangling swap target warnings (GHTMX-W0201) to errors.
+  -htmx-script
+    Set to false to omit the ghtmxgen.HTMXScript() helper for projects
+    that load no htmx at all. (default true)
   -v
     Set log verbosity level to "debug". (default "info")
   -log-level
@@ -195,6 +198,7 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 	checkSeverityFlag := severityMapFlag{}
 	cmd.Var(checkSeverityFlag, "check-severity", "")
 	strictTargetsFlag := cmd.Bool("strict-targets", false, "")
+	htmxScriptFlag := cmd.Bool("htmx-script", true, "")
 	verboseFlag := cmd.Bool("v", false, "")
 	logLevelFlag := cmd.String("log-level", "info", "")
 	helpFlag := cmd.Bool("help", false, "")
@@ -272,6 +276,8 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 			flags.TemplateExtension = templateExtensionFlag
 		case "strict-targets":
 			flags.StrictTargets = strictTargetsFlag
+		case "htmx-script":
+			flags.HtmxScript = htmxScriptFlag
 		case "path":
 			pathSet = true
 		}
@@ -294,8 +300,12 @@ func NewArguments(stdout, stderr io.Writer, args []string) (cmdArgs Arguments, l
 		return Arguments{}, log, *helpFlag, err
 	}
 	// The version also needs a pinned script asset: failing here beats a
-	// render-time E0502 in every page (FR-052, FR-091).
-	if !slices.Contains(ghtmx.SupportedHtmxVersions(), cmdArgs.Config.HtmxVersion) {
+	// render-time E0502 in every page (FR-052, FR-091). With htmxScript
+	// disabled no tag is ever rendered, so the asset requirement lapses —
+	// only the attribute surface check above still applies. Today the two
+	// version sets coincide, so the relaxation is future-proofing for a
+	// version that gains a surface before its asset is pinned.
+	if cmdArgs.Config.EmitHtmxScript() && !slices.Contains(ghtmx.SupportedHtmxVersions(), cmdArgs.Config.HtmxVersion) {
 		return Arguments{}, log, *helpFlag, fmt.Errorf("htmx version %q has no pinned script asset; supported versions: %v", cmdArgs.Config.HtmxVersion, ghtmx.SupportedHtmxVersions())
 	}
 	// An explicit -path (or -f) narrows generation to that location; the

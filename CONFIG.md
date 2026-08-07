@@ -19,6 +19,7 @@ setting exists in `internal/config` without an entry here, or a
 | `templateExtension` | `.ghtmx` | `-template-extension` | Extension templates are written with: `.ghtmx` or `.htmx`. A project uses exactly one — files with the other extension are not templates, so they are neither generated from nor served by the language server. |
 | `checks` | `{}` | `-check-severity` (repeatable, `ID=severity`) | Per-check severity overrides (`error`, `warning`, `off`). Warning-class checks only; errors cannot be silenced. See `DIAGNOSTICS.md`. |
 | `strictTargets` | `false` | `-strict-targets` | Promotes `GHTMX-W0201` (dangling targets) to an error. |
+| `htmxScript` | `true` | `-htmx-script` | Whether the central generated package includes the `HTMXScript()` helper. Set `false` when the project loads no htmx at all and uses ghtmx purely as a server-side template engine; `htmxVersion` still drives attribute validation, but no longer needs a pinned script asset. |
 
 ## `ghtmx generate` flags without a `ghtmx.json` setting
 
