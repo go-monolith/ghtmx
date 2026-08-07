@@ -92,6 +92,13 @@ type Route struct {
 	// Recognizer names the router flavour that produced the route
 	// (nethttp, chi, echo, gin, fiber, or annotation).
 	Recognizer string
+	// NavOnly marks a route reached by navigation (<a href>, native form
+	// posts) rather than htmx, declared with the trailing "nav" marker on
+	// its annotation. It exempts the route from GHTMX-W0104 without
+	// silencing the check project-wide; error-class checks still apply.
+	// Generated output never depends on it, but it participates in the
+	// build fingerprint so watch mode sees a toggle immediately.
+	NavOnly bool
 }
 
 type routeKey struct {

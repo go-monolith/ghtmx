@@ -114,6 +114,13 @@ func TestRoutesChanged(t *testing.T) {
 	if RoutesChanged(nil, nil) {
 		t.Error("two nil tables are equal")
 	}
+	// Watch mode swaps the rediscovered table in only on a fingerprint
+	// change, and the whole-set diagnostics read that table — so toggling
+	// the nav marker must register even though codegen ignores it.
+	withNav := routes.Route{Verb: routes.GET, Path: "/items", Handler: routes.SymbolRef{PkgPath: "app", Name: "list"}, NavOnly: true}
+	if !RoutesChanged(base, table(withNav, route(routes.POST, "/items", "create"))) {
+		t.Error("a nav-marker toggle is a change")
+	}
 }
 
 func TestListenerEditInvalidatesDeclaringFile(t *testing.T) {
