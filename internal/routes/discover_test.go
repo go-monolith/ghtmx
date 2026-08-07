@@ -27,6 +27,26 @@ func discoverSrc(t *testing.T, files map[string]string) (*Table, []diag.Diagnost
 	return table, sink.Diagnostics()
 }
 
+// discoverOrdered is discoverSrc for fixtures whose file order matters:
+// the map-based helper randomizes it, which hides order-dependent bugs
+// in package-scoped analysis. Files are parsed in the given order, the
+// same way the loader hands over packages.CompiledGoFiles.
+func discoverOrdered(t *testing.T, names []string, sources []string) (*Table, []diag.Diagnostic) {
+	t.Helper()
+	fset := token.NewFileSet()
+	pkg := &Package{PkgPath: "example.com/app", Name: "app", Fset: fset}
+	for i, name := range names {
+		f, err := parser.ParseFile(fset, name, sources[i], parser.ParseComments)
+		if err != nil {
+			t.Fatalf("fixture %s does not parse: %v", name, err)
+		}
+		pkg.Files = append(pkg.Files, f)
+	}
+	sink := diag.NewSink(nil)
+	table := Discover([]*Package{pkg}, sink)
+	return table, sink.Diagnostics()
+}
+
 func requireRoute(t *testing.T, table *Table, verb Verb, path string, handler string) Route {
 	t.Helper()
 	for _, r := range table.All() {
@@ -510,11 +530,20 @@ func localHook() {}
 
 	t.Run("malformed directives are E0403 and apply no prefix", func(t *testing.T) {
 		for name, src := range map[string]string{
-			"no argument":     "//ghtmx:routeprefix",
-			"two arguments":   "//ghtmx:routeprefix /a /b",
-			"not rooted":      "//ghtmx:routeprefix admin",
-			"parameterised":   "//ghtmx:routeprefix /tenants/{id}",
-			"colon parameter": "//ghtmx:routeprefix /tenants/:id",
+			"no argument":       "//ghtmx:routeprefix",
+			"two arguments":     "//ghtmx:routeprefix /a /b",
+			"not rooted":        "//ghtmx:routeprefix admin",
+			"parameterised":     "//ghtmx:routeprefix /tenants/{id}",
+			"colon parameter":   "//ghtmx:routeprefix /tenants/:id",
+			"wildcard":          "//ghtmx:routeprefix /files/*",
+			"plus wildcard":     "//ghtmx:routeprefix /files/+",
+			"query string":      "//ghtmx:routeprefix /admin?tab=1",
+			"fragment":          "//ghtmx:routeprefix /admin#top",
+			"empty segment":     "//ghtmx:routeprefix //admin",
+			"interior empty":    "//ghtmx:routeprefix /admin//user",
+			"dot segment":       "//ghtmx:routeprefix /admin/./user",
+			"parent segment":    "//ghtmx:routeprefix /admin/../user",
+			"trailing dot-dots": "//ghtmx:routeprefix /admin/..",
 		} {
 			t.Run(name, func(t *testing.T) {
 				table, diags := discoverSrc(t, map[string]string{"main.go": src + `
@@ -586,6 +615,119 @@ func localB() {}
 package app
 `})
 		requireNoDiagnostics(t, diags)
+	})
+
+	t.Run("a declared root prefix conflicts with a real one in either file order", func(t *testing.T) {
+		// "/" normalizes to the empty string, which is also "nothing
+		// declared" — so without a separate declared flag one file order
+		// reports the conflict and the other silently lets /admin win.
+		root := `
+//ghtmx:routeprefix /
+package app
+`
+		admin := `
+//ghtmx:routeprefix /admin
+package app
+
+//ghtmx:route GET /users localHook
+
+func localHook() {}
+`
+		for _, order := range [][]string{{"a.go", "b.go"}, {"b.go", "a.go"}} {
+			sources := map[string]string{"a.go": root, "b.go": admin}
+			table, diags := discoverOrdered(t, order,
+				[]string{sources[order[0]], sources[order[1]]})
+			if len(diags) != 1 || diags[0].ID != diag.MalformedAnnotation {
+				t.Fatalf("order %v: expected one E0403, got %+v", order, diags)
+			}
+			// The message says "/" rather than "", which is what the
+			// author wrote.
+			if !strings.Contains(diags[0].Message, `"/"`) {
+				t.Errorf("order %v: message must name the root prefix as /, got %q", order, diags[0].Message)
+			}
+			requireRoute(t, table, GET, "/users", "example.com/app.localHook")
+		}
+	})
+
+	t.Run("a malformed directive discards a valid one elsewhere in the package", func(t *testing.T) {
+		table, diags := discoverOrdered(t,
+			[]string{"a.go", "b.go"},
+			[]string{`
+//ghtmx:routeprefix
+package app
+`, `
+//ghtmx:routeprefix /admin
+package app
+
+//ghtmx:route GET /users localHook
+
+func localHook() {}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.MalformedAnnotation {
+			t.Fatalf("expected one E0403, got %+v", diags)
+		}
+		// The remedy has to say so: the routes move, and under the LSP —
+		// which discards the sink — the diagnostic is never seen at all.
+		if !strings.Contains(diags[0].Suggest, "unprefixed") {
+			t.Errorf("the remedy must say the package is left unprefixed, got %q", diags[0].Suggest)
+		}
+		requireRoute(t, table, GET, "/users", "example.com/app.localHook")
+	})
+
+	t.Run("prose mentioning the directive is not a directive", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+// Package app is mounted with //ghtmx:routeprefixes are not a thing,
+// and neither is // ghtmx:routeprefix /spaced.
+package app
+`})
+		requireNoDiagnostics(t, diags)
+	})
+
+	t.Run("composes over a mounted sub-router", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /admin
+package app
+
+import (
+	"github.com/go-chi/chi/v5"
+
+	"example.com/app/handlers"
+)
+
+func routes() {
+	r := chi.NewRouter()
+	sub := chi.NewRouter()
+	sub.Get("/list", handlers.List)
+	r.Mount("/user", sub)
+}
+`})
+		requireNoDiagnostics(t, diags)
+		// Package prefix outermost, mount prefix inside it.
+		requireRoute(t, table, GET, "/admin/user/list", "example.com/app/handlers.List")
+	})
+
+	t.Run("a host-carrying ServeMux pattern is left alone", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+//ghtmx:routeprefix /admin
+package app
+
+import (
+	"net/http"
+
+	"example.com/app/handlers"
+)
+
+func routes() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET example.com/tenant", handlers.Tenant)
+	mux.HandleFunc("GET /rooted", handlers.Rooted)
+}
+`})
+		requireNoDiagnostics(t, diags)
+		// A host pattern is not a path, so prefixing it would turn a host
+		// match into a nonsense path.
+		requireRoute(t, table, GET, "example.com/tenant", "example.com/app/handlers.Tenant")
+		requireRoute(t, table, GET, "/admin/rooted", "example.com/app/handlers.Rooted")
 	})
 }
 

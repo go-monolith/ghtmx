@@ -235,8 +235,15 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 		addPrefixed := add
 		if prefix != "" {
 			addPrefixed = func(r Route) {
-				r.Path = JoinPaths(prefix, r.Path)
-				r.OriginalPath = JoinPaths(prefix, r.OriginalPath)
+				// A ServeMux pattern may carry a host ("example.com/x"),
+				// which the recognizer deliberately passes through
+				// unrooted. Prefixing one would produce
+				// "/admin/example.com/x" — a path, not a host match — so
+				// such a route is left alone.
+				if strings.HasPrefix(r.Path, "/") {
+					r.Path = JoinPaths(prefix, r.Path)
+					r.OriginalPath = JoinPaths(prefix, r.OriginalPath)
+				}
 				add(r)
 			}
 		}

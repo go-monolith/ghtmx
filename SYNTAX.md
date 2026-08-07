@@ -338,6 +338,9 @@ with `//ghtmx:routeprefix /admin/user` — a sub-application mounted at a
 variable prefix cannot be recognised syntactically, so every route the
 package registers, discovered or annotated, is composed under the
 declared prefix (FR-013). The prefix must be static; one per package.
+Annotated paths are relative to it, so adopting the directive means
+shortening annotations that already spell the mount point — an
+annotation left absolute composes twice.
 An annotation may carry a trailing `nav` marker
 (`//ghtmx:route GET /audit handlers.AuditLog nav`) declaring a
 navigation-only route — reached by `<a href>` or a native form post —

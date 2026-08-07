@@ -93,7 +93,7 @@ var Registry = map[string]Check{
 
 	DuplicateRoute:       {DuplicateRoute, Error, "two registrations of the same verb and path"},
 	UnresolvableRoute:    {UnresolvableRoute, Error, "route registration cannot be resolved by syntax-only analysis; declare it with a //ghtmx:route annotation"},
-	MalformedAnnotation:  {MalformedAnnotation, Error, "malformed //ghtmx:route annotation"},
+	MalformedAnnotation:  {MalformedAnnotation, Error, "malformed //ghtmx:route annotation or //ghtmx:routeprefix directive"},
 	ConstructorCollision: {ConstructorCollision, Error, "route constructor name collision after disambiguation"},
 
 	VersionMismatch:    {VersionMismatch, Error, "construct is unsupported by the configured htmx version"},

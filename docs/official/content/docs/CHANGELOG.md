@@ -21,7 +21,9 @@ build otherwise. Releases follow `RELEASING.md`.
   prefix is declared rather than inferred. Every route the package
   registers, discovered or annotated, composes under it; group prefixes
   still nest inside. The prefix must be static, and two files declaring
-  different prefixes for one package is `GHTMX-E0403`.
+  different prefixes for one package is `GHTMX-E0403`. Annotated paths
+  become relative to it: an annotation that already spells the mount
+  point composes twice, so shorten those when adopting the directive.
 
 - A trailing `nav` marker on `//ghtmx:route` annotations
   (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
