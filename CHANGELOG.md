@@ -13,6 +13,18 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- The `routetable` package and `ghtmx routes -check-against
+  <file.json>`, which turn annotation-versus-reality drift into a test.
+  `generate -check` verifies template-versus-generated-code drift; it
+  cannot see whether the paths the toolchain believes in are the paths
+  the framework serves, which is exactly what a project taking the
+  `//ghtmx:route` escape hatch outside `routeScope` gives up. `Load`
+  returns the same table `ghtmx routes` prints, `Normalize` converts a
+  router's own path syntax with the toolchain's normalizer rather than a
+  copy that could drift, and `Diff` reports missing, unexpected, and
+  handler-mismatched routes. `routes -json` now emits the package's own
+  type, so CLI output and the type it unmarshals into cannot diverge.
+
 - `GHTMX-E0308`: importing the ghtmx root package in a template file —
   or aliasing any import as `ghtmx` or `ghtmxruntime` — is now reported
   at the import line the author wrote, with the alias escape hatch in

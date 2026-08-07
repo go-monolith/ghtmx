@@ -64,6 +64,7 @@ The flags most likely to end up in a Makefile or CI job:
 | --- | --- | --- |
 | `ghtmx fmt` | `-fail` | Write nothing; exit non-zero if any file would change — the CI form of `ghtmx fmt`. |
 | `ghtmx routes` | `-json` | Print the discovered route table as JSON (verb, path, handler, origin, recognizer, source position) instead of text. |
+| `ghtmx routes` | `-check-against <file.json>` | Compare the discovered table against the routes your own router serves, dumped to JSON in the same shape `-json` emits. Prints every mismatch and exits non-zero — the CI gate for annotation-versus-reality drift. |
 
 The full flag lists are in `ghtmx <cmd> -help`; the LSP's are also
 listed in `editors/vscode/README.md`.

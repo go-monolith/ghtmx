@@ -259,6 +259,11 @@ including escape-hatch //ghtmx:route declarations.
 Args:
   -json
     Output the route table as JSON to stdout. (default false)
+  -check-against <file.json>
+    Compare the discovered table against the routes the application's own
+    router serves, dumped to a JSON file in the same shape as -json emits
+    (verb and path are required; handlerPackage/handlerName are compared
+    when present). Prints every mismatch and exits non-zero on any.
   -dir
     The module root to analyze. (default the current directory)
   -v
@@ -267,6 +272,9 @@ Args:
     Set log verbosity level. (default "info", options: "debug", "info", "warn", "error")
   -help
     Print help and exit.
+
+The github.com/go-monolith/ghtmx/routetable package exposes the same
+table to Go tests: Load, Normalize, and Diff.
 `
 
 func routesCmd(stdout, stderr io.Writer, args []string) (code int) {
@@ -275,6 +283,7 @@ func routesCmd(stdout, stderr io.Writer, args []string) (code int) {
 	// package\'s own output would print alongside it.
 	cmd.SetOutput(io.Discard)
 	jsonFlag := cmd.Bool("json", false, "")
+	checkAgainstFlag := cmd.String("check-against", "", "")
 	dirFlag := cmd.String("dir", "", "")
 	verboseFlag := cmd.Bool("v", false, "")
 	logLevelFlag := cmd.String("log-level", "info", "")
@@ -304,8 +313,9 @@ func routesCmd(stdout, stderr io.Writer, args []string) (code int) {
 	log := sloghandler.NewLogger(*logLevelFlag, *verboseFlag, stderr)
 
 	err = routescmd.Run(log, stdout, routescmd.Arguments{
-		JSON: *jsonFlag,
-		Dir:  *dirFlag,
+		JSON:         *jsonFlag,
+		Dir:          *dirFlag,
+		CheckAgainst: *checkAgainstFlag,
 	})
 	if err != nil {
 		_, _ = color.New(color.FgRed).Fprint(stderr, "(✗) ")
