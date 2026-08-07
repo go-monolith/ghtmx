@@ -438,14 +438,14 @@ type Fragment interface {
 
 **Error Handling** — render errors are returned, never panicked, and propagate to the caller. A partially-written response is the caller's to handle; the runtime never sets an HTTP status code on the explicit-render path (FR-034).
 
-### M7 — Framework Adapters (`adapters/nethttp`, `adapters/chi`, `adapters/echo`, `adapters/gin`, `adapters/fiber`)
+### M7 — Framework Adapters (`adapters/nethttp`, `adapters/chi`, `adapters/echo`, `adapters/gin`, `adapters/fiber`, `adapters/fiberv3`)
 
 **Responsibilities**
 
 - Provide opt-in automatic render-mode selection (FR-035).
 - Bridge framework-specific context types to the runtime's writer-based API.
 
-**Key Components** — per framework: a `Render` helper that inspects `HX-Request`, selects the mode, sets status and htmx headers, and delegates to the runtime. The fiber adapter additionally bridges its non-`http.ResponseWriter` context.
+**Key Components** — per framework: a `Render` helper that inspects `HX-Request`, selects the mode, sets status and htmx headers, and delegates to the runtime. The fiber adapters (v2 and v3 are separate modules, since the two majors have incompatible `Ctx` types) additionally bridge their non-`http.ResponseWriter` contexts.
 
 **Key Interfaces**
 

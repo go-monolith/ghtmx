@@ -283,6 +283,44 @@ func routes() {
 	requireRoute(t, table, GET, "/files/{rest...}", "example.com/app/handlers.Files")
 }
 
+// TestFiberV3 pins that the flavour's import-prefix match covers fiber's
+// v3 module path — v3 kept the registration method names and the
+// App/Router parameter type names, so the same recognizer serves both
+// majors.
+func TestFiberV3(t *testing.T) {
+	table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import (
+	"github.com/gofiber/fiber/v3"
+
+	"example.com/app/handlers"
+)
+
+func routes() {
+	app := fiber.New()
+	app.Get("/users/:id", handlers.GetUser)
+	app.Post("/users", handlers.CreateUser)
+	api := app.Group("/api")
+	api.Get("/ping", handlers.Ping)
+}
+
+func mount(r fiber.Router) {
+	r.Get("/mounted", handlers.Mounted)
+}
+`})
+	requireNoDiagnostics(t, diags)
+
+	r := requireRoute(t, table, GET, "/users/{id}", "example.com/app/handlers.GetUser")
+	if r.Recognizer != "fiber" {
+		t.Errorf("recognizer = %s, want fiber", r.Recognizer)
+	}
+	requireRoute(t, table, POST, "/users", "example.com/app/handlers.CreateUser")
+	requireRoute(t, table, GET, "/api/ping", "example.com/app/handlers.Ping")
+	// Param seeding through the v3 Router interface type.
+	requireRoute(t, table, GET, "/mounted", "example.com/app/handlers.Mounted")
+}
+
 func TestFlavourIsPerRegistrationSite(t *testing.T) {
 	// Two routers from different flavours in one function (FR-012: flavour
 	// determined per site, never assumed globally).
