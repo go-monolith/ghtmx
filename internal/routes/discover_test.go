@@ -459,6 +459,173 @@ func routes() {
 	}
 }
 
+func TestMultiPathHandlerWarns(t *testing.T) {
+	table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import (
+	"github.com/go-chi/chi/v5"
+
+	"example.com/app/handlers"
+)
+
+//ghtmx:route GET /admin/users handlers.ListUsers
+
+func routes() {
+	r := chi.NewRouter()
+	r.Get("/users", handlers.ListUsers)
+}
+`})
+	if len(diags) != 1 {
+		t.Fatalf("expected one W0105, got %+v", diags)
+	}
+	d := diags[0]
+	if d.ID != diag.MultiPathHandler || d.Severity != diag.Warning {
+		t.Errorf("expected a W0105 warning, got %+v", d)
+	}
+	// The message names every site and the path a binding resolves to.
+	for _, want := range []string{"/admin/users", "/users", "resolves to"} {
+		if !strings.Contains(d.Message, want) {
+			t.Errorf("message must contain %q, got %q", want, d.Message)
+		}
+	}
+	winner, ok := table.Lookup(GET, SymbolRef{"example.com/app/handlers", "ListUsers"})
+	if !ok || !strings.Contains(d.Message, "resolves to "+winner.Path) {
+		t.Errorf("the named winner must match Lookup (%s), got %q", winner.Path, d.Message)
+	}
+}
+
+func TestMultiPathHandlerDistinctVerbsAreFine(t *testing.T) {
+	// One handler on GET and POST at different paths serves each verb at
+	// exactly one path — no ambiguity for any binding.
+	_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+//ghtmx:route POST /submit localA
+//ghtmx:route GET /show localA
+
+func localA() {}
+`})
+	requireNoDiagnostics(t, diags)
+}
+
+func TestMultiPathHandlerAnyVerbOverlapWarns(t *testing.T) {
+	_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {}
+
+func routes() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/everything", handler)
+	mux.HandleFunc("GET /specific", handler)
+}
+`})
+	if len(diags) != 1 || diags[0].ID != diag.MultiPathHandler {
+		t.Fatalf("an any-verb route overlapping an exact verb at another path must warn, got %+v", diags)
+	}
+	// GET is served at both paths; the exact-verb route wins Lookup.
+	if !strings.Contains(diags[0].Message, "a GET template binding resolves to /specific") {
+		t.Errorf("message must name the exact-verb winner, got %q", diags[0].Message)
+	}
+}
+
+func TestMultiPathHandlerSamePathVerbPinIsFine(t *testing.T) {
+	// An exact-verb annotation pinning one verb of an any-verb
+	// registration AT THE SAME PATH is unambiguous: every lookup resolves
+	// to that one path. This is the plausible "pin the verb" pattern and
+	// must not warn.
+	_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "net/http"
+
+//ghtmx:route GET /things localHandler
+
+func localHandler(w http.ResponseWriter, r *http.Request) {}
+
+func routes() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/things", localHandler)
+}
+`})
+	requireNoDiagnostics(t, diags)
+}
+
+func TestMultiPathHandlerTwoAnyVerbRoutesWarn(t *testing.T) {
+	table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "net/http"
+
+func handler(w http.ResponseWriter, r *http.Request) {}
+
+func routes() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a", handler)
+	mux.HandleFunc("/b", handler)
+}
+`})
+	if len(diags) != 1 || diags[0].ID != diag.MultiPathHandler {
+		t.Fatalf("two any-verb routes at different paths must warn, got %+v", diags)
+	}
+	// Both sites are labelled ANY, and the winner matches Lookup for a
+	// concrete verb (every verb resolves through the first any-verb
+	// route).
+	if !strings.Contains(diags[0].Message, "ANY /a") || !strings.Contains(diags[0].Message, "ANY /b") {
+		t.Errorf("message must label both any-verb sites, got %q", diags[0].Message)
+	}
+	winner, ok := table.Lookup(GET, SymbolRef{"example.com/app", "handler"})
+	if !ok || !strings.Contains(diags[0].Message, "template bindings resolve to "+winner.Path) {
+		t.Errorf("the named winner must match a concrete-verb Lookup (%s), got %q", winner.Path, diags[0].Message)
+	}
+}
+
+func TestMultiPathHandlerMessageOmitsUnrelatedVerbs(t *testing.T) {
+	_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+//ghtmx:route GET /a localHook
+//ghtmx:route GET /b localHook
+//ghtmx:route POST /c localHook
+
+func localHook() {}
+`})
+	if len(diags) != 1 || diags[0].ID != diag.MultiPathHandler {
+		t.Fatalf("expected one W0105, got %+v", diags)
+	}
+	// The POST route serves a different verb and is not part of the GET
+	// ambiguity — listing it under "the same verb" would contradict the
+	// message.
+	if strings.Contains(diags[0].Message, "/c") {
+		t.Errorf("unrelated-verb sites must not appear in the message, got %q", diags[0].Message)
+	}
+}
+
+func TestMultiPathHandlerCanBeSilenced(t *testing.T) {
+	fset := token.NewFileSet()
+	pkg := &Package{PkgPath: "example.com/app", Name: "app", Fset: fset}
+	f, err := parser.ParseFile(fset, "main.go", `
+package app
+
+//ghtmx:route GET /a localHook
+//ghtmx:route GET /b localHook
+
+func localHook() {}
+`, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg.Files = append(pkg.Files, f)
+	sink := diag.NewSink(map[string]diag.Severity{diag.MultiPathHandler: diag.Off})
+	Discover([]*Package{pkg}, sink)
+	if diags := sink.Diagnostics(); len(diags) != 0 {
+		t.Fatalf("GHTMX-W0105=off must silence the warning, got %+v", diags)
+	}
+}
+
 func TestNormalizePath(t *testing.T) {
 	tests := []struct {
 		path   string

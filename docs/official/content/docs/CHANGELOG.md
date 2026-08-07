@@ -13,6 +13,7 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+<<<<<<< HEAD
 - The `routetable` package and `ghtmx routes -check-against
   <file.json>`, which turn annotation-versus-reality drift into a test.
   `generate -check` verifies template-versus-generated-code drift; it
@@ -24,7 +25,13 @@ build otherwise. Releases follow `RELEASING.md`.
   copy that could drift, and `Diff` reports missing, unexpected, and
   handler-mismatched routes. `routes -json` now emits the package's own
   type, so CLI output and the type it unmarshals into cannot diverge.
-
+- `GHTMX-W0105`: warns when one handler symbol is registered for the
+  same verb at more than one path — typically a route both discovered
+  and declared by annotation — naming every site and the path template
+  bindings actually resolve to. Previously `Lookup` picked a winner
+  silently, so a binding could generate an unexpected URL with no
+  diagnostic. Warning-class: projects that deliberately serve one
+  handler at several URLs can set `GHTMX-W0105=off`.
 - `GHTMX-E0308`: importing the ghtmx root package in a template file —
   or aliasing any import as `ghtmx` or `ghtmxruntime` — is now reported
   at the import line the author wrote, with the alias escape hatch in

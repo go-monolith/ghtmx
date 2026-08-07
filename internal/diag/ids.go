@@ -65,6 +65,7 @@ const (
 	UnemittedEvent    = "GHTMX-W0102"
 	FragmentScopeHint = "GHTMX-W0103"
 	UnboundRoute      = "GHTMX-W0104"
+	MultiPathHandler  = "GHTMX-W0105"
 
 	// Target warnings.
 	DanglingTarget = "GHTMX-W0201"
@@ -109,6 +110,7 @@ var Registry = map[string]Check{
 	UnemittedEvent:    {UnemittedEvent, Warning, "event is declared but never emitted or referenced"},
 	FragmentScopeHint: {FragmentScopeHint, Warning, "fragment body references an enclosing template identifier that is not a fragment parameter"},
 	UnboundRoute:      {UnboundRoute, Warning, "discovered route is never bound from any template"},
+	MultiPathHandler:  {MultiPathHandler, Warning, "handler is registered for the same verb at more than one path; template bindings resolve to one of them"},
 
 	DanglingTarget: {DanglingTarget, Warning, "hx-target or hx-select literal ID selector matches no literal ID in the compiled template set"},
 
