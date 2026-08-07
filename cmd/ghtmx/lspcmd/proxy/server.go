@@ -412,6 +412,7 @@ func (p *Server) ghtmxDiagnostics(template *parser.TemplateFile) []lsp.Diagnosti
 		analyzer.ValidateAttributes(template, p.surface, sink)
 	}
 	analyzer.ValidateFragments(template, sink)
+	analyzer.ValidateImports(template, sink)
 	ds := sink.Diagnostics()
 	out := make([]lsp.Diagnostic, 0, len(ds))
 	for _, d := range ds {
