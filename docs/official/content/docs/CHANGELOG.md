@@ -13,8 +13,8 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Changed
 
-- Generated render functions acquire their buffer through a single
-  `ghtmxruntime.AcquireBuffer` call and one deferred release, replacing
+- Generated render functions acquire their buffer with one `GetBuffer`
+  call and one deferred `ghtmxruntime.ReleaseAcquiredBuffer`, replacing
   the nine-statement acquire-and-conditionally-release block every one
   of them used to carry. Behaviour is identical — the buffer is still
   released only by the outermost component, a flush error is still
@@ -26,6 +26,27 @@ build otherwise. Releases follow `RELEASING.md`.
   `GetBuffer`/`ReleaseBuffer` remain exported.
 
 ### Added
+
+- Method values are discoverable as route handlers:
+  `r.Get("/users", h.ListUsers)` now enters the table as
+  `Handlers.ListUsers` whenever the receiver's type is named in the same
+  function — a parameter, a `var` with an explicit type, a composite
+  literal, or `new(T)`. Giving handlers their dependencies through a
+  struct receiver is the ordinary Go shape; requiring package-level
+  funcs pushed projects into rebuilding dependency injection through
+  request-scoped storage. The inference stays syntax-only and
+  single-function, so nothing that resolved before changes: an import
+  alias still wins over a same-named receiver, and a receiver whose type
+  is not syntactically visible (a constructor call, a struct field, a
+  call result) keeps reporting `GHTMX-E0402`.
+- `//ghtmx:route` annotations accept `Type.Method` and
+  `pkg.Type.Method`, so the escape hatch covers what discovery cannot.
+  A method is not a symbol a template can name, so these routes bind
+  through their generated central symbols, which fold the dot away:
+  `ghtmxgen.HandlersListUsersPath` without parameters,
+  `ghtmxgen.HandlersGetUser(id)` with. A folded name that collides with
+  another handler's still reports `GHTMX-E0404`, and the language
+  server offers the generated symbol rather than the method.
 
 - The `routetable` package and `ghtmx routes -check-against
   <file.json>`, which turn annotation-versus-reality drift into a test.

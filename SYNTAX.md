@@ -332,7 +332,14 @@ statically) or a generated constructor
 (`hx-get={ ghtmxgen.GetUser(id) }`, parameters percent-encoded),
 resolved at build time against routes discovered from Go source
 (FR-020/FR-021). Registrations the discoverer cannot resolve use the
-escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`.
+escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`, whose
+symbol may also name a method — `Handlers.Show` or `pkg.Handlers.Show`.
+Handlers registered as method values (`r.Get("/users", h.ListUsers)`) are
+discovered whenever the receiver's type is named in the same function.
+A method is not a symbol a template can name, so these routes bind
+through their generated central symbols, which fold the dot away:
+`hx-get={ ghtmxgen.HandlersListUsersPath }` for a route without
+parameters, `hx-get={ ghtmxgen.HandlersGetUser(id) }` for one with.
 A package whose routes are served under a mount prefix declares it once
 with `//ghtmx:routeprefix /admin/user` — a sub-application mounted at a
 variable prefix cannot be recognised syntactically, so every route the
