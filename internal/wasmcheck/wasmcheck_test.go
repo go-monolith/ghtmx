@@ -62,7 +62,7 @@ var adapterMatrix = []struct {
 		name: "fiberv3",
 		dir:  "adapters/fiberv3",
 		exclusions: map[string]string{
-			"wasip1": "fiber v3's fasthttp still hits tcplisten's raw socket syscalls on wasip1 (syscall.ForkLock); its js port compiles",
+			"wasip1": "fiber v3's fasthttp (>=1.72) vendors tcplisten with build tags that exclude wasip1, so the build fails with 'build constraints exclude all Go files in .../tcplisten'; its js port compiles",
 		},
 	},
 }
