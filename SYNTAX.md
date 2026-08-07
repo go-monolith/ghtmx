@@ -332,7 +332,12 @@ statically) or a generated constructor
 (`hx-get={ ghtmxgen.GetUser(id) }`, parameters percent-encoded),
 resolved at build time against routes discovered from Go source
 (FR-020/FR-021). Registrations the discoverer cannot resolve use the
-escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`. An
+escape hatch: `//ghtmx:route GET /admin/users/{id} handlers.Show`, whose
+symbol may also name a method — `Handlers.Show` or `pkg.Handlers.Show`.
+Handlers registered as method values (`r.Get("/users", h.ListUsers)`) are
+discovered whenever the receiver's type is named in the same function,
+and bind as `Handlers.ListUsers`; their generated constructors fold the
+dot away (`ghtmxgen.HandlersListUsers(id)`). An
 annotation may carry a trailing `nav` marker
 (`//ghtmx:route GET /audit handlers.AuditLog nav`) declaring a
 navigation-only route — reached by `<a href>` or a native form post —

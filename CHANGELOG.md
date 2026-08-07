@@ -13,6 +13,24 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- Method values are discoverable as route handlers:
+  `r.Get("/users", h.ListUsers)` now enters the table as
+  `Handlers.ListUsers` whenever the receiver's type is named in the same
+  function — a parameter, a `var` with an explicit type, a composite
+  literal, or `new(T)`. Giving handlers their dependencies through a
+  struct receiver is the ordinary Go shape; requiring package-level
+  funcs pushed projects into rebuilding dependency injection through
+  request-scoped storage. The inference stays syntax-only and
+  single-function, so nothing that resolved before changes: an import
+  alias still wins over a same-named receiver, and a receiver whose type
+  is not syntactically visible (a constructor call, a struct field, a
+  call result) keeps reporting `GHTMX-E0402`.
+- `//ghtmx:route` annotations accept `Type.Method` and
+  `pkg.Type.Method`, so the escape hatch covers what discovery cannot.
+  Generated constructors fold the dot away —
+  `ghtmxgen.HandlersListUsers(id)` — and a name that collides with
+  another handler's still reports `GHTMX-E0404`.
+
 - `GHTMX-W0105`: warns when one handler symbol is registered for the
   same verb at more than one path — typically a route both discovered
   and declared by annotation — naming every site and the path template

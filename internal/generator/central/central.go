@@ -117,7 +117,7 @@ func Naming(table *routes.Table) (byName map[string]Constructor, conflicts [][]C
 	base := make([]string, len(all))
 	counts := map[string]int{}
 	for i, r := range all {
-		base[i] = exportIdent(sanitizeIdent(r.Handler.Name))
+		base[i] = ConstructorBaseName(r.Handler.Name)
 		counts[base[i]]++
 	}
 	// Pass 2: package-prefix cross-package collisions. Decide against the
@@ -210,6 +210,15 @@ func exportedPkgBase(pkgPath string) string {
 		}
 	}
 	return sb.String()
+}
+
+// ConstructorBaseName is the exported identifier a handler symbol
+// contributes to its generated constructor, before any disambiguating
+// package prefix. A method handler's dotted name (Handlers.ListUsers)
+// sanitizes to HandlersListUsers. Exported so the analyzer's E0103
+// suggestion names the same symbol Naming will emit.
+func ConstructorBaseName(handlerName string) string {
+	return exportIdent(sanitizeIdent(handlerName))
 }
 
 // exportIdent capitalizes the first rune so the symbol is exported.

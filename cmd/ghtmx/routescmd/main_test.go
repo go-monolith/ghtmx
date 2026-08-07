@@ -342,11 +342,9 @@ func main() {}
 // missing are the output that matters most — dropping them would leave a
 // user staring at an empty table with no reason given.
 //
-// Only the error branch is exercised here because every diagnostic route
-// discovery can emit (GHTMX-E0401/0402/0403) is error-level and refuses
-// demotion to a warning, so the warn branch is unreachable from this
-// command's inputs. It will start being covered the day a warning-level
-// route check exists.
+// Both branches are exercised: an error-level diagnostic (E0403) fails
+// the command, and a warning-level one (W0105) is logged without doing
+// so — the distinction a debugging command has to keep straight.
 func TestRunReportsDiagnostics(t *testing.T) {
 	dir := writeModule(t, malformedAnnotation, "")
 
@@ -370,6 +368,42 @@ func TestRunReportsDiagnostics(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("the logged diagnostic is missing %q:\n%s", want, out)
 		}
+	}
+}
+
+// multiPathHandler registers one handler at two paths, the cheapest way
+// to make discovery emit a warning-level diagnostic.
+const multiPathHandler = `package main
+
+//ghtmx:route GET /a Handler
+//ghtmx:route GET /b Handler
+
+func Handler() {}
+
+func main() {}
+`
+
+// TestRunLogsWarningsWithoutFailing pins the other half of the reporting
+// loop: a warning explains something worth knowing but does not make the
+// table unusable, so the command prints it and still succeeds.
+func TestRunLogsWarningsWithoutFailing(t *testing.T) {
+	dir := writeModule(t, multiPathHandler, "")
+
+	var logged bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logged, nil))
+	var stdout bytes.Buffer
+
+	if err := Run(log, &stdout, Arguments{Dir: dir}); err != nil {
+		t.Fatalf("a warning must not fail the command: %v", err)
+	}
+	out := logged.String()
+	if !strings.Contains(out, "WARN") || !strings.Contains(out, "GHTMX-W0105") {
+		t.Errorf("the warning was not logged:\n%s", out)
+	}
+	// The table still prints: a warning is context, not a reason to
+	// withhold the output the user asked for.
+	if !strings.Contains(stdout.String(), "/a") {
+		t.Errorf("the table must still print:\n%s", stdout.String())
 	}
 }
 

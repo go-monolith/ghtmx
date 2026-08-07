@@ -331,13 +331,18 @@ import (
 
 func dynamicPath() string { return "/x" }
 
-func routes(h SomeStruct) {
+func routes(deps Deps) {
 	r := chi.NewRouter()
 	r.Get(dynamicPath(), handlers.A)
 	r.Get("/anon", func(w, r any) {})
-	r.Get("/method-value", h.Users)
+	// A method on a field: resolving it would need the field's type,
+	// which is not in this expression. A method on a receiver whose type
+	// the file names does resolve — see TestMethodValueHandlers.
+	r.Get("/field-method", deps.Handlers.Users)
 	r.Route("/named", other.Mount)
 }
+
+type Deps struct{ Handlers SomeStruct }
 
 type SomeStruct struct{}
 `})
@@ -355,6 +360,238 @@ type SomeStruct struct{}
 			t.Errorf("diagnostic must carry a position: %+v", d.Pos)
 		}
 	}
+}
+
+// TestMethodValueHandlers covers FR-1: a handler given its dependencies
+// through a struct receiver — the ordinary Go shape — is discoverable,
+// so a project does not have to make every handler a package-level func
+// and thread dependencies through request-scoped storage.
+func TestMethodValueHandlers(t *testing.T) {
+	t.Run("resolves through every same-file receiver source", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import (
+	"github.com/go-chi/chi/v5"
+
+	"example.com/app/handlers"
+	"example.com/app/mw"
+)
+
+type Handlers struct{}
+
+func fromPointerParam(r chi.Router, h *Handlers) {
+	r.Get("/pointer", h.Pointer)
+}
+
+func fromValueParam(r chi.Router, h Handlers) {
+	r.Get("/value", h.Value)
+}
+
+func fromImportedParam(r chi.Router, h *handlers.Admin) {
+	r.Get("/imported", h.Imported)
+}
+
+func fromLiterals(r chi.Router) {
+	lit := Handlers{}
+	ptr := &Handlers{}
+	made := new(Handlers)
+	var declared Handlers
+	var declaredPtr *Handlers
+	r.Get("/literal", lit.Literal)
+	r.Get("/pointer-literal", ptr.PointerLiteral)
+	r.Get("/new", made.New)
+	r.Get("/var", declared.Var)
+	r.Get("/var-pointer", declaredPtr.VarPointer)
+}
+
+func inClosuresAndWraps(r chi.Router, h *Handlers) {
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/nested", h.Nested)
+	})
+	r.Get("/wrapped", mw.Auth(h.Wrapped))
+}
+`})
+		requireNoDiagnostics(t, diags)
+		// The dotted name is the encoding: Go identifiers cannot contain
+		// a dot, so Type.Method is unambiguous and needs no new field.
+		for path, handler := range map[string]string{
+			"/pointer":         "example.com/app.Handlers.Pointer",
+			"/value":           "example.com/app.Handlers.Value",
+			"/literal":         "example.com/app.Handlers.Literal",
+			"/pointer-literal": "example.com/app.Handlers.PointerLiteral",
+			"/new":             "example.com/app.Handlers.New",
+			"/var":             "example.com/app.Handlers.Var",
+			"/var-pointer":     "example.com/app.Handlers.VarPointer",
+			"/api/nested":      "example.com/app.Handlers.Nested",
+			"/wrapped":         "example.com/app.Handlers.Wrapped",
+			// An imported receiver type keeps its own package path.
+			"/imported": "example.com/app/handlers.Admin.Imported",
+		} {
+			requireRoute(t, table, GET, path, handler)
+		}
+	})
+
+	t.Run("round-trips through Lookup", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Handlers struct{}
+
+func routes(r chi.Router, h *Handlers) {
+	r.Get("/users", h.ListUsers)
+}
+`})
+		requireNoDiagnostics(t, diags)
+		got, ok := table.Lookup(GET, SymbolRef{"example.com/app", "Handlers.ListUsers"})
+		if !ok || got.Path != "/users" {
+			t.Errorf("a method handler must be findable by its dotted symbol, got %+v ok=%v", got, ok)
+		}
+	})
+
+	t.Run("undeterminable receivers keep failing", func(t *testing.T) {
+		for name, body := range map[string]string{
+			// The return type of a constructor is not syntactic.
+			"constructor call": "h := NewHandlers()\n\tr.Get(\"/x\", h.Users)",
+			// Rebinding to something untyped clears the receiver.
+			"rebound receiver": "h := Handlers{}\n\th = build()\n\tr.Get(\"/x\", h.Users)",
+			// A field's type lives on another declaration.
+			"field selector": "r.Get(\"/x\", deps.Handlers.Users)",
+			// An interface parameter names no concrete method set here.
+			"call result": "r.Get(\"/x\", build().Users)",
+		} {
+			t.Run(name, func(t *testing.T) {
+				_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Handlers struct{}
+type Deps struct{ Handlers Handlers }
+
+var deps Deps
+
+func NewHandlers() *Handlers { return nil }
+func build() Handlers        { return Handlers{} }
+
+func routes(r chi.Router) {
+	` + body + `
+}
+`})
+				if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+					t.Fatalf("expected one E0402, got %+v", diags)
+				}
+				if !strings.Contains(diags[0].Suggest, "//ghtmx:route") {
+					t.Errorf("the escape hatch must still be offered, got %q", diags[0].Suggest)
+				}
+			})
+		}
+	})
+
+	t.Run("an import alias still beats a same-named receiver", func(t *testing.T) {
+		// Behaviour freeze: this resolved as the import before method
+		// values were understood, and must keep doing so.
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import (
+	"github.com/go-chi/chi/v5"
+
+	"example.com/app/handlers"
+)
+
+type Shadow struct{}
+
+func routes(r chi.Router, handlers *Shadow) {
+	r.Get("/x", handlers.GetUser)
+}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/x", "example.com/app/handlers.GetUser")
+	})
+
+	t.Run("a predeclared-typed local is not a receiver", func(t *testing.T) {
+		// `var s string` must not make s.Anything resolvable.
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+func routes(r chi.Router, s string) {
+	r.Get("/x", s.Users)
+}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+			t.Fatalf("expected one E0402, got %+v", diags)
+		}
+	})
+
+	t.Run("receivers do not leak across functions", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "github.com/go-chi/chi/v5"
+
+type Handlers struct{}
+
+func declares(h *Handlers) {}
+
+func routes(r chi.Router) {
+	r.Get("/x", h.Users)
+}
+`})
+		if len(diags) != 1 || diags[0].ID != diag.UnresolvableRoute {
+			t.Fatalf("a receiver from another function must not resolve, got %+v", diags)
+		}
+	})
+}
+
+// TestMethodValueAnnotations covers the escape hatch's matching grammar:
+// where discovery cannot infer a receiver, the annotation must still be
+// able to name the method.
+func TestMethodValueAnnotations(t *testing.T) {
+	t.Run("accepts local and imported method symbols", func(t *testing.T) {
+		table, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+import "example.com/app/handlers"
+
+type Handlers struct{}
+
+//ghtmx:route GET /local Handlers.ListUsers
+//ghtmx:route GET /imported handlers.Admin.ListAdmins
+//ghtmx:route GET /plain handlers.Plain
+//ghtmx:route GET /bare localHook
+
+func localHook() {}
+`})
+		requireNoDiagnostics(t, diags)
+		requireRoute(t, table, GET, "/local", "example.com/app.Handlers.ListUsers")
+		requireRoute(t, table, GET, "/imported", "example.com/app/handlers.Admin.ListAdmins")
+		requireRoute(t, table, GET, "/plain", "example.com/app/handlers.Plain")
+		requireRoute(t, table, GET, "/bare", "example.com/app.localHook")
+	})
+
+	t.Run("rejects prefixes that are neither an import nor a local type", func(t *testing.T) {
+		_, diags := discoverSrc(t, map[string]string{"main.go": `
+package app
+
+//ghtmx:route GET /a notimported.Handler
+//ghtmx:route GET /b notimported.Type.Method
+//ghtmx:route GET /c Handlers.Deep.Nested.Method
+//ghtmx:route GET /d Handlers..Method
+`})
+		if len(diags) != 4 {
+			t.Fatalf("expected 4 E0403s, got %+v", diags)
+		}
+		for _, d := range diags {
+			if d.ID != diag.MalformedAnnotation {
+				t.Errorf("expected %s, got %s: %s", diag.MalformedAnnotation, d.ID, d.Message)
+			}
+		}
+	})
 }
 
 func TestUnknownReceiversAreIgnoredSilently(t *testing.T) {

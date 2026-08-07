@@ -207,10 +207,25 @@ type mountEdge struct {
 // group closures so that a Mount in a closure still sees routes registered
 // on a variable defined in the enclosing function, and vice versa.
 type funcState struct {
-	env     map[string]binding
-	locals  map[string]bool // locally (re)defined identifiers, shadowing package consts
-	pending []pendingRoute
-	mounts  []mountEdge
+	env    map[string]binding
+	locals map[string]bool // locally (re)defined identifiers, shadowing package consts
+	// recvTypes maps a local variable to the named type it holds, so a
+	// method value registered as a handler (h.ListUsers) resolves to
+	// Handlers.ListUsers. Populated only from same-file syntax — a
+	// parameter's declared type, a var with an explicit type, a
+	// composite literal, or new(T) — which is the same conservative
+	// single-file inference paramFlavour performs for router variables.
+	recvTypes map[string]SymbolRef
+	pending   []pendingRoute
+	mounts    []mountEdge
+}
+
+func newFuncState() *funcState {
+	return &funcState{
+		env:       map[string]binding{},
+		locals:    map[string]bool{},
+		recvTypes: map[string]SymbolRef{},
+	}
 }
 
 // Discover walks the loaded packages and produces the route table plus
@@ -228,9 +243,10 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 	}
 	for _, pkg := range pkgs {
 		consts := packageStringConsts(pkg)
+		typeNames := packageTypeNames(pkg)
 		for _, file := range pkg.Files {
 			imports := fileImports(file)
-			for _, r := range collectAnnotations(pkg, file, imports, sink) {
+			for _, r := range collectAnnotations(pkg, file, imports, typeNames, sink) {
 				add(r)
 			}
 			d := &discoverer{pkg: pkg, imports: imports, consts: consts, sink: sink}
@@ -239,14 +255,20 @@ func Discover(pkgs []*Package, sink *diag.Sink) *Table {
 				if !ok || fn.Body == nil {
 					continue
 				}
-				st := &funcState{env: map[string]binding{}, locals: map[string]bool{}}
+				st := newFuncState()
 				if fn.Type.Params != nil {
 					for _, field := range fn.Type.Params.List {
 						fl := d.paramFlavour(field.Type)
+						recv, hasRecv := d.namedTypeRef(field.Type)
 						for _, name := range field.Names {
 							st.locals[name.Name] = true
 							if fl != nil {
 								st.env[name.Name] = binding{fl: fl}
+							}
+							// func routes(h *Handlers): h.ListUsers is a
+							// method value on a type this file names.
+							if hasRecv {
+								st.recvTypes[name.Name] = recv
 							}
 						}
 					}
@@ -473,8 +495,25 @@ func (d *discoverer) walkBody(body *ast.BlockStmt, st *funcState, env map[string
 			if gd, ok := n.Decl.(*ast.GenDecl); ok {
 				for _, spec := range gd.Specs {
 					if vs, ok := spec.(*ast.ValueSpec); ok {
-						for _, name := range vs.Names {
+						// var h Handlers / var h *pkg.Handlers: an
+						// explicit type names the receiver directly;
+						// otherwise the initialiser may.
+						recv, hasRecv := SymbolRef{}, false
+						if vs.Type != nil {
+							recv, hasRecv = d.namedTypeRef(vs.Type)
+						}
+						for i, name := range vs.Names {
 							st.locals[name.Name] = true
+							value := recv
+							ok := hasRecv
+							if !ok && i < len(vs.Values) {
+								value, ok = d.receiverTypeOf(vs.Values[i])
+							}
+							if ok {
+								st.recvTypes[name.Name] = value
+							} else {
+								delete(st.recvTypes, name.Name)
+							}
 						}
 					}
 				}
@@ -513,6 +552,13 @@ func (d *discoverer) handleAssign(n *ast.AssignStmt, st *funcState, env map[stri
 			continue
 		}
 		st.locals[lhs.Name] = true
+		// Receiver tracking is independent of router tracking: a
+		// rebinding replaces or clears whichever type the name held.
+		if recv, ok := d.receiverTypeOf(rhs); ok {
+			st.recvTypes[lhs.Name] = recv
+		} else {
+			delete(st.recvTypes, lhs.Name)
+		}
 		if b, ok := d.evalRouterExpr(rhs, env); ok {
 			env[lhs.Name] = b
 			continue
@@ -721,9 +767,9 @@ func (d *discoverer) registerVerbCall(call *ast.CallExpr, st *funcState, recv bi
 }
 
 func (d *discoverer) emit(call *ast.CallExpr, st *funcState, recv binding, recvName string, verb Verb, path string, handlerExpr ast.Expr) {
-	handler, ok := d.resolveHandler(handlerExpr)
+	handler, ok := d.resolveHandler(handlerExpr, st)
 	if !ok {
-		d.errUnresolvable(handlerExpr, "the handler cannot be resolved to a package-level symbol")
+		d.errUnresolvable(handlerExpr, "the handler cannot be resolved to a package-level symbol or a method on a locally-typed receiver")
 		return
 	}
 	// Only compose through JoinPaths when a group prefix exists: a raw
@@ -753,11 +799,57 @@ func (d *discoverer) emit(call *ast.CallExpr, st *funcState, recv binding, recvN
 // identifier matching against the file's imports (constitution A3.1).
 // Single-argument wrapping calls (middleware, http.HandlerFunc conversions)
 // are seen through to the underlying symbol (FR-014).
-func (d *discoverer) resolveHandler(expr ast.Expr) (SymbolRef, bool) {
+func (d *discoverer) resolveHandler(expr ast.Expr, st *funcState) (SymbolRef, bool) {
 	switch e := expr.(type) {
 	case *ast.ParenExpr:
-		return d.resolveHandler(e.X)
+		return d.resolveHandler(e.X, st)
 	case *ast.Ident:
+		return SymbolRef{PkgPath: d.pkg.PkgPath, Name: e.Name}, true
+	case *ast.SelectorExpr:
+		baseIdent, ok := e.X.(*ast.Ident)
+		if !ok {
+			// A selector on anything but a bare identifier — a field
+			// chain (s.handlers.Show) or a call result — needs type
+			// information this scan does not have.
+			return SymbolRef{}, false
+		}
+		// Imports win: a local named like an import alias resolved as
+		// the import before method values were understood, and that
+		// must not change.
+		if path, ok := d.imports[baseIdent.Name]; ok {
+			return SymbolRef{PkgPath: path, Name: e.Sel.Name}, true
+		}
+		// A method value on a receiver whose type this file names.
+		if recv, ok := st.recvTypes[baseIdent.Name]; ok {
+			return SymbolRef{PkgPath: recv.PkgPath, Name: recv.Name + "." + e.Sel.Name}, true
+		}
+		return SymbolRef{}, false
+	case *ast.CallExpr:
+		// Conversions and single-argument middleware wraps: mw(h),
+		// http.HandlerFunc(h).
+		if len(e.Args) == 1 {
+			return d.resolveHandler(e.Args[0], st)
+		}
+		return SymbolRef{}, false
+	}
+	return SymbolRef{}, false
+}
+
+// namedTypeRef recovers the named type an expression denotes, for
+// receiver tracking: T and *T resolve to this package's T, pkg.T and
+// *pkg.T to the imported package's T. Anything else — an interface
+// literal, a generic instantiation, a func type — yields nothing, and
+// its method values keep failing with GHTMX-E0402.
+func (d *discoverer) namedTypeRef(expr ast.Expr) (SymbolRef, bool) {
+	switch e := expr.(type) {
+	case *ast.ParenExpr:
+		return d.namedTypeRef(e.X)
+	case *ast.StarExpr:
+		return d.namedTypeRef(e.X)
+	case *ast.Ident:
+		if !token.IsExported(e.Name) && !isTypeNameCandidate(e.Name) {
+			return SymbolRef{}, false
+		}
 		return SymbolRef{PkgPath: d.pkg.PkgPath, Name: e.Name}, true
 	case *ast.SelectorExpr:
 		pkgIdent, ok := e.X.(*ast.Ident)
@@ -766,20 +858,84 @@ func (d *discoverer) resolveHandler(expr ast.Expr) (SymbolRef, bool) {
 		}
 		path, ok := d.imports[pkgIdent.Name]
 		if !ok {
-			// A selector on a non-package receiver (method value) cannot be
-			// resolved without type information.
 			return SymbolRef{}, false
 		}
 		return SymbolRef{PkgPath: path, Name: e.Sel.Name}, true
+	}
+	return SymbolRef{}, false
+}
+
+// isTypeNameCandidate rejects the predeclared type names, which carry no
+// methods worth registering and would otherwise turn a `var s string`
+// into a receiver.
+func isTypeNameCandidate(name string) bool {
+	switch name {
+	case "any", "bool", "byte", "complex64", "complex128", "error", "float32", "float64",
+		"int", "int8", "int16", "int32", "int64", "rune", "string",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr":
+		return false
+	}
+	return true
+}
+
+// receiverTypeOf recovers the named type a value expression constructs,
+// for `h := Handlers{...}`, `&Handlers{...}`, and `new(Handlers)`. A
+// constructor call (NewHandlers()) yields nothing: its return type is
+// not knowable from syntax alone.
+func (d *discoverer) receiverTypeOf(expr ast.Expr) (SymbolRef, bool) {
+	switch e := expr.(type) {
+	case *ast.ParenExpr:
+		return d.receiverTypeOf(e.X)
+	case *ast.UnaryExpr:
+		if e.Op != token.AND {
+			return SymbolRef{}, false
+		}
+		return d.receiverTypeOf(e.X)
+	case *ast.CompositeLit:
+		if e.Type == nil {
+			return SymbolRef{}, false
+		}
+		return d.namedTypeRef(e.Type)
 	case *ast.CallExpr:
-		// Conversions and single-argument middleware wraps: mw(h),
-		// http.HandlerFunc(h).
-		if len(e.Args) == 1 {
-			return d.resolveHandler(e.Args[0])
+		// new(T) is the one call whose result type is syntactic.
+		if fn, ok := e.Fun.(*ast.Ident); ok && fn.Name == "new" && len(e.Args) == 1 && !d.pkgDeclares(fn.Name) {
+			return d.namedTypeRef(e.Args[0])
 		}
 		return SymbolRef{}, false
 	}
 	return SymbolRef{}, false
+}
+
+// pkgDeclares reports whether the package declares the name itself,
+// which is how a local `func new(...)` is kept from being read as the
+// builtin.
+func (d *discoverer) pkgDeclares(name string) bool {
+	for _, file := range d.pkg.Files {
+		for _, decl := range file.Decls {
+			switch dcl := decl.(type) {
+			case *ast.FuncDecl:
+				if dcl.Recv == nil && dcl.Name.Name == name {
+					return true
+				}
+			case *ast.GenDecl:
+				for _, spec := range dcl.Specs {
+					switch s := spec.(type) {
+					case *ast.ValueSpec:
+						for _, n := range s.Names {
+							if n.Name == name {
+								return true
+							}
+						}
+					case *ast.TypeSpec:
+						if s.Name.Name == name {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // stringArg resolves a string literal or package-level string constant.

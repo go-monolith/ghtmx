@@ -77,6 +77,53 @@ func TestPathConstantForNonParameterisedRoute(t *testing.T) {
 	}
 }
 
+// TestMethodHandlerConstructorName pins how a method handler's dotted
+// symbol (FR-1) reaches generated code: the dot is not a legal Go
+// identifier character, so the existing sanitizer folds it away and the
+// constructor is named for the receiver and method together.
+func TestMethodHandlerConstructorName(t *testing.T) {
+	if got := ConstructorBaseName("Handlers.ListUsers"); got != "HandlersListUsers" {
+		t.Errorf("ConstructorBaseName = %q, want HandlersListUsers", got)
+	}
+	// An already-plain name is unchanged, so existing tables generate
+	// byte-identical output.
+	if got := ConstructorBaseName("ListUsers"); got != "ListUsers" {
+		t.Errorf("ConstructorBaseName = %q, want ListUsers", got)
+	}
+
+	got := generate(t,
+		routes.Route{
+			Verb: routes.GET, Path: "/users/{id}", Handler: handler("example.com/app", "Handlers.GetUser"),
+			Params: []routes.RouteParam{{Name: "id"}},
+		},
+		routes.Route{Verb: routes.GET, Path: "/users", Handler: handler("example.com/app", "Handlers.ListUsers")},
+	)
+	if !strings.Contains(got, "func HandlersGetUser(id string) ghtmx.SafeURL {") {
+		t.Errorf("expected a constructor named for receiver and method, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const HandlersListUsersPath = "/users"`) {
+		t.Errorf("expected a path constant named for receiver and method, got:\n%s", got)
+	}
+	// The doc comment names the real symbol, so the generated file still
+	// points back at the handler.
+	if !strings.Contains(got, "example.com/app.Handlers.GetUser") {
+		t.Errorf("generated comments must name the dotted symbol, got:\n%s", got)
+	}
+}
+
+// TestMethodHandlerCollidesWithPlainHandler: two different symbols that
+// sanitize to one constructor name go through the existing E0404
+// machinery rather than silently generating one of them.
+func TestMethodHandlerCollidesWithPlainHandler(t *testing.T) {
+	_, conflicts := Naming(table(t,
+		routes.Route{Verb: routes.GET, Path: "/a", Handler: handler("example.com/app", "Handlers.List")},
+		routes.Route{Verb: routes.GET, Path: "/b", Handler: handler("example.com/app", "HandlersList")},
+	))
+	if len(conflicts) != 1 {
+		t.Fatalf("expected one collision group, got %+v", conflicts)
+	}
+}
+
 func TestTypedConstructorForParameterisedRoute(t *testing.T) {
 	got := generate(t,
 		routes.Route{
