@@ -11,6 +11,20 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- Generated render functions acquire their buffer through a single
+  `ghtmxruntime.AcquireBuffer` call and one deferred release, replacing
+  the nine-statement acquire-and-conditionally-release block every one
+  of them used to carry. Behaviour is identical — the buffer is still
+  released only by the outermost component, a flush error is still
+  reported only when the render itself succeeded — but generated
+  statements land in a consuming project's coverage figures, and this
+  was the largest block of code nobody wrote. Migration: run
+  `ghtmx generate` and commit the result; `generate -check` reports the
+  stale files otherwise. Hand-written code is unaffected, and
+  `GetBuffer`/`ReleaseBuffer` remain exported.
+
 ### Added
 
 - `adapters/fiberv3`, a first-party render adapter for fiber's v3 major

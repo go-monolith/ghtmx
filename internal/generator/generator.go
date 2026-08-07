@@ -494,53 +494,18 @@ func (g *generator) writeGoExpression(n *parser.TemplateFileGoExpression) (err e
 	return err
 }
 
+// writeTemplBuffer emits the buffer prologue. It delegates to
+// ghtmxruntime.AcquireBuffer rather than inlining the acquire-and-
+// conditionally-release dance: the nine statements this used to emit
+// were repeated in every generated render function, and generated
+// statements land in a consuming project's coverage figures.
 func (g *generator) writeTemplBuffer(indentLevel int) (err error) {
-	// ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)
-	if _, err = g.w.WriteIndent(indentLevel, "ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_IsBuffer := ghtmxruntime.GetBuffer(ghtmx_7f3b9d1a_W)\n"); err != nil {
+	// ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)
+	if _, err = g.w.WriteIndent(indentLevel, "ghtmx_7f3b9d1a_Buffer, ghtmx_7f3b9d1a_Release := ghtmxruntime.AcquireBuffer(ghtmx_7f3b9d1a_W)\n"); err != nil {
 		return err
 	}
-	// if !ghtmx_7f3b9d1a_IsBuffer {
-	//	defer func() {
-	//		ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)
-	//		if ghtmx_7f3b9d1a_Err == nil {
-	//			ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr
-	//		}
-	//	}()
-	// }
-	if _, err = g.w.WriteIndent(indentLevel, "if !ghtmx_7f3b9d1a_IsBuffer {\n"); err != nil {
-		return err
-	}
-	{
-		indentLevel++
-		if _, err = g.w.WriteIndent(indentLevel, "defer func() {\n"); err != nil {
-			return err
-		}
-		{
-			indentLevel++
-			if _, err = g.w.WriteIndent(indentLevel, "ghtmx_7f3b9d1a_BufErr := ghtmxruntime.ReleaseBuffer(ghtmx_7f3b9d1a_Buffer)\n"); err != nil {
-				return err
-			}
-			if _, err = g.w.WriteIndent(indentLevel, "if ghtmx_7f3b9d1a_Err == nil {\n"); err != nil {
-				return err
-			}
-			{
-				indentLevel++
-				if _, err = g.w.WriteIndent(indentLevel, "ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_BufErr\n"); err != nil {
-					return err
-				}
-				indentLevel--
-			}
-			if _, err = g.w.WriteIndent(indentLevel, "}\n"); err != nil {
-				return err
-			}
-			indentLevel--
-		}
-		if _, err = g.w.WriteIndent(indentLevel, "}()\n"); err != nil {
-			return err
-		}
-		indentLevel--
-	}
-	if _, err = g.w.WriteIndent(indentLevel, "}\n"); err != nil {
+	// defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)
+	if _, err = g.w.WriteIndent(indentLevel, "defer ghtmx_7f3b9d1a_Release(&ghtmx_7f3b9d1a_Err)\n"); err != nil {
 		return err
 	}
 	return
