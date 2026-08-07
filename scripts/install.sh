@@ -22,6 +22,24 @@
 # customized GOBIN or GOPATH breaks that coincidence: put the directory
 # on PATH in that case.
 #
+# Once the binaries are in place, an interactive run offers the VS Code
+# extension: it is the one editor whose CLI can install a .vsix without
+# the user leaving the terminal, and the extension is useless without the
+# binaries this script just installed, so this is the moment to ask. The
+# offer is a question, never an assumption — see --no-interactive below.
+#
+# Usage: install.sh [--no-interactive]
+#
+#   --no-interactive    ask nothing and read nothing from the terminal.
+#                       The VS Code offer is skipped rather than answered
+#                       for you — unless GHTMX_INSTALL_VSCODE already
+#                       answered it yes, which is a decision and not a
+#                       prompt. This is what the VS Code extension passes
+#                       when it runs this script (editors/vscode): the
+#                       extension is already installed by definition in
+#                       that case, and a prompt would be answering a
+#                       question nobody can see.
+#
 # Configured by environment, like every other script in this repo:
 #
 #   GHTMX_VERSION       tag to install; "v0.1.6" or "0.1.6". Default:
@@ -33,6 +51,11 @@
 #   GOPLS_VERSION       default v0.23.0 — the version CI and CONTRIBUTING
 #                       pin, so it is the one this repo tests against.
 #   GHTMX_SKIP_GOPLS    set to any value to install ghtmx only.
+#   GHTMX_SKIP_VSCODE   set to any value to never mention VS Code.
+#   GHTMX_INSTALL_VSCODE
+#                       set to any value to install the VS Code extension
+#                       without asking — the assume-yes for unattended
+#                       setups (containers, dotfiles) that do want it.
 #   GHTMX_OS            override the detected OS. A cross-install skips
 #   GHTMX_ARCH          gopls, which would be built for the host.
 #   GHTMX_RELEASES_URL  release base URL. The one seam the test server
@@ -46,7 +69,13 @@
 # and truncation, not someone who controls the origin. Fetching this
 # script by piping curl into bash verifies nothing beyond TLS to
 # raw.githubusercontent.com — the same trust model as `go install
-# ...@latest`. Clone the repository and read it if you want more.
+# ...@latest`. Clone the repository and read it if you want more. The
+# .vsix gets less than that: checksums.txt is written by the release
+# staging step and covers the binary archives only, while the editor
+# artifacts are attached afterwards by .github/workflows/editors.yml, so
+# there is no digest to compare it against. TLS to github.com is the
+# whole of its provenance — which is also true of downloading it from
+# the release page by hand, the alternative this replaces.
 #
 # The whole body is a function called on the last line, so a transfer
 # that dies mid-file defines a function and exits rather than running a
@@ -95,6 +124,181 @@ sha256_of() {
   fi
 }
 
+# The published extension: editors/vscode/package.json's publisher and
+# name, joined the way VS Code identifies an extension. Renaming either
+# there would leave this looking for an id nobody publishes, so
+# TestInstallScriptExtensionID compares the two.
+vscode_extension_id="go-monolith.ghtmx-vscode"
+
+# Asks a yes/no question and answers "no" for anything that is not a
+# clear yes, including a question that could not be asked.
+#
+# Reading from /dev/tty rather than stdin is what makes this work under
+# `curl … | bash`, where stdin is the script being read and a `read`
+# would eat it. Requiring stdout to be a terminal as well is the check
+# that keeps a redirected or captured run — CI, a log file, a test —
+# from stopping to ask a question nobody will ever see.
+# Both tests are load-bearing, and the stdout one especially: a process
+# started from a terminal keeps its controlling terminal even when its
+# output is a pipe, so /dev/tty alone is readable inside `go test` and a
+# read there would block until someone typed into a window showing none
+# of this.
+confirm() { # question
+  local answer
+  [ -t 1 ] || return 1
+  [ -r /dev/tty ] || return 1
+  printf '%s [y/N] ' "$1" >/dev/tty
+  read -r answer </dev/tty || return 1
+  case "$answer" in
+    y | Y | yes | Yes | YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# The VS Code CLI, if this machine has one. `code` on PATH is what every
+# platform's install offers; the Applications paths are the fallback for
+# a macOS install whose "Shell Command: Install 'code' command in PATH"
+# step was never run, which is the common case there.
+find_vscode() {
+  local candidate resolved
+  for candidate in code code-insiders; do
+    if resolved=$(command -v "$candidate" 2>/dev/null); then
+      echo "$resolved"
+      return 0
+    fi
+  done
+  for candidate in \
+    "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" \
+    "${HOME:-}/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# The .vsix attached to a release, by name. It cannot be computed from
+# the tag: the file carries the EXTENSION version (0.1.0), and an
+# extension version identifies a module series rather than one release,
+# so v0.1.5 and v0.1.7 both carry ghtmx-vscode-0.1.0.vsix
+# (editors/README.md). GitHub renders a release's asset list into a
+# fragment of its own, and that fragment is where the name can be read
+# without an API call, a token, or jq. awk rather than grep: the set of
+# commands this script shells out to is mirrored by shimPath in
+# internal/installcheck/installscript_test.go.
+#
+# The highest version wins rather than the first one listed: the release
+# carries one .vsix today, but a re-upload or a second packaged build
+# would put two on the page in whatever order GitHub renders them, and
+# picking by position would install whichever landed first. The pattern
+# is MAJOR.MINOR.PATCH exactly, which is every extension version the
+# policy allows; a prerelease .vsix would need it widened, and until then
+# the caller's message is careful not to blame the release for a name
+# this cannot read.
+vsix_asset_name() { # releases_url tag
+  local page
+  page="$tmp/assets.html"
+  download "$1/expanded_assets/$2" "$page" || return 1
+  awk '{
+         sub(/\r$/, "")   # a Windows-hosted CLI under WSL sends CRLF
+         rest = $0
+         # A loop rather than one match(): awk finds the first hit in a
+         # line, and nothing says the page puts one asset per line.
+         while (match(rest, /ghtmx-vscode-[0-9]+\.[0-9]+\.[0-9]+\.vsix/)) {
+           name = substr(rest, RSTART, RLENGTH)
+           rest = substr(rest, RSTART + RLENGTH)
+           # Drop the fixed "ghtmx-vscode-" (13) and ".vsix" (5).
+           split(substr(name, 14, length(name) - 18), part, ".")
+           rank = part[1] * 1000000 + part[2] * 1000 + part[3]
+           if (rank > best) {
+             best = rank
+             newest = name
+           }
+         }
+       }
+       END { if (newest != "") print newest }' "$page"
+}
+
+# Offers the extension, and installs it if the answer is yes. Nothing in
+# here may fail the run: ghtmx is installed by the time it is called, so
+# every step that can go wrong warns and returns instead.
+#
+# download() and $fetcher come from main — a bash function definition is
+# global once executed, and main runs before this is ever called.
+offer_vscode_extension() { # releases_url tag interactive
+  local releases_url="$1" tag="$2" interactive="$3"
+  local code vsix
+
+  [ -z "${GHTMX_SKIP_VSCODE:-}" ] || return 0
+  # No VS Code, nothing to offer, nothing to say: most people running an
+  # installer for a command-line tool do not have it and do not care.
+  code=$(find_vscode) || return 0
+
+  # Checked before the question so that re-running the script stays the
+  # no-op the header promises rather than a prompt every time.
+  # sub() because under WSL `code` is often the Windows build, which
+  # ends its lines with CRLF; without it the id never matches and the
+  # script offers an already-installed extension on every run.
+  if "$code" --list-extensions 2>/dev/null |
+    awk -v id="$vscode_extension_id" '
+      { sub(/\r$/, "") }
+      tolower($0) == id { found = 1 }
+      END { exit !found }'; then
+    echo
+    echo "the ghtmx VS Code extension is already installed."
+    return 0
+  fi
+
+  echo
+  if [ -n "${GHTMX_INSTALL_VSCODE:-}" ]; then
+    echo "installing the ghtmx VS Code extension (GHTMX_INSTALL_VSCODE is set)"
+  elif [ "$interactive" = 0 ]; then
+    echo "VS Code is installed but the ghtmx extension is not. This run was"
+    echo "  told not to ask (--no-interactive), so nothing was installed. To"
+    echo "  add it, re-run this script without that flag, or take"
+    echo "  ghtmx-vscode-<version>.vsix from the release page and run:"
+    echo
+    echo "      code --install-extension ghtmx-vscode-<version>.vsix"
+    return 0
+  elif ! confirm "Install the ghtmx VS Code extension (syntax highlighting, diagnostics, completion)?"; then
+    echo "skipping the VS Code extension. Install it later with this script"
+    echo "  or from the release page."
+    return 0
+  fi
+
+  vsix=$(vsix_asset_name "$releases_url" "$tag") || vsix=""
+  if [ -z "$vsix" ]; then
+    echo "warning: no ghtmx-vscode-<version>.vsix could be found among release"
+    echo "  $tag's assets, so the extension was not installed. Either its"
+    echo "  packaging job failed — the extensions ship from v0.1.5 onward —"
+    echo "  or it is named in a way this script does not recognize. The"
+    echo "  release page will say which:"
+    echo
+    echo "      $releases_url/tag/$tag"
+    return 0
+  fi
+
+  if ! download "$releases_url/download/$tag/$vsix" "$tmp/$vsix"; then
+    echo "warning: downloading $vsix failed, so the extension was not installed."
+    echo "  ghtmx itself is installed and works."
+    return 0
+  fi
+  # --force because the id is already known to be absent: it turns the
+  # "already installed" question VS Code would otherwise ask into the
+  # answer this script has established, and keeps a stale copy from
+  # blocking the install.
+  if "$code" --install-extension "$tmp/$vsix" --force; then
+    echo "installed the ghtmx VS Code extension ($vsix)"
+    echo "  reload VS Code (Developer: Reload Window) to activate it."
+  else
+    echo "warning: VS Code rejected $vsix, so the extension was not installed."
+    echo "  ghtmx itself is installed and works. Retry with:"
+    echo
+    echo "      $code --install-extension <the .vsix from the release page>"
+  fi
+}
+
 # Cleanup must never change the script's exit status, so every step here
 # is allowed to fail quietly.
 tmp=""
@@ -107,6 +311,23 @@ cleanup() {
 
 main() {
   local releases_url gopls_version
+
+  # --- arguments ----------------------------------------------------------
+
+  # Everything else is configured by environment, which survives the
+  # `curl … | bash` pipe unchanged. The one flag exists because the VS
+  # Code extension has to say "do not talk to the terminal" on a command
+  # line it shows the user, where an exported variable would not read as
+  # part of the command at all.
+  local interactive=1
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --no-interactive) interactive=0 ;;
+      *) fail "unknown option $1; the only flag is --no-interactive" ;;
+    esac
+    shift
+  done
+
   releases_url="${GHTMX_RELEASES_URL:-https://github.com/go-monolith/ghtmx/releases}"
   gopls_version="${GOPLS_VERSION:-v0.23.0}"
 
@@ -304,6 +525,17 @@ main() {
   fi
   if [ "$gopls_installed" = 1 ]; then
     echo "gopls: $bin_dir/gopls"
+  fi
+
+  # --- VS Code extension --------------------------------------------------
+
+  # Last, because it is the only optional step that asks a question, and
+  # asking it before the install is done would put the answer in front of
+  # output the user still needs to read. A cross-install is excluded:
+  # installing an extension into the VS Code on this machine, for a
+  # binary built for another one, is not what was asked for.
+  if [ "$os" = "$host_os" ] && [ "$arch" = "$host_arch" ]; then
+    offer_vscode_extension "$releases_url" "$tag" "$interactive"
   fi
 
   if [ "$host_os" = darwin ]; then

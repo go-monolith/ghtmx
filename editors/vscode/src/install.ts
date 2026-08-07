@@ -25,8 +25,22 @@ export function canRunInstaller(platform: string): boolean {
   return platform !== "win32";
 }
 
+// `bash -s --` is what puts a flag on a script arriving over a pipe:
+// the script is stdin, so everything after `--` becomes its arguments.
+//
+// --no-interactive because this command runs on behalf of an extension
+// that is, by definition, already installed. Without it the script would
+// end by offering to install the extension the user is looking at, and
+// would stop for an answer in a terminal they did not open to answer
+// questions. VS Code's integrated terminal is a pty, so that prompt
+// would really appear.
+//
+// The flag is therefore part of this extension's contract with the
+// script on `main`, which rejects options it does not know: every
+// already-published extension emits this line, so the flag cannot be
+// renamed or dropped without breaking their Install button.
 export function installCommand(): string {
-  return `curl -fsSL ${INSTALL_SCRIPT_URL} | bash`;
+  return `curl -fsSL ${INSTALL_SCRIPT_URL} | bash -s -- --no-interactive`;
 }
 
 export function failureActions(platform: string): string[] {

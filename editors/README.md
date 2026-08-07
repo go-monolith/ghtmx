@@ -30,11 +30,27 @@ curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/inst
 
 That script is a wrapper around the release-archive install path; see
 the root [`README.md`](../README.md) for the manual steps and the
-Windows route. The VS Code extension also offers to run it from the
-error it shows when the server will not start, and from the command
-palette as **ghtmx: Install ghtmx and gopls**. It installs the newest
-release, which pre-1.0 is not guaranteed to fall in the module series
-the extension was tested against — set `GHTMX_VERSION` to pin.
+Windows route. It installs the newest release, which pre-1.0 is not
+guaranteed to fall in the module series the extension was tested
+against — set `GHTMX_VERSION` to pin.
+
+For VS Code it is the whole setup rather than half of it: with the
+`code` CLI on PATH and the extension not yet installed, the script asks
+whether to add it and installs the `.vsix` off the same release. The
+name of that file carries the extension version, not the module tag, so
+the script reads it from the release's asset list rather than computing
+it. Answering anything but `y` installs nothing; `--no-interactive`
+suppresses the question, `GHTMX_INSTALL_VSCODE=1` answers it yes, and
+`GHTMX_SKIP_VSCODE=1` skips the step. Unlike the binary archives, the
+`.vsix` has no entry in `checksums.txt` — that file is written before
+the editor artifacts are attached — so TLS to github.com is all that
+stands behind it.
+
+The VS Code extension also offers to run the script from the error it
+shows when the server will not start, and from the command palette as
+**ghtmx: Install ghtmx and gopls**. It passes `--no-interactive` there:
+the extension doing the asking is already installed, so the offer would
+be noise.
 
 The VS Code TextMate grammar
 (`vscode/syntaxes/ghtmx.tmLanguage.json`) is the single source of

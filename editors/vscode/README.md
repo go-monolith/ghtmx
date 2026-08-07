@@ -49,11 +49,18 @@ the release archive, so no Go toolchain is needed for that half:
 curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/install.sh | bash
 ```
 
-If the server fails to start, the extension offers to run that for you;
-it is also in the command palette as **ghtmx: Install ghtmx and gopls**.
-The command opens a terminal with the line typed but not executed — you
-press Enter. On Windows it points at the manual steps instead, since the
-script is bash-only.
+Run before this extension is installed, that same line offers to install
+it too: it looks for the `code` CLI and, when the extension is missing,
+asks before fetching the `.vsix` from the release. So a new machine goes
+from nothing to a working setup in one command.
+
+If the server fails to start, the extension offers to run the script for
+you; it is also in the command palette as **ghtmx: Install ghtmx and
+gopls**. The command opens a terminal with the line typed but not
+executed — you press Enter. It carries `--no-interactive`, which turns
+off the prompts: the extension is already installed in that case, and
+there is nothing to ask. On Windows it points at the manual steps
+instead, since the script is bash-only.
 
 The script installs the newest release. Pre-1.0 that is not guaranteed
 to be in the module series this extension was tested against (see the

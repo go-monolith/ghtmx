@@ -28,6 +28,14 @@ test("the install command fetches the script over https", () => {
   assert.ok(command.startsWith("curl "));
 });
 
+// The script prompts about installing this extension when it is run by
+// hand. Run from inside the extension it must not: the answer is known,
+// and the terminal it opens is not a place to ask.
+test("the install command tells the script not to prompt", () => {
+  const command = installCommand();
+  assert.ok(command.includes("| bash -s -- --no-interactive"));
+});
+
 test("Windows drops the install action but keeps the rest", () => {
   const posix = failureActions("linux");
   assert.deepEqual(posix, [INSTALL_ACTION, SET_PATH_ACTION, RELOAD_ACTION]);

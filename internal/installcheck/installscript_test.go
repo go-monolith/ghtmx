@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/release"
@@ -44,6 +46,9 @@ func hostTarget() release.Target {
 type fakeRelease struct {
 	tag             string
 	corruptChecksum bool
+	// noVsix publishes a release with no VS Code extension attached —
+	// what a release looks like when its packaging job failed.
+	noVsix bool
 	// omitBinary publishes a well-formed, correctly-checksummed archive
 	// with no ghtmx member — a release that passes verification and
 	// still cannot be installed.
@@ -51,6 +56,13 @@ type fakeRelease struct {
 	// checksumOtherPlatform lists a different platform's archive in
 	// checksums.txt, so ours is absent from it.
 	checksumOtherPlatform bool
+	// assetPageHits, when set, counts requests for the asset list. The
+	// script must not ask for it before the user has agreed to install
+	// the extension, and only a count can show that.
+	assetPageHits *atomic.Int64
+	// extraVsix are further extension assets to publish alongside the
+	// canonical one, for the case where a release carries more than one.
+	extraVsix []string
 	// target defaults to the host; set it to serve a cross-install.
 	target release.Target
 }
@@ -98,7 +110,120 @@ func (f fakeRelease) start(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/download/"+f.tag+"/checksums.txt", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, checksums)
 	})
+
+	// GitHub serves a release's asset list as an HTML fragment of its
+	// own, which is where the script reads the .vsix name from. The
+	// markup below is the shape that matters: an anchor per asset whose
+	// text is the file name. checksums.txt is listed first on the real
+	// thing too, so a script that took the first name rather than the
+	// first *matching* one would fail here.
+	mux.HandleFunc("/expanded_assets/"+f.tag, func(w http.ResponseWriter, r *http.Request) {
+		if f.assetPageHits != nil {
+			f.assetPageHits.Add(1)
+		}
+		fmt.Fprintf(w, "<ul>\n<li><a href=%q>checksums.txt</a></li>\n",
+			"/download/"+f.tag+"/checksums.txt")
+		if !f.noVsix {
+			for _, name := range append([]string{vsixName}, f.extraVsix...) {
+				fmt.Fprintf(w, "<li><a href=%q>%s</a></li>\n",
+					"/download/"+f.tag+"/"+name, name)
+			}
+		}
+		fmt.Fprint(w, "</ul>\n")
+	})
+	for _, name := range append([]string{vsixName}, f.extraVsix...) {
+		body := vsixBody
+		if name != vsixName {
+			body = "payload of " + name
+		}
+		mux.HandleFunc("/download/"+f.tag+"/"+name, func(w http.ResponseWriter, r *http.Request) {
+			if f.noVsix {
+				http.NotFound(w, r)
+				return
+			}
+			fmt.Fprint(w, body)
+		})
+	}
 	return server
+}
+
+// The extension artifact, named after the EXTENSION version rather than
+// the release tag — editors/README.md's versioning policy, and the
+// reason the script has to read the name off the release instead of
+// computing it. Its contents are never opened by the script: it hands
+// the file to VS Code, which is faked here.
+const (
+	vsixName = "ghtmx-vscode-0.1.0.vsix"
+	vsixBody = "stub vsix payload"
+)
+
+// vscodeExtensionID is editors/vscode/package.json's publisher and name.
+const vscodeExtensionID = "go-monolith.ghtmx-vscode"
+
+// fakeVSCode is a `code` on PATH that records what it was asked to do,
+// answers --list-extensions with the ids given, and keeps a copy of any
+// .vsix handed to it — the only way to check that what the script
+// downloaded is what the editor was given.
+type fakeVSCode struct {
+	dir       string // prepend to PATH
+	log       string // one argv per invocation
+	installed string // the .vsix contents, if one was installed
+}
+
+func newFakeVSCode(t *testing.T, extensions ...string) fakeVSCode {
+	t.Helper()
+	code := fakeVSCode{dir: t.TempDir()}
+	code.log = filepath.Join(code.dir, "invocations.log")
+	code.installed = filepath.Join(code.dir, "installed.vsix")
+	script := fmt.Sprintf(`#!/bin/sh
+echo "$*" >> %q
+if [ "$1" = --list-extensions ]; then
+  %s
+  exit 0
+fi
+if [ "$1" = --install-extension ]; then
+  cat "$2" > %q
+fi
+exit 0
+`, code.log, listExtensionsBody(extensions), code.installed)
+	if err := os.WriteFile(filepath.Join(code.dir, "code"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return code
+}
+
+func listExtensionsBody(installed []string) string {
+	if len(installed) == 0 {
+		return ":" // a no-op: an editor with no extensions prints nothing
+	}
+	return "printf '%s\\n' " + strings.Join(installed, " ")
+}
+
+// vscodeEnv is installEnv with the VS Code step let back in — installEnv
+// turns it off for every test that is not about it — and the fake editor
+// first on PATH.
+func vscodeEnv(server *httptest.Server, binDir, codeDir string, extra ...string) []string {
+	var env []string
+	for _, entry := range installEnv(server, binDir) {
+		if strings.HasPrefix(entry, "GHTMX_SKIP_VSCODE=") {
+			continue
+		}
+		env = append(env, entry)
+	}
+	env = append(env, "PATH="+codeDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return append(env, extra...)
+}
+
+func readLog(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return ""
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }
 
 // stubArchive is a release tarball holding a shell script standing in
@@ -155,20 +280,25 @@ func baseEnv() []string {
 }
 
 // installEnv defaults gopls off: the real `go install` would reach the
-// module proxy, and the gopls branches have tests of their own.
+// module proxy, and the gopls branches have tests of their own. VS Code
+// is off for the same reason and one more — a developer machine running
+// these tests may well have `code` on its PATH, and the script would
+// then go looking for an extension on the fake release server in every
+// test that is not about extensions.
 func installEnv(server *httptest.Server, binDir string, extra ...string) []string {
 	env := append(baseEnv(),
 		"GHTMX_RELEASES_URL="+server.URL,
 		"GHTMX_BIN_DIR="+binDir,
 		"GHTMX_SKIP_GOPLS=1",
+		"GHTMX_SKIP_VSCODE=1",
 	)
 	return append(env, extra...)
 }
 
-func runInstallScript(t *testing.T, env []string) (string, error) {
+func runInstallScript(t *testing.T, env []string, args ...string) (string, error) {
 	t.Helper()
 	root := repoRoot(t)
-	cmd := exec.Command("bash", filepath.Join(root, "scripts", "install.sh"))
+	cmd := exec.Command("bash", append([]string{filepath.Join(root, "scripts", "install.sh")}, args...)...)
 	cmd.Dir = root
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
@@ -390,6 +520,9 @@ func TestInstallScriptGoplsInstallFails(t *testing.T) {
 	env := append(baseEnv(),
 		"GHTMX_RELEASES_URL="+server.URL,
 		"GHTMX_BIN_DIR="+binDir,
+		// This test keeps the real PATH for the fake `go`, so it would
+		// otherwise reach a developer machine's actual VS Code.
+		"GHTMX_SKIP_VSCODE=1",
 		"PATH="+fakeGo+string(os.PathListSeparator)+os.Getenv("PATH"),
 	)
 
@@ -479,6 +612,9 @@ func TestInstallScriptDefaultBinDir(t *testing.T) {
 			env := append(baseEnv(),
 				"GHTMX_RELEASES_URL="+server.URL,
 				"GHTMX_SKIP_GOPLS=1",
+				// The withGo cases keep the real PATH, which on a
+				// developer machine may hold a real `code`.
+				"GHTMX_SKIP_VSCODE=1",
 				"HOME="+home,
 				"PATH="+path,
 			)
@@ -555,6 +691,9 @@ func TestInstallScriptWithoutGoToolchain(t *testing.T) {
 	env := append(baseEnv(),
 		"GHTMX_RELEASES_URL="+server.URL,
 		"GHTMX_BIN_DIR="+binDir,
+		// A clean PATH is not enough to hide VS Code: the macOS lookup
+		// names /Applications outright.
+		"GHTMX_SKIP_VSCODE=1",
 		"PATH="+shim,
 	)
 	out, err := runInstallScript(t, env)
@@ -569,6 +708,320 @@ func TestInstallScriptWithoutGoToolchain(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(binDir, "ghtmx")); err != nil {
 		t.Errorf("ghtmx must still be installed: %v", err)
+	}
+}
+
+// TestInstallScriptInstallsVSCodeExtension: the assume-yes path. The
+// .vsix name is not derivable from the tag (it carries the extension
+// version), so the script has to read it off the release's asset list —
+// and what it downloads has to be what VS Code is handed.
+func TestInstallScriptInstallsVSCodeExtension(t *testing.T) {
+	skipUnlessPOSIX(t)
+	server := fakeRelease{tag: "v9.9.9"}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	env := vscodeEnv(server, binDir, code.dir, "GHTMX_INSTALL_VSCODE=1")
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "installed the ghtmx VS Code extension") {
+		t.Errorf("output must report the extension install:\n%s", out)
+	}
+	log := readLog(t, code.log)
+	if !strings.Contains(log, "--install-extension") {
+		t.Errorf("VS Code must be asked to install the extension, got:\n%s", log)
+	}
+	if !strings.Contains(log, vsixName) {
+		t.Errorf("the install must name %s, got:\n%s", vsixName, log)
+	}
+	body, err := os.ReadFile(code.installed)
+	if err != nil {
+		t.Fatalf("no .vsix reached VS Code: %v", err)
+	}
+	if got := strings.TrimSpace(string(body)); got != vsixBody {
+		t.Errorf("VS Code was handed %q, want the downloaded asset %q", got, vsixBody)
+	}
+}
+
+// TestInstallScriptVSCodeAlreadyInstalled: re-running the script stays
+// the no-op it advertises. The check happens before the download, so a
+// second run costs no request either.
+func TestInstallScriptVSCodeAlreadyInstalled(t *testing.T) {
+	skipUnlessPOSIX(t)
+	hits := new(atomic.Int64)
+	server := fakeRelease{tag: "v9.9.9", assetPageHits: hits}.start(t)
+	// VS Code compares extension ids case-insensitively, so a listing
+	// that differs only in case is the same extension.
+	for _, listed := range []string{vscodeExtensionID, "go-monolith.Ghtmx-VSCode"} {
+		t.Run(listed, func(t *testing.T) {
+			binDir := t.TempDir()
+			code := newFakeVSCode(t, "golang.go", listed)
+
+			env := vscodeEnv(server, binDir, code.dir, "GHTMX_INSTALL_VSCODE=1")
+			out, err := runInstallScript(t, env)
+			if err != nil {
+				t.Fatalf("install failed: %v\n%s", err, out)
+			}
+			if !strings.Contains(out, "already installed") {
+				t.Errorf("output must say the extension is already there:\n%s", out)
+			}
+			if log := readLog(t, code.log); strings.Contains(log, "--install-extension") {
+				t.Errorf("an installed extension must not be installed again, got:\n%s", log)
+			}
+		})
+	}
+	if got := hits.Load(); got != 0 {
+		t.Errorf("an already-installed extension must cost no request; the asset list was fetched %d times", got)
+	}
+}
+
+// TestInstallScriptVSCodeNewestAsset: a release carrying more than one
+// .vsix — a re-upload, or a second packaged build — gets the highest
+// version installed rather than whichever GitHub happens to render
+// first. Ordering here is deliberately wrong for a first-match reader.
+func TestInstallScriptVSCodeNewestAsset(t *testing.T) {
+	skipUnlessPOSIX(t)
+	// vsixName (0.1.0) is listed first; 0.2.10 is the newest, and beats
+	// 0.2.2 only if the versions are compared as numbers.
+	server := fakeRelease{
+		tag:       "v9.9.9",
+		extraVsix: []string{"ghtmx-vscode-0.2.10.vsix", "ghtmx-vscode-0.2.2.vsix"},
+	}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	env := vscodeEnv(server, binDir, code.dir, "GHTMX_INSTALL_VSCODE=1")
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	body, err := os.ReadFile(code.installed)
+	if err != nil {
+		t.Fatalf("no .vsix reached VS Code: %v\n%s", err, out)
+	}
+	if got := strings.TrimSpace(string(body)); got != "payload of ghtmx-vscode-0.2.10.vsix" {
+		t.Errorf("VS Code was handed %q, want the newest extension asset", got)
+	}
+}
+
+// TestInstallScriptExtensionID: the id the script looks for is
+// editors/vscode/package.json's publisher and name. Rename either and
+// the "already installed" check silently stops matching, which shows up
+// as a prompt on every run rather than as a failure.
+func TestInstallScriptExtensionID(t *testing.T) {
+	// No skip: this one only reads two files, so it holds the script and
+	// the manifest together on every platform.
+	root := repoRoot(t)
+	raw, err := os.ReadFile(filepath.Join(root, "editors", "vscode", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Name      string `json:"name"`
+		Publisher string `json:"publisher"`
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	want := manifest.Publisher + "." + manifest.Name
+	if want != vscodeExtensionID {
+		t.Errorf("this test's id is %q, but the manifest says %q", vscodeExtensionID, want)
+	}
+	script, err := os.ReadFile(filepath.Join(root, "scripts", "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), want) {
+		t.Errorf("install.sh must look for the extension id %q", want)
+	}
+}
+
+// TestInstallScriptVSCodeNoInteractive: the flag the VS Code extension
+// passes. It must not prompt and must not install — the extension asking
+// for the binaries is already installed by definition — but it should
+// still say how to get one, since the flag can also come from a user.
+func TestInstallScriptVSCodeNoInteractive(t *testing.T) {
+	skipUnlessPOSIX(t)
+	hits := new(atomic.Int64)
+	server := fakeRelease{tag: "v9.9.9", assetPageHits: hits}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	env := vscodeEnv(server, binDir, code.dir)
+	out, err := runInstallScript(t, env, "--no-interactive")
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "--no-interactive") {
+		t.Errorf("output must explain why nothing was installed:\n%s", out)
+	}
+	if !strings.Contains(out, "code --install-extension") {
+		t.Errorf("output must give the manual command:\n%s", out)
+	}
+	if log := readLog(t, code.log); strings.Contains(log, "--install-extension") {
+		t.Errorf("--no-interactive must install nothing, got:\n%s", log)
+	}
+	if got := hits.Load(); got != 0 {
+		t.Errorf("nothing may be fetched without consent; the asset list was fetched %d times", got)
+	}
+}
+
+// TestInstallScriptVSCodeWithoutATerminal: the offer is a question, so
+// with no terminal to ask it on — a pipe, CI, a captured run like this
+// one — the answer is no. Nothing may block waiting for input.
+func TestInstallScriptVSCodeWithoutATerminal(t *testing.T) {
+	skipUnlessPOSIX(t)
+	hits := new(atomic.Int64)
+	server := fakeRelease{tag: "v9.9.9", assetPageHits: hits}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	out, err := runInstallScript(t, vscodeEnv(server, binDir, code.dir))
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "skipping the VS Code extension") {
+		t.Errorf("output must report the skip:\n%s", out)
+	}
+	if log := readLog(t, code.log); strings.Contains(log, "--install-extension") {
+		t.Errorf("an unanswerable question must install nothing, got:\n%s", log)
+	}
+	if got := hits.Load(); got != 0 {
+		t.Errorf("a declined offer must cost no request; the asset list was fetched %d times", got)
+	}
+}
+
+// TestInstallScriptVSCodeOptOut: GHTMX_SKIP_VSCODE keeps the script away
+// from the editor entirely — not even the "is it installed?" call. Every
+// other test in this file leans on that, so it gets its own check.
+func TestInstallScriptVSCodeOptOut(t *testing.T) {
+	skipUnlessPOSIX(t)
+	server := fakeRelease{tag: "v9.9.9"}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	env := append(vscodeEnv(server, binDir, code.dir, "GHTMX_INSTALL_VSCODE=1"),
+		"GHTMX_SKIP_VSCODE=1")
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	// Not a bare "VS Code": the closing advice on macOS mentions the
+	// editor for an unrelated reason (PATH inheritance from Finder).
+	if strings.Contains(out, "VS Code extension") {
+		t.Errorf("the opt-out must silence the whole step:\n%s", out)
+	}
+	if log := readLog(t, code.log); log != "" {
+		t.Errorf("VS Code must not be run at all, got:\n%s", log)
+	}
+}
+
+// TestInstallScriptVSCodeAssetMissing: a release whose extension
+// packaging job failed carries no .vsix. That costs the extension and
+// nothing else — the binaries are installed by then.
+func TestInstallScriptVSCodeAssetMissing(t *testing.T) {
+	skipUnlessPOSIX(t)
+	server := fakeRelease{tag: "v9.9.9", noVsix: true}.start(t)
+	binDir := t.TempDir()
+	code := newFakeVSCode(t)
+
+	env := vscodeEnv(server, binDir, code.dir, "GHTMX_INSTALL_VSCODE=1")
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("a missing extension asset must not fail the run: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "could be found among release") {
+		t.Errorf("output must say the asset is absent:\n%s", out)
+	}
+	// The message must not blame the packaging job outright: the same
+	// branch fires for an asset named in a way the script cannot read.
+	if !strings.Contains(out, "does not recognize") {
+		t.Errorf("output must allow for the other cause:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(binDir, "ghtmx")); err != nil {
+		t.Errorf("ghtmx must stay installed: %v", err)
+	}
+}
+
+// TestInstallScriptVSCodeInstallFails: the editor rejecting the .vsix is
+// the same class of problem as gopls failing to build — it costs the
+// extension, not the run.
+func TestInstallScriptVSCodeInstallFails(t *testing.T) {
+	skipUnlessPOSIX(t)
+	server := fakeRelease{tag: "v9.9.9"}.start(t)
+	binDir := t.TempDir()
+
+	// A `code` that lists nothing and refuses the install.
+	dir := t.TempDir()
+	script := "#!/bin/sh\nif [ \"$1\" = --list-extensions ]; then exit 0; fi\necho 'corrupt vsix' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(dir, "code"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	env := vscodeEnv(server, binDir, dir, "GHTMX_INSTALL_VSCODE=1")
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("a rejected extension must not fail the run: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "VS Code rejected") {
+		t.Errorf("output must report the rejection:\n%s", out)
+	}
+	if !strings.Contains(out, "ghtmx version: v9.9.9") {
+		t.Errorf("the run must still finish with its summary:\n%s", out)
+	}
+}
+
+// TestInstallScriptWithoutVSCode: most people installing a command-line
+// tool have no VS Code. They get no message about one.
+func TestInstallScriptWithoutVSCode(t *testing.T) {
+	skipUnlessPOSIX(t)
+	// The script also looks inside /Applications, which no environment
+	// variable can hide. On a Mac that has VS Code there, "without" is
+	// not a state this test can create.
+	if _, err := os.Stat("/Applications/Visual Studio Code.app"); err == nil {
+		t.Skip("VS Code is installed system-wide; the absent case cannot be staged")
+	}
+	server := fakeRelease{tag: "v9.9.9"}.start(t)
+	binDir := t.TempDir()
+
+	// shimPath holds what the script shells out to and nothing else, so
+	// `code` is genuinely absent however this machine is set up.
+	env := append(baseEnv(),
+		"GHTMX_RELEASES_URL="+server.URL,
+		"GHTMX_BIN_DIR="+binDir,
+		"GHTMX_SKIP_GOPLS=1",
+		"PATH="+shimPath(t),
+		// HOME is where find_vscode looks for a macOS app bundle; a temp
+		// directory guarantees the developer's own does not answer.
+		"HOME="+t.TempDir(),
+	)
+	out, err := runInstallScript(t, env)
+	if err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "VS Code extension") {
+		t.Errorf("no editor, no extension talk:\n%s", out)
+	}
+}
+
+// TestInstallScriptUnknownFlag: the flag list is short and closed, so a
+// typo has to fail rather than install something silently different.
+func TestInstallScriptUnknownFlag(t *testing.T) {
+	skipUnlessPOSIX(t)
+	server := fakeRelease{tag: "v9.9.9"}.start(t)
+	binDir := t.TempDir()
+
+	out, err := runInstallScript(t, installEnv(server, binDir), "--interactive")
+	if err == nil {
+		t.Fatalf("an unknown flag must fail the run:\n%s", out)
+	}
+	if !strings.Contains(out, "unknown option --interactive") {
+		t.Errorf("output must name the bad flag:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(binDir, "ghtmx")); !os.IsNotExist(err) {
+		t.Errorf("arguments are checked before anything is installed (stat: %v)", err)
 	}
 }
 
