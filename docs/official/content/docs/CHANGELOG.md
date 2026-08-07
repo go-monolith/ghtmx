@@ -31,6 +31,24 @@ build otherwise. Releases follow `RELEASING.md`.
   `ghtmxgen.HandlersListUsers(id)` — and a name that collides with
   another handler's still reports `GHTMX-E0404`.
 
+- `//ghtmx:routeprefix /admin/user`, a package-scoped directive
+  declaring the mount prefix a sub-application's routes are served
+  under. Routes registered inside a sub-app are discovered at their
+  sub-app-relative path, and a mount site using a variable prefix and a
+  cross-package router value cannot be recognised syntactically — so the
+  prefix is declared rather than inferred. Every route the package
+  registers, discovered or annotated, composes under it; group prefixes
+  still nest inside. The prefix must be static, and two files declaring
+  different prefixes for one package is `GHTMX-E0403`. Annotated paths
+  become relative to it: an annotation that already spells the mount
+  point composes twice, so shorten those when adopting the directive.
+- `adapters/fiberv3`, a first-party render adapter for fiber's v3 major
+  version — the same thin bridge over `adapters/nethttp` as the fiber v2
+  adapter, ported to v3's `fiber.Ctx` interface and `Context()`
+  accessor. A nested module like the other adapters, released in
+  lockstep as `adapters/fiberv3/vX.Y.Z`. The directory is `fiberv3`
+  rather than `fiber/v3` because Go reads a trailing `/v3` as a module
+  major-version suffix and would demand `v3.x.x` tags.
 - `GHTMX-W0105`: warns when one handler symbol is registered for the
   same verb at more than one path — typically a route both discovered
   and declared by annotation — naming every site and the path template

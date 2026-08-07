@@ -337,8 +337,16 @@ symbol may also name a method — `Handlers.Show` or `pkg.Handlers.Show`.
 Handlers registered as method values (`r.Get("/users", h.ListUsers)`) are
 discovered whenever the receiver's type is named in the same function,
 and bind as `Handlers.ListUsers`; their generated constructors fold the
-dot away (`ghtmxgen.HandlersListUsers(id)`). An
-annotation may carry a trailing `nav` marker
+dot away (`ghtmxgen.HandlersListUsers(id)`).
+A package whose routes are served under a mount prefix declares it once
+with `//ghtmx:routeprefix /admin/user` — a sub-application mounted at a
+variable prefix cannot be recognised syntactically, so every route the
+package registers, discovered or annotated, is composed under the
+declared prefix (FR-013). The prefix must be static; one per package.
+Annotated paths are relative to it, so adopting the directive means
+shortening annotations that already spell the mount point — an
+annotation left absolute composes twice.
+An annotation may carry a trailing `nav` marker
 (`//ghtmx:route GET /audit handlers.AuditLog nav`) declaring a
 navigation-only route — reached by `<a href>` or a native form post —
 which exempts it from the `GHTMX-W0104` unbound-route warning.
