@@ -20,6 +20,16 @@ build otherwise. Releases follow `RELEASING.md`.
   without silencing the check project-wide. Server-rendered portals
   previously had to turn `GHTMX-W0104` off globally, losing orphan
   detection everywhere.
+- `htmxScript` in `ghtmx.json` (flag: `-htmx-script`): set `false` to omit
+  the `HTMXScript()` helper from the central generated package, for
+  projects that use ghtmx purely as a server-side template engine and
+  load no htmx at all. `htmxVersion` still drives attribute validation,
+  but no longer needs a pinned script asset when the helper is off.
+- `ghtmx.HTMXScriptIntegrity(version)`: returns the pinned
+  subresource-integrity hash for a supported htmx version, so a project
+  serving htmx itself (`WithScriptSrc`) can assert in a unit test that
+  its vendored file is the exact published build the tag pins, instead
+  of scraping the hash out of rendered HTML.
 
 - `templateExtension` in `ghtmx.json` (flag: `-template-extension`): the
   file extension templates are written with, `.ghtmx` by default and
