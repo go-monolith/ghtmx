@@ -13,6 +13,14 @@ build otherwise. Releases follow `RELEASING.md`.
 
 ### Added
 
+- `GHTMX-W0105`: warns when one handler symbol is registered for the
+  same verb at more than one path — typically a route both discovered
+  and declared by annotation — naming every site and the path template
+  bindings actually resolve to. Previously `Lookup` picked a winner
+  silently, so a binding could generate an unexpected URL with no
+  diagnostic. Warning-class: projects that deliberately serve one
+  handler at several URLs can set `GHTMX-W0105=off`.
+
 - A trailing `nav` marker on `//ghtmx:route` annotations
   (`//ghtmx:route GET /audit handlers.AuditLog nav`) declares a
   navigation-only route — reached by `<a href>` or a native form post —
