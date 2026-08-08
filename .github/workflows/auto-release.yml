@@ -57,6 +57,13 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      # The staging step folds changelog.d/ into CHANGELOG.md and
+      # re-syncs the docs site's embedded copies, which runs the sync
+      # tool with go.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
       # The logic lives in a script so it can be tested against
       # synthetic histories rather than only asserted as YAML text.
       - name: Decide whether this merge ships, and as what version
@@ -85,6 +92,77 @@ jobs:
       ref: ${{ needs.plan.outputs.ref }}
     permissions:
       contents: write
+
+  # The released tag carries the assembled CHANGELOG.md, but main does
+  # not: it is branch-protected, so the fold comes back as a pull
+  # request a human merges (markdown- and docs-only, so merging it
+  # never cuts a release — and it redeploys the docs site, whose
+  # changelog page renders main's copy).
+  changelog:
+    needs: [plan, release]
+    # Whenever a release was planned, not only when the whole release
+    # workflow succeeded: `release` here is all of release.yml, whose
+    # editors job can fail after the module and tag already shipped —
+    # the fold must still come back. When the gates failed before
+    # tagging, the fold script sees no tag and no-ops cleanly.
+    if: ${{ !cancelled() && needs.plan.outputs.release == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+      # The fold re-syncs the docs site's embedded copies.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Rebuild the fold on top of main and park it on a branch
+        id: fold
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: .github/scripts/changelog-fold.sh
+      - name: Open or refresh the fold pull request
+        if: steps.fold.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          BRANCH: ${{ steps.fold.outputs.branch }}
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number' || true)
+          if [ -z "${existing}" ]; then
+            # A PR opened by the workflow token starts no CI runs
+            # (GitHub suppresses events the GITHUB_TOKEN causes), so
+            # the body tells the merger how to kick the required
+            # checks. There is no PAT in this repository to avoid that
+            # with.
+            #
+            # Creating the PR needs the repository setting "Allow
+            # GitHub Actions to create and approve pull requests"; if
+            # someone turns it off, the branch is already pushed, so
+            # surface the compare URL instead of failing the fold.
+            if ! gh pr create --base main --head "${BRANCH}" \
+              --title "Fold the ${TAG} changelog into main" \
+              --body "$(printf 'Automated fold: the %s release assembled changelog.d/ into CHANGELOG.md inside its release-prep commit (off main); this PR brings main — and the docs site, which deploys from it — in line.\n\nBot-opened PRs start no CI runs: **close and reopen this PR** to start the required checks, then merge when green. Merging is markdown- and docs-only and does not cut a release. If a newer release supersedes this PR, its fold closes this one and carries these sections too.' "${TAG}")"; then
+              echo "::warning::could not open the fold PR (is 'Allow GitHub Actions to create and approve pull requests' enabled?). The fold is on ${BRANCH} — open it yourself:"
+              echo "::warning::https://github.com/${GITHUB_REPOSITORY}/compare/main...${BRANCH}?expand=1"
+              echo "The ${TAG} changelog fold is pushed to \`${BRANCH}\` but the PR could not be opened: https://github.com/${GITHUB_REPOSITORY}/compare/main...${BRANCH}?expand=1" >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+          fi
+          # Close superseded fold PRs: this branch's CHANGELOG.md
+          # already restores every released section they carried. Only
+          # the automation's own PRs qualify — bot-authored, from a
+          # changelog/v* branch — so a human's coincidentally named
+          # branch is never touched.
+          for n in $(gh pr list --state open --json number,headRefName,author \
+            --jq ".[] | select(.headRefName | test(\"^changelog/v[0-9]\")) | select(.headRefName != \"${BRANCH}\") | select(.author.login == \"github-actions\") | .number"); do
+            gh pr close "$n" --comment "Superseded by the ${TAG} fold PR, which carries these sections too." --delete-branch
+          done
 
   # Only on success. A failed release must keep its scratch branch: the
   # gated tree is the post-mortem, and deleting it makes GitHub's

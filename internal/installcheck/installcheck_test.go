@@ -141,6 +141,72 @@ func TestChangelogDiscipline(t *testing.T) {
 		}
 	}
 
+	// The same discipline applies to the changelog.d/ fragments the
+	// releases are assembled from, plus a heading whitelist:
+	// scripts/assemble-changelog.sh merges sections by exact name, so a
+	// misspelt heading would orphan its entries instead of folding them.
+	fragmentDir := filepath.Join(root, "changelog.d")
+	entries, err := os.ReadDir(fragmentDir)
+	if err != nil {
+		t.Fatalf("changelog.d must exist — releases assemble their changelog from it: %v", err)
+	}
+	knownSections := map[string]bool{
+		"Added": true, "Changed": true, "Deprecated": true,
+		"Removed": true, "Fixed": true, "Security": true,
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// The assembler, the fold, and the CI gate all define a
+			// fragment as a flat file (find -maxdepth 1); anything
+			// nested would pass review and then never be folded.
+			t.Errorf("changelog.d/%s is a directory — fragments must be flat files directly under changelog.d/", entry.Name())
+			continue
+		}
+		if entry.Name() == "README.md" || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		fragment := read("changelog.d", entry.Name())
+		bullets := 0
+		for _, line := range strings.Split(fragment, "\n") {
+			if strings.HasPrefix(line, "- ") {
+				bullets++
+			}
+			if !strings.HasPrefix(line, "#") {
+				continue
+			}
+			// Any heading-shaped line that is not exactly a known
+			// '### <section>' heading mis-merges: the assembler matches
+			// by exact heading, so '### Fix', '#### Added', '###Added',
+			// and '## [1.2.3]' would all orphan or smuggle content.
+			name, ok := strings.CutPrefix(line, "### ")
+			if !ok || !knownSections[strings.TrimSpace(name)] {
+				t.Errorf("changelog.d/%s: heading %q — fragments may only use ### Added, ### Changed, ### Deprecated, ### Removed, ### Fixed, ### Security (see changelog.d/README.md)", entry.Name(), line)
+			}
+		}
+		if bullets == 0 {
+			t.Errorf("changelog.d/%s has no entries — every fragment needs at least one '- ' bullet under a section heading", entry.Name())
+		}
+		// The prepended "\n" makes a fragment that starts with a
+		// heading split correctly: strings.Split never splits at
+		// offset 0, so without it the first section would land in the
+		// skipped intro chunk and dodge the Migration rule.
+		for i, section := range strings.Split("\n"+fragment, "\n### ") {
+			if i == 0 {
+				continue // intro prose before the first ### heading
+			}
+			heading := "### " + section
+			if !breakingSection.MatchString(heading) {
+				continue
+			}
+			for _, item := range strings.Split(heading, "\n- ")[1:] {
+				if !strings.Contains(item, "Migration:") {
+					summary := strings.SplitN(item, "\n", 2)[0]
+					t.Errorf("changelog.d/%s: breaking entry %q has no Migration: note", entry.Name(), strings.TrimSpace(summary))
+				}
+			}
+		}
+	}
+
 	for _, doc := range []struct{ name, path, needle string }{
 		{"CHANGELOG.md", "CHANGELOG.md", "Pre-1.0 stability posture"},
 		{"README.md", "README.md", "pre-1.0"},

@@ -3,18 +3,28 @@
 ## Change workflow
 
 `main` is protected: every change lands through a feature branch and a
-pull request. CI runs 12 checks — the 3-OS × 2-Go-version test matrix,
-plus perf-gate, lint, ensure-generated, vulncheck, fuzz, and coverage.
+pull request. CI runs 13 checks — the 3-OS × 2-Go-version test matrix,
+plus perf-gate, lint, ensure-generated, vulncheck, fuzz, coverage, and
+the changelog-fragment gate.
 
-Eight of them are *required* to merge: the two ubuntu matrix rows and
-the six single-OS jobs. The macOS and Windows matrix rows run on every
-pull request but are not required status checks, so a failure there
-does not block a merge — treat one as a real failure anyway. Direct
-pushes to `main` are rejected, including for administrators.
+Eight of them are *required* to merge: the two ubuntu matrix rows,
+perf-gate, lint, ensure-generated, vulncheck, fuzz, and the
+changelog-fragment gate. The macOS and Windows matrix rows and the
+coverage job run on every pull request but are not required status
+checks, so a failure there does not block a merge — treat one as a
+real failure anyway. Direct pushes to `main` are rejected, including
+for administrators.
 
 1. Branch from `main` (`feat/...`, `fix/...`, or similar).
 2. Push the branch and open a pull request against `main`.
-3. Merge only when CI is green and any review feedback is addressed.
+3. Add a changelog fragment — a new flat file
+   `changelog.d/$(git branch --show-current | tr / -).md` with your
+   entries (see `changelog.d/README.md`; slashes in branch names become
+   dashes — subdirectories are rejected). Never edit `CHANGELOG.md`
+   itself: it is assembled at release time, and CI rejects hand-written
+   sections. Docs- and workflow-only PRs, which no release ships, need
+   no fragment.
+4. Merge only when CI is green and any review feedback is addressed.
 
 ## Pushing from the dev container
 
@@ -75,7 +85,7 @@ The same job uploads its profile to
 [Codecov](https://codecov.io/gh/go-monolith/ghtmx), which is where the
 badge, the line-by-line report, and a pull request's coverage diff come
 from. Codecov posts its own `codecov/project` and `codecov/patch`
-contexts alongside the twelve checks above; `codecov.yml` marks both
+contexts alongside the thirteen checks above; `codecov.yml` marks both
 informational, so neither can fail or block a merge. The 90% floor is
 the only coverage failure that means anything.
 

@@ -45,6 +45,28 @@ for mod in adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.
   rewrite "$mod"
 done
 
+# Fold this release's changelog fragments into CHANGELOG.md in the SAME
+# commit that stamps .version. This is the only moment the version is a
+# fact rather than a guess, which is exactly why contributors no longer
+# write one: they drop a file in changelog.d/ and two PRs can never
+# collide on it. The script git-rm's the fragments itself, so their
+# deletions are already staged; main keeps its own copies until the
+# fold PR (changelog-fold.sh) merges, and the script's base-delta rule
+# keeps a second release from folding them twice in the meantime.
+bash "$(dirname "${BASH_SOURCE[0]}")/../../scripts/assemble-changelog.sh" "${TAG#v}"
+
+# Refresh the docs site's embedded copies so the tagged tree stays
+# self-consistent (the content-drift gate would flag the stale
+# CHANGELOG.md copy). Guarded by the directory so the synthetic test
+# repositories skip it.
+if [ -d docs/official/internal/sync ]; then
+  (cd docs/official && go run ./internal/sync)
+  git add docs/official/content
+fi
+if [ -f CHANGELOG.md ]; then
+  git add CHANGELOG.md
+fi
+
 git add .version adapters/*/go.mod docs/official/go.mod internal/wasmcheck/fixture/go.mod
 
 # A hand-made prep commit for this same version may already be on main
