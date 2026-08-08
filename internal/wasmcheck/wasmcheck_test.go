@@ -7,11 +7,11 @@
 // offending package — and, for compile errors, the symbol — and fails
 // CI, blocking release.
 //
-// The matrix, including documented exclusions:
+// The matrix, including documented exclusions (excl = upstream):
 //
-//	target        nethttp  chi  echo  gin  fiber
-//	js/wasm       yes      yes  yes   yes  excluded (upstream)
-//	wasip1/wasm   yes      yes  yes   yes  excluded (upstream)
+//	target       nethttp  chi  echo  gin  martini  fiber  fiberv3  beego  iris  revel
+//	js/wasm      yes      yes  yes   yes  yes      excl   yes      excl   excl  excl
+//	wasip1/wasm  yes      yes  yes   yes  yes      excl   excl     yes    excl  excl
 //
 // Exclusions are recorded in adapterMatrix below with their upstream
 // reason, and the record is self-honest: the excluded build is
@@ -33,6 +33,13 @@ var wasmTargets = []struct{ goos, goarch string }{
 	{"wasip1", "wasm"},
 }
 
+// exclusion documents why an adapter cannot compile for a WASM target.
+// The marker is a distinctive substring of the documented build error:
+// the matrix test requires the failing build's output to contain it, so
+// a transient toolchain or download error cannot masquerade as the
+// exclusion and hide a real upstream transition.
+type exclusion struct{ reason, marker string }
+
 // adapterMatrix is the explicit AC record: every first-party adapter is,
 // per WASM target, either in the matrix or excluded with its documented
 // upstream reason. Exclusions are per-GOOS because upstreams gain
@@ -44,25 +51,49 @@ var adapterMatrix = []struct {
 	// exclusions maps a WASM GOOS to the documented upstream reason the
 	// adapter cannot compile for it; a missing key means the adapter
 	// must compile for that target.
-	exclusions map[string]string
+	exclusions map[string]exclusion
 }{
 	{name: "nethttp", dir: "adapters/nethttp"},
 	{name: "chi", dir: "adapters/chi"},
 	{name: "echo", dir: "adapters/echo"},
 	{name: "gin", dir: "adapters/gin"},
+	{name: "martini", dir: "adapters/martini"},
 	{
 		name: "fiber",
 		dir:  "adapters/fiber",
-		exclusions: map[string]string{
-			"js":     "fasthttp's tcplisten uses raw socket syscalls the js port lacks (syscall.SOCK_NONBLOCK/SOCK_CLOEXEC)",
-			"wasip1": "fasthttp's tcplisten uses raw socket syscalls the wasip1 port lacks (syscall.ForkLock)",
+		exclusions: map[string]exclusion{
+			"js":     {"fasthttp's tcplisten uses raw socket syscalls the js port lacks (syscall.SOCK_NONBLOCK/SOCK_CLOEXEC)", "tcplisten"},
+			"wasip1": {"fasthttp's tcplisten uses raw socket syscalls the wasip1 port lacks (syscall.ForkLock)", "tcplisten"},
 		},
 	},
 	{
 		name: "fiberv3",
 		dir:  "adapters/fiberv3",
-		exclusions: map[string]string{
-			"wasip1": "fiber v3's fasthttp (>=1.72) vendors tcplisten with build tags that exclude wasip1, so the build fails with 'build constraints exclude all Go files in .../tcplisten'; its js port compiles",
+		exclusions: map[string]exclusion{
+			"wasip1": {"fiber v3's fasthttp (>=1.72) vendors tcplisten with build tags that exclude wasip1, so the build fails with 'build constraints exclude all Go files in .../tcplisten'; its js port compiles", "tcplisten"},
+		},
+	},
+	{
+		name: "beego",
+		dir:  "adapters/beego",
+		exclusions: map[string]exclusion{
+			"js": {"beego's own packages use syscalls the js port lacks: core/utils secure-open needs syscall.O_NOFOLLOW and server/web/grace needs syscall.SIGHUP; its wasip1 build compiles", "O_NOFOLLOW"},
+		},
+	},
+	{
+		name: "iris",
+		dir:  "adapters/iris",
+		exclusions: map[string]exclusion{
+			"js":     {"iris's terminal-detection dependency kataras/pio calls terminal.IsTerminal, undefined on the js port", "terminal.IsTerminal"},
+			"wasip1": {"iris's terminal-detection dependency kataras/pio calls terminal.IsTerminal, undefined on the wasip1 port (sirupsen/logrus fails the same way)", "terminal.IsTerminal"},
+		},
+	},
+	{
+		name: "revel",
+		dir:  "adapters/revel",
+		exclusions: map[string]exclusion{
+			"js":     {"revel's logger dependency revel/log15 calls term.IsTty, undefined on the js port", "term.IsTty"},
+			"wasip1": {"revel's logger dependency revel/log15 calls term.IsTty, undefined on the wasip1 port", "term.IsTty"},
 		},
 	},
 }
@@ -119,8 +150,8 @@ func TestAdapterWASMMatrix(t *testing.T) {
 		for _, target := range wasmTargets {
 			t.Run(adapter.name+"-"+target.goos, func(t *testing.T) {
 				out, err := wasmBuild(t, filepath.Join(root, adapter.dir), target.goos, target.goarch, false)
-				reason := adapter.exclusions[target.goos]
-				if reason == "" {
+				excl, excluded := adapter.exclusions[target.goos]
+				if !excluded {
 					if err != nil {
 						t.Errorf("the %s adapter no longer compiles for %s/%s:\n%s", adapter.name, target.goos, target.goarch, out)
 					}
@@ -128,15 +159,19 @@ func TestAdapterWASMMatrix(t *testing.T) {
 				}
 				if err == nil {
 					t.Errorf("the %s adapter now compiles for %s/%s — upstream gained WASM support; move it into the matrix and drop the exclusion (was: %s)",
-						adapter.name, target.goos, target.goarch, reason)
+						adapter.name, target.goos, target.goarch, excl.reason)
 					return
 				}
 				// The failure must be the DOCUMENTED one: a transient
 				// toolchain or download error would otherwise masquerade
-				// as the exclusion and hide a real transition.
-				if !strings.Contains(out, "tcplisten") {
+				// as the exclusion and hide a real transition. An empty
+				// marker would match any output, so it is a record error.
+				if excl.marker == "" {
+					t.Fatalf("the %s exclusion for %s has no failure marker — the record cannot be verified", adapter.name, target.goos)
+				}
+				if !strings.Contains(out, excl.marker) {
 					t.Errorf("the %s exclusion failed for a different reason than documented (%s); investigate and refresh the record:\n%s",
-						adapter.name, reason, out)
+						adapter.name, excl.reason, out)
 				}
 			})
 		}
