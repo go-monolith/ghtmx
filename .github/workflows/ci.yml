@@ -246,6 +246,27 @@ jobs:
       - name: Own-code coverage floor
         run: GHTMX_COVERAGE_GATE=1 go test ./internal/covergate/ -count=1 -v
 
+  # The mandatory-changelog rule, enforced rather than remembered: a PR
+  # changing code a release will ship must add a changelog.d/ fragment,
+  # and hand-written CHANGELOG.md sections are rejected. Only PRs: a
+  # push to main is a merge whose fragment already landed.
+  changelog-fragment:
+    name: Changelog fragment present
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge-base comparison needs both branches' history, and
+          # the section check needs the released tags.
+          fetch-depth: 0
+          fetch-tags: true
+      - name: A releasing change needs an entry in changelog.d/
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: .github/scripts/changelog-gate.sh
+
   fuzz:
     # Bounded fuzz budget on every build (NFR-006); longer campaigns run
     # on demand via internal/parser/fuzz.sh and goexpression/fuzz.sh.

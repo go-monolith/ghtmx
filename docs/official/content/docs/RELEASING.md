@@ -8,11 +8,14 @@ binaries: the workflow **verifies** the version, it never stamps it.
 ## Automated patch releases
 
 Every merge to `main` cuts the next patch release. `auto-release.yml`
-performs steps 1 and 2 of the manual procedure below — everything except
-the `CHANGELOG.md` edit — then calls the Release workflow, so the same
-gates run either way. Automated releases take their notes from GitHub's
-generated changelog; `CHANGELOG.md` stays a hand-curated record, and
-`[Unreleased]` accumulates until someone moves it.
+performs steps 1 and 2 of the manual procedure below, then calls the
+Release workflow, so the same gates run either way. The prep commit
+also assembles the changelog: `scripts/assemble-changelog.sh` folds the
+`changelog.d/` fragments (one per PR — see `changelog.d/README.md`)
+into `CHANGELOG.md` under the version being released and refreshes the
+docs site's embedded copies, so the tagged tree carries its own
+release notes. GitHub's generated notes (the PR-title list) still
+accompany the release; `CHANGELOG.md` is for what a title cannot carry.
 
 **The tag is created after the gates pass, never before.** The prep
 commit is parked on a scratch branch, `release.yml` gates that commit,
@@ -56,6 +59,27 @@ always requires the matching `ghtmx vX.Y.Z`. Adapter requires on `main`
 still lag the latest tag; that only affects `go get .../adapters/...@main`,
 never a released version.
 
+## The changelog fold PR
+
+The prep commit that assembled `CHANGELOG.md` lives off `main`, and
+`main` is branch-protected — CI cannot write to it. So after a
+successful release the workflow rebuilds the same fold on top of
+`main`'s tip (CHANGELOG.md as the tag shipped it, the folded fragments
+deleted, docs copies re-synced) and opens a `changelog/vX.Y.Z` pull
+request.
+
+- **Merge it when convenient.** It is markdown- and docs-only, so
+  merging never cuts a release; it does redeploy the docs site, whose
+  `/docs/changelog` page renders `main`'s copy.
+- **Its checks do not start on their own**: the PR is opened by the
+  workflow token, and GitHub starts no CI runs for events that token
+  causes. Close and reopen the PR (or push any commit to its branch) to
+  start the required checks, then merge when green.
+- **Leaving it open is safe.** A later release restores any
+  released-but-unfolded section from its tag, and each fold PR carries
+  every section `main` is missing — the newest one supersedes and
+  closes the older ones.
+
 ## Manual procedure
 
 Used for the first release, and any release the automation cannot make.
@@ -72,7 +96,11 @@ Used for the first release, and any release the automation cannot make.
      `github.com/go-monolith/ghtmx/adapters/chi` — to the tag. They are
      gated exactly like the adapters, and they fail to build otherwise.
      Both stay internal and are never tagged themselves.
-   - Update `CHANGELOG.md` for the release.
+   - Run `bash scripts/assemble-changelog.sh X.Y.Z` (no `v` prefix),
+     which folds the `changelog.d/` fragments into `CHANGELOG.md` under
+     that version and restores any released-but-unfolded sections from
+     their tags. Then refresh the embedded docs copies:
+     `cd docs/official && go run ./internal/sync`.
 2. **Tag and push.** Tag that commit `v1.2.3` and push the tag. The
    Release workflow then:
    - verifies `.version` and the adapter requires match the tag,
