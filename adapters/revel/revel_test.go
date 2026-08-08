@@ -242,6 +242,42 @@ func TestControllerConventionsHonored(t *testing.T) {
 	})
 }
 
+// emptyFragment renders nothing in both modes.
+type emptyFragment struct{}
+
+func (emptyFragment) Render(ctx context.Context, w io.Writer) error         { return nil }
+func (emptyFragment) RenderFragment(ctx context.Context, w io.Writer) error { return nil }
+
+// TestZeroByteRenderCommitsHeaders: a fragment that writes no byte — the
+// htmx delete-row idiom, where the response carries only HX-* headers —
+// still commits its staged headers, the Content-Type default, and the
+// implicit 200, exactly as net/http does when a handler returns without
+// writing.
+func TestZeroByteRenderCommitsHeaders(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	c := newController(recorder, itemsRequest(http.MethodPost, true))
+
+	result := reveladapter.Result(c, emptyFragment{}, reveladapter.Retarget("#items"))
+	result.Apply(c.Request, c.Response)
+
+	resp := recorder.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want the implicit 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("HX-Retarget"); got != "#items" {
+		t.Errorf("HX-Retarget = %q, want #items", got)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q, want the text/html default", got)
+	}
+	if c.Response.Status != http.StatusOK {
+		t.Errorf("c.Response.Status = %d, want 200 written back for revel's request log", c.Response.Status)
+	}
+	if recorder.Body.Len() != 0 {
+		t.Errorf("body = %q, want empty", recorder.Body.String())
+	}
+}
+
 // failingFragment returns its error from both render paths without
 // writing a byte.
 type failingFragment struct{ err error }

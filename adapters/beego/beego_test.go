@@ -102,7 +102,10 @@ func TestFixtureServes(t *testing.T) {
 // Content-Type default still applies through it, the Status option
 // lands after those headers, and a status the handler already
 // committed wins over the option — beego's wrapper drops the second
-// WriteHeader silently.
+// WriteHeader silently. A pending ctx.Output.SetStatus is the reverse
+// case: the router flushes it only after the handler returns, too late
+// to beat Render's commit, so it is lost — the package doc tells
+// handlers to use the Status option instead.
 func TestWrappedWriterPassThrough(t *testing.T) {
 	router := web.NewControllerRegister()
 	router.Get("/decorated", func(ctx *beegocontext.Context) {
@@ -122,6 +125,13 @@ func TestWrappedWriterPassThrough(t *testing.T) {
 			beegoadapter.Status(http.StatusCreated))
 		if err != nil {
 			t.Errorf("render /committed: %v", err)
+		}
+	})
+	router.Get("/late-output-status", func(ctx *beegocontext.Context) {
+		ctx.Output.SetStatus(http.StatusTeapot)
+		err := beegoadapter.Render(ctx, beegoadapter.WithPage(fixture.ItemsPage(), fixture.ItemRow()))
+		if err != nil {
+			t.Errorf("render /late-output-status: %v", err)
 		}
 	})
 	srv := httptest.NewServer(router)
@@ -164,6 +174,15 @@ func TestWrappedWriterPassThrough(t *testing.T) {
 	}
 	if want := `<html><body><ul id="items"><li>alpha</li></ul></body></html>`; string(body) != want {
 		t.Errorf("body after committed status = %q, want %q", body, want)
+	}
+
+	resp, err = srv.Client().Get(srv.URL + "/late-output-status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200: the router flushes a pending ctx.Output.SetStatus only after the handler returns, too late to beat Render's commit", resp.StatusCode)
 	}
 }
 

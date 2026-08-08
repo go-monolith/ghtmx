@@ -31,7 +31,10 @@
 //   - A Content-Type the controller assigned to c.Response.ContentType
 //     counts as a pre-set header: it blocks the adapter's text/html
 //     default, mirroring the WriteHeader convention of revel's built-in
-//     results.
+//     results. One already set on the server headers outranks it —
+//     the precedence is pre-set server header, then resp.ContentType,
+//     then the text/html default — where the built-in results would
+//     let resp.ContentType overwrite the server header.
 //   - The render streams through revel's response writer: on a
 //     mid-render error the client sees the truncated body — revel
 //     replaces the response only when an action panics, not when a
@@ -126,7 +129,16 @@ func Result(c *revelfw.Controller, f ghtmx.Fragment, opts ...Option) revelfw.Res
 // filter, an interceptor, or a custom Result — and it returns the
 // runtime's error unchanged.
 func Render(req *revelfw.Request, resp *revelfw.Response, f ghtmx.Fragment, opts ...Option) error {
-	return nethttp.Render(newResponseWriter(resp), bridgeRequest(req), f, opts...)
+	w := newResponseWriter(resp)
+	err := nethttp.Render(w, bridgeRequest(req), f, opts...)
+	// net/http commits the headers and the implicit 200 when the handler
+	// returns even if it wrote no body byte; revel has no such moment, so
+	// commit here — otherwise a zero-byte render (an empty fragment
+	// carrying only HX-* headers) would drop its staged headers and never
+	// write the status back. flush is a no-op when a body write or
+	// WriteHeader already ran.
+	w.flush()
+	return err
 }
 
 // WithPage pairs a full page with the fragment an htmx request should

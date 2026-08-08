@@ -7,11 +7,11 @@
 // offending package — and, for compile errors, the symbol — and fails
 // CI, blocking release.
 //
-// The matrix, including documented exclusions:
+// The matrix, including documented exclusions (excl = upstream):
 //
-//	target        nethttp  chi  echo  gin  fiber
-//	js/wasm       yes      yes  yes   yes  excluded (upstream)
-//	wasip1/wasm   yes      yes  yes   yes  excluded (upstream)
+//	target       nethttp  chi  echo  gin  martini  fiber  fiberv3  beego  iris  revel
+//	js/wasm      yes      yes  yes   yes  yes      excl   yes      excl   excl  excl
+//	wasip1/wasm  yes      yes  yes   yes  yes      excl   excl     yes    excl  excl
 //
 // Exclusions are recorded in adapterMatrix below with their upstream
 // reason, and the record is self-honest: the excluded build is
@@ -33,11 +33,6 @@ var wasmTargets = []struct{ goos, goarch string }{
 	{"wasip1", "wasm"},
 }
 
-// adapterMatrix is the explicit AC record: every first-party adapter is,
-// per WASM target, either in the matrix or excluded with its documented
-// upstream reason. Exclusions are per-GOOS because upstreams gain
-// support one port at a time — fiber v3's fasthttp compiles for js/wasm
-// while wasip1 still fails.
 // exclusion documents why an adapter cannot compile for a WASM target.
 // The marker is a distinctive substring of the documented build error:
 // the matrix test requires the failing build's output to contain it, so
@@ -45,6 +40,11 @@ var wasmTargets = []struct{ goos, goarch string }{
 // exclusion and hide a real upstream transition.
 type exclusion struct{ reason, marker string }
 
+// adapterMatrix is the explicit AC record: every first-party adapter is,
+// per WASM target, either in the matrix or excluded with its documented
+// upstream reason. Exclusions are per-GOOS because upstreams gain
+// support one port at a time — fiber v3's fasthttp compiles for js/wasm
+// while wasip1 still fails.
 var adapterMatrix = []struct {
 	name string
 	dir  string
@@ -164,7 +164,11 @@ func TestAdapterWASMMatrix(t *testing.T) {
 				}
 				// The failure must be the DOCUMENTED one: a transient
 				// toolchain or download error would otherwise masquerade
-				// as the exclusion and hide a real transition.
+				// as the exclusion and hide a real transition. An empty
+				// marker would match any output, so it is a record error.
+				if excl.marker == "" {
+					t.Fatalf("the %s exclusion for %s has no failure marker — the record cannot be verified", adapter.name, target.goos)
+				}
 				if !strings.Contains(out, excl.marker) {
 					t.Errorf("the %s exclusion failed for a different reason than documented (%s); investigate and refresh the record:\n%s",
 						adapter.name, excl.reason, out)
