@@ -3,9 +3,9 @@
 - Never push directly to `main` — it is branch-protected, admins
   included. CI runs 13 checks; 8 are required to merge (the two ubuntu
   matrix rows, perf-gate, lint, ensure-generated, vulncheck, fuzz, and
-  the changelog-fragment gate). The macOS and Windows matrix rows run
-  but are not required status checks. Make changes on a feature
-  branch and open a pull request.
+  the changelog-fragment gate). The macOS and Windows matrix rows and
+  the coverage job run but are not required status checks. Make changes
+  on a feature branch and open a pull request.
 - Merge only when the PR's CI checks are green.
 - Every PR that changes code a release will ship MUST add a changelog
   fragment: a new flat file `changelog.d/<branch-name>.md` — flatten

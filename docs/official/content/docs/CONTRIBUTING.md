@@ -9,10 +9,11 @@ the changelog-fragment gate.
 
 Eight of them are *required* to merge: the two ubuntu matrix rows,
 perf-gate, lint, ensure-generated, vulncheck, fuzz, and the
-changelog-fragment gate. The macOS and Windows matrix rows run on every
-pull request but are not required status checks, so a failure there
-does not block a merge — treat one as a real failure anyway. Direct
-pushes to `main` are rejected, including for administrators.
+changelog-fragment gate. The macOS and Windows matrix rows and the
+coverage job run on every pull request but are not required status
+checks, so a failure there does not block a merge — treat one as a
+real failure anyway. Direct pushes to `main` are rejected, including
+for administrators.
 
 1. Branch from `main` (`feat/...`, `fix/...`, or similar).
 2. Push the branch and open a pull request against `main`.

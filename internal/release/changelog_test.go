@@ -438,6 +438,49 @@ func TestChangelogFoldPreservesPreambleEdits(t *testing.T) {
 	}
 }
 
+// TestChangelogFoldSurvivesStackedReleases: two releases staged off
+// the same main with neither fold merged. The newer release's fold
+// carries both sections, and re-running the older release's fold
+// afterwards must find nothing to do — sections are inserted, never
+// the file overwritten, so a stale fold can never delete a newer one.
+func TestChangelogFoldSurvivesStackedReleases(t *testing.T) {
+	dir, _ := foldRepo(t)
+	stageRelease(t, dir, "0.1.2")
+
+	fold := bashScript(t, ".github", "scripts", "changelog-fold.sh")
+	if log, code := runScript(t, dir, fold, nil, "TAG=v0.1.2"); code != 0 {
+		t.Fatalf("fold for the newer release exited %d\n%s", code, log)
+	}
+	changelog := readFile(t, filepath.Join(dir, "CHANGELOG.md"))
+	newer := strings.Index(changelog, "## [0.1.2]")
+	older := strings.Index(changelog, "## [0.1.1]")
+	oldest := strings.Index(changelog, "## [0.1.0]")
+	if newer < 0 || older < 0 || !(newer < older && older < oldest) {
+		t.Fatalf("the newer fold must carry both sections in order:\n%s", changelog)
+	}
+	if !strings.Contains(changelog, "- Feature one") || !strings.Contains(changelog, "- Feature two") {
+		t.Fatalf("both releases' entries must be present:\n%s", changelog)
+	}
+
+	out := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(out, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	log, code := runScript(t, dir, fold, nil, "TAG=v0.1.1", "GITHUB_OUTPUT="+out)
+	if code != 0 {
+		t.Fatalf("re-running the older release's fold exited %d\n%s", code, log)
+	}
+	if !strings.Contains(log, "nothing to fold") {
+		t.Errorf("the stale fold must be a no-op, got:\n%s", log)
+	}
+	if got := readOutput(t, out)["branch"]; got != "" {
+		t.Errorf("branch = %q, want empty for a stale fold", got)
+	}
+	if after := readFile(t, filepath.Join(dir, "CHANGELOG.md")); after != changelog {
+		t.Errorf("a stale fold changed CHANGELOG.md:\n%s", after)
+	}
+}
+
 // TestAssembleDiscardsEmptyFragments: a blank fragment must not
 // publish an empty version section; it is deleted with a warning.
 func TestAssembleDiscardsEmptyFragments(t *testing.T) {
@@ -551,11 +594,26 @@ func TestChangelogGate(t *testing.T) {
 		name: "a manual release-prep PR assembling its own section passes",
 		history: func(t *testing.T, dir string) {
 			commit(t, dir, ".version", "0.2.0", "#2 bump")
+			commit(t, dir, "adapters/chi/go.mod", "require github.com/go-monolith/ghtmx v0.2.0\n", "#2 stamp")
+			commit(t, dir, "internal/wasmcheck/fixture/go.mod", "require github.com/go-monolith/ghtmx v0.2.0\n", "#2 stamp")
 			commit(t, dir, "CHANGELOG.md",
 				"# Changelog\n\n## [0.2.0] - 2026-08-08\n\n### Added\n\n- Minor release work\n\n## [0.1.0] - 2026-01-01\n\n### Added\n\n- First release\n",
 				"#3 assemble")
 		},
 		pass: true, message: "manual release-prep PR assembles its own",
+	}, {
+		// A forged .version plus a hand-written section must not exempt
+		// unrelated code from the fragment rule — the release-prep
+		// exemption is earned by the pure stamp shape only.
+		name: "a manual-prep shape smuggling extra code fails",
+		history: func(t *testing.T, dir string) {
+			commit(t, dir, ".version", "9.9.9", "#2 forged bump")
+			commit(t, dir, "CHANGELOG.md",
+				"# Changelog\n\n## [9.9.9] - 2026-08-08\n\n### Added\n\n- Forged\n\n## [0.1.0] - 2026-01-01\n\n### Added\n\n- First release\n",
+				"#3 forged section")
+			commit(t, dir, "main.go", "package p // smuggled\n", "#4 smuggled code")
+		},
+		pass: false, message: "beyond the version stamps",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()

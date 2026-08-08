@@ -16,6 +16,13 @@ set -euo pipefail
 
 CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
 
+# Changes a release would skip need no entry. The filter mirrors the
+# shipping decision in release-plan.sh — keep the two in lockstep.
+NEEDS=$(printf '%s\n' "${CHANGED}" \
+  | grep -vE '(^|/)[^/]*\.md$' \
+  | grep -vE '^docs/' \
+  | grep -vE '^\.github/' || true)
+
 # A PR may legitimately add a '## [x.y.z]' section to CHANGELOG.md in
 # exactly two shapes:
 #   - a fold PR (changelog/v* branches, or the same fold made by hand),
@@ -54,18 +61,29 @@ if [ -n "${SECTIONS}" ]; then
     exit 1
   done
   if [ "${MANUAL_PREP}" -eq 1 ]; then
+    # The exemption exists because assembly deletes the PR's own
+    # fragments (net-zero ADDED below), and it is earned only by the
+    # release-prep shape itself: the releasable changes must be exactly
+    # the files release-stage.sh stamps. Without this, a hand-written
+    # .version plus a hand-written section would exempt arbitrary code
+    # from the fragment rule — the exact abuse this gate exists to
+    # prevent. (docs/official/go.mod is already excluded as docs/, but
+    # is listed for robustness against filter changes.)
+    EXTRA=$(printf '%s\n' "${NEEDS}" \
+      | grep -vE '^(\.version|adapters/[^/]+/go\.mod|docs/official/go\.mod|internal/wasmcheck/fixture/go\.mod)$' \
+      | grep -v '^$' || true)
+    if [ -n "${EXTRA}" ]; then
+      echo "::error::CHANGELOG.md stages a '## [${STAGED}]' release-prep section, but the PR also changes code beyond the version stamps:"
+      echo "${EXTRA}"
+      echo "::error::A release-prep PR may only carry .version, the go.mod version stamps, the assembled CHANGELOG.md, fragment deletions, and docs copies (RELEASING.md). Ship other changes in their own PR with a changelog fragment."
+      exit 1
+    fi
     echo "manual release-prep PR assembles its own '## [${STAGED}]' section; fragment not required"
     exit 0
   fi
   echo "CHANGELOG.md sections match released tags; continuing to the fragment check"
 fi
 
-# Changes a release would skip need no entry. The filter mirrors the
-# shipping decision in release-plan.sh — keep the two in lockstep.
-NEEDS=$(printf '%s\n' "${CHANGED}" \
-  | grep -vE '(^|/)[^/]*\.md$' \
-  | grep -vE '^docs/' \
-  | grep -vE '^\.github/' || true)
 if [ -z "${NEEDS}" ]; then
   echo "no releasing changes; fragment not required"
   exit 0
