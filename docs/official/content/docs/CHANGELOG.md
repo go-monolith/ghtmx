@@ -18,6 +18,21 @@ in a Changed, Removed, or Breaking section must carry a `Migration:` note
 build otherwise — for the fragments in `changelog.d/` too. Releases follow
 `RELEASING.md`.
 
+## [0.1.19] - 2026-08-09
+
+### Added
+
+- Four more first-party render adapters — `adapters/beego` (Beego v2),
+  `adapters/iris` (Iris v12), `adapters/revel` (Revel), and
+  `adapters/martini` (Martini) — extending FR-035 automatic render-mode
+  selection to every framework in common circulation alongside the
+  existing chi, echo, gin, and fiber adapters. Each is a nested module
+  released in lockstep as `adapters/<name>/vX.Y.Z` and delegates to
+  `adapters/nethttp`, so mode selection, status, and header behavior
+  are identical by construction. Revel's adapter is `Result`-based to
+  match that framework's controller idiom; Martini is archived upstream
+  and its adapter pins the framework's last published revision.
+
 ## [0.1.18] - 2026-08-08
 
 The entries below accumulated in this file's former `[Unreleased]`
