@@ -17,6 +17,17 @@
   CI rejects hand-written sections. `Changed`/`Removed` entries need a
   `Migration:` note. Docs-, markdown-, and workflow-only PRs need no
   fragment.
+- After each release the automation folds the shipped fragments into
+  `CHANGELOG.md` and pushes the result to a `changelog/<tag>` branch,
+  but it cannot open the pull request itself: the repo setting "Allow
+  GitHub Actions to create and approve pull requests" is off (enabling
+  it needs admin rights). Open the PR by hand —
+  `gh pr create --base main --head changelog/<tag>` — and merge it when
+  green; it is markdown- and docs-only and cuts no release. Opening it
+  from your own account starts CI normally (a bot-opened PR would need
+  a close/reopen to start checks). Until that PR merges, main's
+  `CHANGELOG.md` stays at the previous version — expected lag, not a
+  bug: every tag already carries its own assembled changelog.
 - Pushing needs HTTPS with the gh credential helper — this container
   has no SSH key. If pushes fail over SSH:
   `git remote set-url origin https://github.com/go-monolith/ghtmx.git && gh auth setup-git`

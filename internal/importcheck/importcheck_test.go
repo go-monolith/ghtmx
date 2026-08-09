@@ -30,13 +30,19 @@ var runtimeClosure = map[string]bool{
 }
 
 // frameworkPrefixes are the module paths of the supported frameworks
-// (and fiber's engine). They may be imported only under adapters/.
+// (and their engines: fiber's fasthttp, martini's inject). They may be
+// imported only under adapters/.
 var frameworkPrefixes = []string{
 	"github.com/go-chi/",
 	"github.com/labstack/echo",
 	"github.com/gin-gonic/",
 	"github.com/gofiber/",
 	"github.com/valyala/fasthttp",
+	"github.com/beego/",
+	"github.com/kataras/",
+	"github.com/revel/",
+	"github.com/go-martini/",
+	"github.com/codegangsta/inject",
 }
 
 // TestRuntimeTransitiveImportsAreStdlibOnly: NFR-012 — an application

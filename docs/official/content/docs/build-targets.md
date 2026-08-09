@@ -42,15 +42,20 @@ a WASM target is caught at the point of introduction.
   hosts have no listening sockets), and `wasip1` socket support
   depends on the WASI host. Rendering to any `io.Writer` works
   everywhere.
-- **Adapter matrix.** `nethttp`, `chi`, `echo`, and `gin` compile for
-  both targets. **`fiber` is excluded** on both: its fasthttp engine
-  uses raw socket syscalls the WASM ports lack
+- **Adapter matrix.** `nethttp`, `chi`, `echo`, `gin`, and `martini`
+  compile for both targets. **`fiber` is excluded** on both: its
+  fasthttp engine uses raw socket syscalls the WASM ports lack
   (`SOCK_NONBLOCK`/`SOCK_CLOEXEC` on js; `ForkLock` on wasip1).
   **`fiberv3` compiles for `js/wasm`** — its newer fasthttp carries the
   needed port — **but stays excluded on `wasip1`**, where fasthttp's
-  tcplisten is excluded by build constraints. The exclusion record is
-  self-honest and per-target — when an upstream gains a port, the
-  matrix test demands the entry be updated.
+  tcplisten is excluded by build constraints. **`beego` compiles for
+  `wasip1/wasm`** but is excluded on `js/wasm`, where its secure-open
+  and graceful-restart code need syscalls the js port lacks
+  (`O_NOFOLLOW`, `SIGHUP`). **`iris` and `revel` are excluded on
+  both**: each pulls a terminal-detection logging dependency
+  (`kataras/pio`, `revel/log15`) that does not compile on the WASM
+  ports. The exclusion record is self-honest and per-target — when an
+  upstream gains a port, the matrix test demands the entry be updated.
 - **Tooling is out of scope.** The `ghtmx` CLI, LSP, and dev server
   target the native platforms above, not WASM.
 

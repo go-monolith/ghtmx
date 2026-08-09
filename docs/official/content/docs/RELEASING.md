@@ -65,16 +65,24 @@ The prep commit that assembled `CHANGELOG.md` lives off `main`, and
 `main` is branch-protected — CI cannot write to it. So after a
 successful release the workflow rebuilds the same fold on top of
 `main`'s tip (CHANGELOG.md as the tag shipped it, the folded fragments
-deleted, docs copies re-synced) and opens a `changelog/vX.Y.Z` pull
-request.
+deleted, docs copies re-synced), pushes it to a `changelog/vX.Y.Z`
+branch, and opens a pull request from it.
 
+- **Today the PR must be opened by hand.** The repository setting
+  "Allow GitHub Actions to create and approve pull requests" is off
+  (enabling it needs admin rights), so the workflow can only push the
+  branch — it logs the compare URL as a warning and exits green. Run
+  `gh pr create --base main --head changelog/vX.Y.Z` yourself. A PR
+  opened from your own account starts CI normally. Until the fold PR
+  merges, `main`'s CHANGELOG.md stays at the previous release — the tag
+  itself always carries the assembled changelog.
 - **Merge it when convenient.** It is markdown- and docs-only, so
   merging never cuts a release; it does redeploy the docs site, whose
   `/docs/changelog` page renders `main`'s copy.
-- **Its checks do not start on their own**: the PR is opened by the
-  workflow token, and GitHub starts no CI runs for events that token
-  causes. Close and reopen the PR (or push any commit to its branch) to
-  start the required checks, then merge when green.
+- **If the setting is ever enabled, bot-opened PR checks do not start
+  on their own**: GitHub starts no CI runs for events the workflow
+  token causes. Close and reopen the PR (or push any commit to its
+  branch) to start the required checks, then merge when green.
 - **Leaving it open is safe.** A later release restores any
   released-but-unfolded section from its tag, and each fold PR carries
   every section `main` is missing — the newest one supersedes and

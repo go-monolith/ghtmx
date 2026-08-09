@@ -48,6 +48,10 @@ func TestOptionParityAcrossAdapters(t *testing.T) {
 		"gin":     filepath.Join("..", "gin", "gin.go"),
 		"fiber":   filepath.Join("..", "fiber", "fiber.go"),
 		"fiberv3": filepath.Join("..", "fiberv3", "fiberv3.go"),
+		"beego":   filepath.Join("..", "beego", "beego.go"),
+		"iris":    filepath.Join("..", "iris", "iris.go"),
+		"revel":   filepath.Join("..", "revel", "revel.go"),
+		"martini": filepath.Join("..", "martini", "martini.go"),
 	}
 	for name, path := range adapters {
 		t.Run(name, func(t *testing.T) {

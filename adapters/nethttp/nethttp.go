@@ -55,8 +55,9 @@ type config struct {
 
 // Option configures one Render call.
 //
-// When adding an option constructor, mirror it in adapters/{chi,echo,gin,fiber}
-// — the chi module's parity test enforces that their sets stay complete.
+// When adding an option constructor, mirror it in every framework
+// adapter under adapters/ — the chi module's parity test enforces that
+// their sets stay complete.
 type Option func(*config)
 
 // Mode overrides the automatic render-mode selection. It changes only
