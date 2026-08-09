@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/beego/beego/v2 v2.3.10
-	github.com/go-monolith/ghtmx v0.1.18
+	github.com/go-monolith/ghtmx v0.1.19
 )
 
 require (
