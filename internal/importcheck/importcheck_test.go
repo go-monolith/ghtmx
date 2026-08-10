@@ -27,6 +27,7 @@ var runtimeClosure = map[string]bool{
 	"github.com/go-monolith/ghtmx/runtime":           true,
 	"github.com/go-monolith/ghtmx/internal/safehtml": true,
 	"github.com/go-monolith/ghtmx/adapters/nethttp":  true,
+	"github.com/go-monolith/ghtmx/auth":              true,
 }
 
 // frameworkPrefixes are the module paths of the supported frameworks
@@ -61,6 +62,10 @@ func TestRuntimeTransitiveImportsAreStdlibOnly(t *testing.T) {
 	}
 	roots := append([]string{}, generator.RuntimeImports...)
 	roots = append(roots, "github.com/go-monolith/ghtmx/adapters/nethttp")
+	// The auth package is app-importable like the nethttp adapter, and
+	// its net/http middleware ships in the core module — it must stay
+	// stdlib-only forever.
+	roots = append(roots, "github.com/go-monolith/ghtmx/auth")
 
 	args := append([]string{"list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}"}, roots...)
 	cmd := exec.Command("go", args...)

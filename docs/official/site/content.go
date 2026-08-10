@@ -37,6 +37,7 @@ var Docs = []Doc{
 	{Slug: "syntax", Title: "Syntax and usage", File: "SYNTAX.md"},
 	{Slug: "diagnostics", Title: "Diagnostics", File: "DIAGNOSTICS.md"},
 	{Slug: "config", Title: "Configuration", File: "CONFIG.md"},
+	{Slug: "auth", Title: "Authentication", File: "AUTH.md"},
 	{Slug: "build-targets", Title: "Build targets", File: "build-targets.md"},
 	{Slug: "editors", Title: "Editor support", File: "editors.md"},
 	{Slug: "conformance", Title: "templ conformance", File: "CONFORMANCE.md"},
@@ -180,7 +181,7 @@ func docsBySlug(slugs ...string) []Doc {
 }
 
 var (
-	ReferenceDocs = docsBySlug("diagnostics", "config", "build-targets", "editors")
+	ReferenceDocs = docsBySlug("diagnostics", "config", "auth", "build-targets", "editors")
 	ProjectDocs   = docsBySlug("overview", "conformance", "baseline", "contributing", "releasing", "changelog")
 )
 
