@@ -1,0 +1,279 @@
+# Authentication
+
+ghtmx ships a first-party secure cookie session authentication
+middleware: a framework-agnostic core (`github.com/go-monolith/ghtmx/auth`)
+plus thin glue packages for the framework adapters that have middleware
+systems. The library owns the request-side mechanics — cookie hygiene,
+opaque token handling, CSRF, htmx-aware login redirects — behind one
+small interface the application implements. It does **not** own users,
+passwords, or authorization.
+
+htmx's own security guidance says it plainly: the best way to do
+authentication with htmx is cookies, set with `Secure`, `HttpOnly`, and
+`SameSite`. This package makes those defaults — and the harder parts
+the essays defer to OWASP — correct by construction.
+
+## The one interface you implement
+
+```go
+type Authenticator[ID any] interface {
+	// Authenticate returns the identity behind a session token, or an
+	// error wrapping auth.ErrUnauthorized when the session is unusable
+	// (expired, revoked, unknown).
+	Authenticate(ctx context.Context, token string) (ID, error)
+}
+```
+
+Session storage, lookup, expiry policy, user records, password hashing —
+all behind this interface, all your application's business. The `ID`
+type parameter is whatever identity shape your application uses: a user
+ID, a struct, anything.
+
+`Authenticate` is where real session expiry and revocation are
+enforced. The cookie's TTL only tells a well-behaved browser when to
+drop the cookie; a stolen token must die server-side. When your store
+says a token is dead, return an error wrapping `auth.ErrUnauthorized` —
+the middleware clears the cookie (so the browser stops resending a
+value that can never work) and redirects to login. Any *other* error is
+answered with a plain 500: an auth-store outage must not degrade into
+"please sign in".
+
+## Configuration
+
+```go
+cfg := auth.Config[string]{
+	Authenticator: store,          // required
+	LoginURL:      "/login",       // required
+	CookieName:    "ghtmx_session", // default
+	CookiePath:    "/",             // default
+	SameSite:      auth.SameSiteStrict, // default; SameSiteLax allowed
+	TTL:           30 * 24 * time.Hour, // 0 = browser-session cookie
+	// Insecure: true               // local http dev only
+}
+```
+
+The zero value of every optional field is the safe choice:
+
+- **`HttpOnly` is always on** and not configurable — there is no good
+  reason to turn it off for a session cookie, and an option would
+  invite it.
+- **`Secure` is on unless you set `Insecure: true`** (the field is
+  inverted so that forgetting it means secure). Use `Insecure` only for
+  local http development.
+- **`SameSite` is `Strict` (default) or `Lax` — `None` is
+  unrepresentable.** The choice is UX, not security: the always-on CSRF
+  layer keeps both settings safe. `Strict` is right for portals and
+  dashboards nothing links into. `Lax` is right for an app users arrive
+  at via external links — under `Strict` that first navigation carries
+  no cookie and a signed-in user lands on the login page.
+- **The cookie is always host-only** — no `Domain` attribute is ever
+  set, so the session is never shared with subdomains.
+- **The `__Host-` prefix is applied automatically** when the cookie is
+  site-wide (`CookiePath` `/`) and Secure.
+  `Config.EffectiveCookieName` reports the name on the wire. Setting
+  `CookiePath` to a sub-app path (say `/admin`) keeps the token off the
+  rest of the host's requests, but is mutually exclusive with the
+  `__Host-` prefix, which requires `Path=/` — pick per app.
+
+`Config.Validate` reports anything unusable. The middleware
+constructors call it and panic at startup — a bad Config is a wiring
+bug and must not serve a single request. Call `Validate` yourself first
+if you prefer an error.
+
+## Installing the middleware
+
+Install the session middleware first, then the CSRF middleware. The
+CSRF token is derived from the session and travels in the request
+context; with no session middleware ahead of it, the CSRF layer
+rejects every unsafe request — it fails closed, never open.
+
+### net/http and chi
+
+The core package's middleware is net/http's shape, so
+`adapters/nethttp` servers and chi routers use it directly — there is
+no separate glue package:
+
+```go
+import "github.com/go-monolith/ghtmx/auth"
+
+r := chi.NewRouter() // or any net/http mux
+r.Group(func(r chi.Router) {
+	r.Use(auth.Middleware(cfg), auth.CSRF())
+	r.Get("/private", privateHandler)
+})
+```
+
+In handlers:
+
+```go
+id, ok := auth.IdentityFrom[string](r.Context())
+if !ok {
+	// Middleware not installed ahead of this handler, or the wrong ID
+	// type — a wiring bug either way. Refuse the request and say why
+	// in the log; never treat it as anonymous.
+}
+token, _ := auth.CSRFTokenFrom(r.Context())
+```
+
+### gin, echo, fiber, fiber v3
+
+Each framework has a glue package with the same seven-function surface
+(`New`, `CSRF`, `IdentityFrom`, `SetSessionCookie`,
+`ClearSessionCookie`, `SetLoginCSRFCookie`, `ValidLoginCSRF`), enforced
+by a parity gate:
+
+| Framework | Package |
+| --- | --- |
+| gin | `github.com/go-monolith/ghtmx/adapters/gin/ginauth` |
+| echo | `github.com/go-monolith/ghtmx/adapters/echo/echoauth` |
+| fiber v2 | `github.com/go-monolith/ghtmx/adapters/fiber/fiberauth` |
+| fiber v3 | `github.com/go-monolith/ghtmx/adapters/fiberv3/fiberv3auth` |
+
+```go
+// gin
+priv := r.Group("/", ginauth.New(cfg), ginauth.CSRF())
+
+// echo
+priv := e.Group("", echoauth.New(cfg), echoauth.CSRF())
+
+// fiber v2 / v3
+priv := app.Group("/", fiberauth.New(cfg), fiberauth.CSRF())
+```
+
+The gin and echo glue delegate to the same engine functions the core
+middleware uses. The fiber glue is implemented natively on fasthttp —
+including each fiber major's own correct cookie-deletion serialization,
+which differ — but authentication, token comparison, and cookie
+attribute policy still come from the core, so behavior is identical by
+construction.
+
+## The login flow
+
+The login page is yours; the middleware only needs its URL. A complete
+flow with the core package (the glue packages mirror it):
+
+```go
+// GET /login — render the form with a pre-session CSRF token.
+func loginForm(w http.ResponseWriter, r *http.Request) {
+	formValue, err := auth.SetLoginCSRFCookie(w, cfg)
+	if err != nil { /* 500 */ }
+	// Render your login page with:
+	//   <input type="hidden" name="login_csrf" value={ formValue }>
+}
+
+// POST /login — check the token before the credentials.
+func login(w http.ResponseWriter, r *http.Request) {
+	if !auth.ValidLoginCSRF(r, cfg, r.PostFormValue("login_csrf")) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	// ... verify credentials your way (bcrypt, argon2, LDAP, ...) ...
+	token, storedHash, err := auth.NewSessionToken()
+	if err != nil { /* 500 */ }
+	// Persist storedHash (never the token) with the user and expiry.
+	auth.SetSessionCookie(w, cfg, token)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// POST /logout — inside the middleware chain.
+func logout(w http.ResponseWriter, r *http.Request) {
+	// Delete the session record server-side, then:
+	auth.ClearSessionCookie(w, cfg)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+```
+
+Why the login form needs its own token: **`SameSite` does not protect
+the login form — on either setting.** It governs whether an *existing*
+cookie is sent, not whether an unauthenticated POST is *accepted* — so
+login CSRF (an attacker submitting *their* credentials from the
+victim's browser, after which the victim unknowingly works, and is
+audited, as the attacker) still works without it. The session CSRF
+token can't help either: there is no session yet. The pre-session
+double-submit cookie closes the gap.
+
+Session fixation is impossible by construction: there is no anonymous
+session to upgrade. A token is minted only at successful sign-in
+(`auth.NewSessionToken`), never read from a pre-login cookie and
+promoted.
+
+## Tokens: store the hash
+
+`auth.NewSessionToken` returns a 256-bit random token and its SHA-256
+hex. Only the hash is ever stored server-side, so a database disclosure
+(backup, dump, read-only SQL injection) cannot be replayed as a live
+session; at lookup time, hash the presented token with
+`auth.HashSessionToken` and query by that. Plain SHA-256 is correct
+here — the input is uniform randomness, so a slow KDF would buy nothing
+but per-request latency. (Password hashing is a different problem and
+stays your application's business.)
+
+## CSRF
+
+The CSRF layer is always on, per-session, and needs no storage: the
+token is derived from the session token (domain-separated, so it is
+computable from neither the stored hash nor vice versa) and installed
+in the request context by the session middleware.
+
+Unsafe methods (everything but GET/HEAD/OPTIONS) must carry the token
+in one of two channels:
+
+- **The `X-CSRF-Token` header** (`ghtmx.DefaultCSRFHeaderName`) — the
+  stronger channel: a browser won't attach a custom header cross-origin
+  without a CORS preflight. For htmx elements, the existing
+  `ghtmx.CSRFHeader` helper emits the `hx-headers` attribute; placed on
+  a common ancestor (e.g. `<body>`) it is inherited by every element
+  below it:
+
+  ```html
+  <body hx-headers={ ghtmx.CSRFHeader(token) }>
+  ```
+
+  with `token` read from the request context via `auth.CSRFTokenFrom`.
+
+- **A hidden form field** named `_csrf` (`auth.DefaultCSRFFormField`)
+  for plain HTML form posts:
+
+  ```html
+  <input type="hidden" name="_csrf" value={ token }>
+  ```
+
+The query string is never consulted — tokens must not ride in URLs,
+where they leak into logs and `Referer` headers. Comparison is
+constant-time and rejects empty strings outright
+(`subtle.ConstantTimeCompare("", "")` returns 1; `auth.EqualTokens`
+does not repeat that mistake).
+
+Why keep the token layer when `SameSite` is already set? Because
+`SameSite` protects at the registrable-domain level, not the subdomain
+level: a hostile — or merely XSS'd — sibling subdomain is same-site and
+can still forge requests. The token also keeps the middleware
+fail-closed if the cookie policy is ever loosened.
+
+Note on form parsing: the form fallback uses `Request.PostFormValue`,
+which parses and caches the request body (multipart bodies at the
+stdlib's 32 MB default). A handler that later calls
+`ParseMultipartForm` with its own limit sees the cached parse. Prefer
+the header channel for htmx elements; it reads no body at all.
+
+## Testing your handlers
+
+Handler tests don't need to run the middleware — build the context
+directly:
+
+```go
+ctx := auth.ContextWithIdentity(context.Background(), "user-1")
+ctx = auth.ContextWithCSRFToken(ctx, "test-token")
+req := httptest.NewRequest("GET", "/private", nil).WithContext(ctx)
+```
+
+## What this package deliberately does not do
+
+- User/password storage, password hashing policy, registration,
+  lockout, throttling — application concerns behind `Authenticator`.
+- Roles and authorization — identity is generic; layer your own guards
+  on top of `IdentityFrom`.
+- Login page UI — the middleware only needs `LoginURL`.
+- JWTs / stateless sessions — opaque server-side tokens are the right
+  default for server-rendered apps, and the `token -> identity`
+  interface keeps the library out of the crypto-policy business.

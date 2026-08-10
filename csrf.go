@@ -22,6 +22,11 @@ const DefaultCSRFHeaderName = "X-CSRF-Token"
 // name is used. The name must be a valid HTTP header token and the token
 // value Latin-1-safe (real CSRF tokens are ASCII): the browser rejects
 // anything else when htmx calls setRequestHeader at request time.
+//
+// Token generation and request verification live in the auth package
+// (secure cookie session middleware): its session middleware derives the
+// per-session token handlers read with auth.CSRFTokenFrom, and its CSRF
+// middleware verifies this header on unsafe methods.
 func CSRFHeader(token string, headerName ...string) string {
 	name := DefaultCSRFHeaderName
 	if len(headerName) > 0 && headerName[0] != "" {

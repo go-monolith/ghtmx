@@ -601,7 +601,7 @@ Acceptance criteria:
 
 - A documented helper attaches a token via `hx-headers` or an equivalent mechanism.
 - The mechanism is available for `hx-post`, `hx-put`, `hx-patch`, and `hx-delete`.
-- The token source is supplied by the application; the engine does not generate or validate tokens.
+- The token source is supplied by the application; the template engine's rendering path does not generate or validate tokens. Token generation and verification are provided by the layered `auth` package (secure cookie session middleware), outside the rendering path.
 
 ## Non-Functional Requirements
 

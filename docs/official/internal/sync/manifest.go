@@ -37,6 +37,7 @@ var referenceDocs = []struct {
 	{"SYNTAX.md", "SYNTAX.md"},
 	{"DIAGNOSTICS.md", "DIAGNOSTICS.md"},
 	{"CONFIG.md", "CONFIG.md"},
+	{"AUTH.md", "AUTH.md"},
 	{"CONFORMANCE.md", "CONFORMANCE.md"},
 	{"TEMPL_SYNTAX_BASELINE.md", "TEMPL_SYNTAX_BASELINE.md"},
 	{"CHANGELOG.md", "CHANGELOG.md"},
