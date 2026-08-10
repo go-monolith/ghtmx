@@ -18,6 +18,50 @@ in a Changed, Removed, or Breaking section must carry a `Migration:` note
 build otherwise — for the fragments in `changelog.d/` too. Releases follow
 `RELEASING.md`.
 
+## [0.1.20] - 2026-08-10
+
+### Added
+
+- `auth` package: secure cookie session authentication middleware for
+  server-rendered apps. The application implements one interface —
+  `Authenticate(ctx, token) (ID, error)` — and the library owns the
+  request-side mechanics: opaque 256-bit session tokens with the
+  store-the-hash pattern, always-`HttpOnly` host-only cookies
+  (`Secure` by default, `SameSite` Strict or Lax only, automatic
+  `__Host-` prefix when site-wide), htmx-aware login redirects (303
+  for browser navigations, `HX-Redirect` + 204 for htmx requests),
+  always-on per-session CSRF protection (derived synchronizer tokens,
+  header or hidden-field channel, constant-time compare), and a
+  pre-session double-submit token for the login form itself. The
+  middleware is net/http-shaped, so `adapters/nethttp` servers and chi
+  routers use it directly.
+- Auth glue packages for the framework adapters whose contexts differ:
+  `adapters/gin/ginauth`, `adapters/echo/echoauth`,
+  `adapters/fiber/fiberauth`, and `adapters/fiberv3/fiberv3auth`, each
+  exporting the same seven-function surface (`New`, `CSRF`,
+  `IdentityFrom`, `SetSessionCookie`, `ClearSessionCookie`,
+  `SetLoginCSRFCookie`, `ValidLoginCSRF`), enforced by a parity gate.
+  Each fiber glue owns its major version's correct cookie-deletion
+  serialization (past `Expires` on v2, `Max-Age=0` on v3).
+- `AUTH.md`: the authentication reference — configuration, per-framework
+  quick starts, the login flow, and the security model — also on the
+  docs site under /docs/auth.
+
+## [0.1.19] - 2026-08-09
+
+### Added
+
+- Four more first-party render adapters — `adapters/beego` (Beego v2),
+  `adapters/iris` (Iris v12), `adapters/revel` (Revel), and
+  `adapters/martini` (Martini) — extending FR-035 automatic render-mode
+  selection to every framework in common circulation alongside the
+  existing chi, echo, gin, and fiber adapters. Each is a nested module
+  released in lockstep as `adapters/<name>/vX.Y.Z` and delegates to
+  `adapters/nethttp`, so mode selection, status, and header behavior
+  are identical by construction. Revel's adapter is `Result`-based to
+  match that framework's controller idiom; Martini is archived upstream
+  and its adapter pins the framework's last published revision.
+
 ## [0.1.18] - 2026-08-08
 
 The entries below accumulated in this file's former `[Unreleased]`
