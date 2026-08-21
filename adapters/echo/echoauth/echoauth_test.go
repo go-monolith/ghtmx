@@ -2,6 +2,7 @@ package echoauth_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -231,6 +232,37 @@ func TestAuthFlow(t *testing.T) {
 			t.Errorf("no clearing Set-Cookie in %v", res.Cookies())
 		}
 	})
+}
+
+// TestCSRFOnRejectHook: the core's option type must work through this
+// adapter unchanged, reporting the same request path every other
+// adapter does — not echo's route pattern.
+func TestCSRFOnRejectHook(t *testing.T) {
+	var got []auth.CSRFRejection
+	e := echofw.New()
+	e.POST("/items/:id", func(c echofw.Context) error {
+		return c.String(http.StatusOK, "reached")
+	}, echoauth.CSRF(auth.WithOnReject(
+		func(_ context.Context, rej auth.CSRFRejection) { got = append(got, rej) },
+	)))
+
+	req := httptest.NewRequest(http.MethodPost, "/items/42?"+auth.DefaultCSRFFormField+"=x", nil)
+	res := do(t, e, req)
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("got %d, want 403 — the hook must not change the outcome", res.StatusCode)
+	}
+	if len(got) != 1 {
+		t.Fatalf("hook fired %d times, want exactly 1", len(got))
+	}
+	if got[0].Method != http.MethodPost {
+		t.Errorf("Method = %q, want POST", got[0].Method)
+	}
+	if got[0].Path != "/items/42" {
+		t.Errorf("Path = %q, want /items/42 — the request path, not the route pattern or the query string", got[0].Path)
+	}
+	if !errors.Is(got[0].Err, auth.ErrCSRF) {
+		t.Errorf("Err %v does not wrap ErrCSRF", got[0].Err)
+	}
 }
 
 // TestNewPanicsOnInvalidConfig: a bad Config must fail at wiring time,

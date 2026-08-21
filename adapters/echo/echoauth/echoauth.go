@@ -48,13 +48,19 @@ func New[ID any](cfg auth.Config[ID]) echofw.MiddlewareFunc {
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
-func CSRF() echofw.MiddlewareFunc {
+//
+// The options are the core package's, so one auth.WithOnReject hook
+// works here and behind every other adapter unchanged.
+func CSRF(opts ...auth.CSRFOption) echofw.MiddlewareFunc {
+	o := auth.NewCSRFOptions(opts...)
 	return func(next echofw.HandlerFunc) echofw.HandlerFunc {
 		return func(c echofw.Context) error {
 			if auth.SafeMethod(c.Request().Method) {
 				return next(c)
 			}
 			if err := auth.VerifyCSRF(c.Request()); err != nil {
+				r := c.Request()
+				o.Report(r.Context(), auth.CSRFRejection{Method: r.Method, Path: r.URL.Path, Err: err})
 				return echofw.NewHTTPError(http.StatusForbidden)
 			}
 			return next(c)

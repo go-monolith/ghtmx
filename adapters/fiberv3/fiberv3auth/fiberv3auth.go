@@ -14,8 +14,8 @@
 // surface: fiber.Ctx is an interface rather than *fiber.Ctx, the
 // request-scoped context accessors are Context/SetContext (v2's
 // UserContext/SetUserContext), redirects go through c.Redirect(), and
-// v3 serializes cookies via net/http, so deletion is the standard
-// MaxAge -1 (v2 needs a past Expires). Keep the two files
+// cookie deletion is the plain MaxAge -1 where v2 needs a past Expires
+// — see [ClearSessionCookie] for why the two differ. Keep the two files
 // line-comparable, the way fiberv3.go mirrors fiber.go.
 package fiberv3auth
 
@@ -70,12 +70,23 @@ func New[ID any](cfg auth.Config[ID]) fiberfw.Handler {
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
-func CSRF() fiberfw.Handler {
+//
+// The options are the core package's, so one auth.WithOnReject hook
+// works here and behind every other adapter unchanged.
+func CSRF(opts ...auth.CSRFOption) fiberfw.Handler {
+	o := auth.NewCSRFOptions(opts...)
 	return func(c fiberfw.Ctx) error {
 		if auth.SafeMethod(c.Method()) {
 			return c.Next()
 		}
 		if err := auth.VerifyCSRFToken(c.Context(), submittedCSRF(c)); err != nil {
+			o.Report(c.Context(), auth.CSRFRejection{
+				Method: c.Method(),
+				// Not c.Path(), which is the route pattern: the hook
+				// reports the same request path every other adapter does.
+				Path: string(c.Request().URI().Path()),
+				Err:  err,
+			})
 			return c.SendStatus(fiberfw.StatusForbidden)
 		}
 		return c.Next()
@@ -88,9 +99,19 @@ func CSRF() fiberfw.Handler {
 // uses c.FormValue, whose fasthttp implementation consults the query
 // string first — tokens must not ride in URLs, so only the POST body
 // (urlencoded via PostArgs, multipart via MultipartForm) is read.
+//
+// The body is read only for a form Content-Type, through the same
+// auth.HasFormContentType gate auth.VerifyCSRF applies, so the two
+// extractors share the rule rather than agreeing by coincidence. The
+// gate sits after the header check, not above it: hoisting it would
+// reject every JSON and htmx POST that carries the token in the header,
+// which is the channel this package prefers.
 func submittedCSRF(c fiberfw.Ctx) string {
 	if v := c.Get(ghtmx.DefaultCSRFHeaderName); v != "" {
 		return v
+	}
+	if !auth.HasFormContentType(c.Get(fiberfw.HeaderContentType)) {
+		return ""
 	}
 	if v := c.Request().PostArgs().Peek(auth.DefaultCSRFFormField); len(v) > 0 {
 		return string(v)
@@ -129,10 +150,19 @@ func SetSessionCookie[ID any](c fiberfw.Ctx, cfg auth.Config[ID], token string) 
 }
 
 // ClearSessionCookie deletes the session cookie — sign-out, or a dead
-// session. fiber v3 serializes cookies through net/http, so MaxAge -1
-// becomes Max-Age=0 (RFC 6265 "expire immediately") under the exact
-// name and attributes of the live cookie — no Expires needed, unlike
-// v2.
+// session — under the exact name and attributes of the live cookie.
+// MaxAge -1 is enough here: no Expires, unlike v2.
+//
+// Not because v3 serializes through net/http; it does not. Like v2 it
+// writes the header with fasthttp, and builds an http.Cookie only to
+// run its validation before copying the fields across. What changed is
+// the fasthttp release fiber v3 requires: it emits Max-Age=0 (RFC 6265
+// "expire immediately") for a negative MaxAge, where the older release
+// fiber v2 pins drops a non-positive Max-Age from the header entirely
+// and so leaves the cookie alive without the past-Expires incantation.
+// Module resolution can only move that dependency forward, never below
+// what fiber v3 requires. TestAuthFlow pins the emitted header, so do
+// not "simplify" toward v2's form — or away from it in fiberauth.
 func ClearSessionCookie[ID any](c fiberfw.Ctx, cfg auth.Config[ID]) {
 	c.Cookie(fiberCookie(cfg.SessionClearingCookie()))
 }

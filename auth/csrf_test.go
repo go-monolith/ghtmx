@@ -216,6 +216,93 @@ func TestVerifyCSRFToken(t *testing.T) {
 	}
 }
 
+// TestHasFormContentType pins the gate both the net/http extractor and
+// the fiber glue apply before consulting a request body. It is exported
+// precisely so the two cannot drift, so its rule is tested directly
+// rather than only through a middleware.
+func TestHasFormContentType(t *testing.T) {
+	for ct, want := range map[string]bool{
+		"application/x-www-form-urlencoded":                true,
+		"application/x-www-form-urlencoded; charset=utf-8": true,
+		"Application/X-WWW-Form-URLEncoded":                true,
+		"multipart/form-data":                              true,
+		"multipart/form-data; boundary=abc":                true,
+		"application/json":                                 false,
+		"text/plain":                                       false,
+		"":                                                 false,
+		// fasthttp prefix-matches the urlencoded type, so these are
+		// exactly the shapes where the two paths could have diverged.
+		// The shared gate resolves them the strict way, for both.
+		"application/x-www-form-urlencoded-not-really": false,
+		"application/x-www-form-urlencoded; ;":         false,
+	} {
+		if got := auth.HasFormContentType(ct); got != want {
+			t.Errorf("HasFormContentType(%q) = %v, want %v", ct, got, want)
+		}
+	}
+}
+
+// TestCSRFOnRejectHook: the hook observes rejections without changing
+// them. It must see the method, the request path, and an error wrapping
+// ErrCSRF — and must not fire for a request that passes.
+func TestCSRFOnRejectHook(t *testing.T) {
+	cfg := sessionConfig(auth.ErrUnauthorized)
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	var got []auth.CSRFRejection
+	chain := auth.Middleware(cfg)(auth.CSRF(auth.WithOnReject(
+		func(ctx context.Context, rej auth.CSRFRejection) {
+			// The identity is not on the rejection: it is read from the
+			// same context, which is what makes one hook shape work for
+			// every adapter.
+			if id, okID := auth.IdentityFrom[string](ctx); !okID || id != "user-1" {
+				t.Errorf("IdentityFrom = %q, %v; want the session's identity", id, okID)
+			}
+			got = append(got, rej)
+		},
+	))(ok))
+
+	rec := httptest.NewRecorder()
+	chain.ServeHTTP(rec, sessionRequest(http.MethodPost, "/admin/delete?x=1", nil))
+	if code := rec.Result().StatusCode; code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 — the hook must not change the outcome", code)
+	}
+	if len(got) != 1 {
+		t.Fatalf("hook fired %d times, want exactly 1", len(got))
+	}
+	if got[0].Method != http.MethodPost {
+		t.Errorf("Method = %q, want POST", got[0].Method)
+	}
+	if got[0].Path != "/admin/delete" {
+		t.Errorf("Path = %q, want /admin/delete — the path, never the query string", got[0].Path)
+	}
+	if !errors.Is(got[0].Err, auth.ErrCSRF) {
+		t.Errorf("Err %v does not wrap ErrCSRF", got[0].Err)
+	}
+
+	// A request that passes must leave the hook untouched.
+	_, token := csrfChain(t)
+	pass := sessionRequest(http.MethodPost, "/admin/delete", nil)
+	pass.Header.Set(ghtmx.DefaultCSRFHeaderName, token)
+	chain.ServeHTTP(httptest.NewRecorder(), pass)
+	if len(got) != 1 {
+		t.Errorf("hook fired %d times, want 1 — an accepted request is not a rejection", len(got))
+	}
+}
+
+// TestCSRFWithoutHook: the zero-option call is the documented default
+// and must still answer 403 with nothing installed to observe it.
+func TestCSRFWithoutHook(t *testing.T) {
+	chain, _ := csrfChain(t)
+	rec := httptest.NewRecorder()
+	chain.ServeHTTP(rec, sessionRequest(http.MethodPost, "/x", nil))
+	if got := rec.Result().StatusCode; got != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", got)
+	}
+}
+
 // TestSafeMethod pins the safe-list the glue packages share.
 func TestSafeMethod(t *testing.T) {
 	for method, want := range map[string]bool{
