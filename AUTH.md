@@ -143,9 +143,45 @@ priv := app.Group("/", fiberauth.New(cfg), fiberauth.CSRF())
 The gin and echo glue delegate to the same engine functions the core
 middleware uses. The fiber glue is implemented natively on fasthttp —
 including each fiber major's own correct cookie-deletion serialization,
-which differ — but authentication, token comparison, and cookie
-attribute policy still come from the core, so behavior is identical by
-construction.
+which differ — but authentication, token comparison, cookie attribute
+policy, and the rule deciding when a request body may carry a token
+(`auth.HasFormContentType`) are all shared code, not restatements of
+it. Auditing one adapter therefore tells you about the others.
+
+Cookie deletion is the one place the two fiber majors genuinely diverge,
+and it is worth knowing why, because the surface reason is wrong:
+**neither major serializes cookies through `net/http`.** Both write the
+header with fasthttp. The fasthttp release fiber v3 requires emits
+`Max-Age=0` for a negative `MaxAge`, so `fiberv3auth.ClearSessionCookie`
+is the plain `MaxAge -1`; the older release fiber v2 pins drops a
+non-positive `Max-Age` from the header entirely, which would leave the
+cookie alive, so `fiberauth.ClearSessionCookie` adds the past-`Expires`
+incantation. Each package's tests pin its own emitted header.
+
+### Observing rejections
+
+`CSRF` takes options, and they are observability only — nothing about
+them changes whether a request is accepted. `auth.WithOnReject` runs
+just before the 403, so an application can count probes or debug a
+migration without wrapping the middleware:
+
+```go
+hook := auth.WithOnReject(func(ctx context.Context, rej auth.CSRFRejection) {
+	// The identity, when there is one, comes from the same context —
+	// which is why one hook shape works for every adapter.
+	id, _ := auth.IdentityFrom[string](ctx)
+	log.Warn("csrf rejected", "method", rej.Method, "path", rej.Path, "user", id)
+})
+
+http.Handler(auth.CSRF(hook)(next)) // core
+priv := app.Group("/", fiberv3auth.New(cfg), fiberv3auth.CSRF(hook)) // any adapter
+```
+
+The option type is the core package's, so the same `hook` value moves
+between frameworks unchanged. `rej.Path` is the request path in every
+adapter — never the route pattern, and never the query string, which is
+not a token channel here. The hook runs on the request's goroutine, so
+hand anything expensive to a queue.
 
 ## The login flow
 

@@ -207,9 +207,15 @@ func (c Config[ID]) SessionCookie(token string) *http.Cookie {
 }
 
 // SessionClearingCookie is the Set-Cookie payload that deletes the
-// session cookie: same name and attributes, empty value, MaxAge -1
-// (which net/http serializes as Max-Age=0, RFC 6265 "expire
-// immediately").
+// session cookie: same name and attributes, empty value, MaxAge -1 —
+// net/http's convention for "expire immediately", which it serializes as
+// Max-Age=0 (RFC 6265).
+//
+// MaxAge -1 is a value, not a wire format, and the fiber glue does not
+// hand this cookie to net/http: each fiber major translates it into
+// fasthttp's cookie type and must get the deletion attributes right for
+// its own serializer. See fiberauth.ClearSessionCookie and
+// fiberv3auth.ClearSessionCookie, which differ for that reason.
 func (c Config[ID]) SessionClearingCookie() *http.Cookie {
 	ck := c.baseCookie(c.EffectiveCookieName(), "")
 	ck.MaxAge = -1

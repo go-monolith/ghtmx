@@ -44,12 +44,18 @@ func New[ID any](cfg auth.Config[ID]) ginfw.HandlerFunc {
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
-func CSRF() ginfw.HandlerFunc {
+//
+// The options are the core package's, so one auth.WithOnReject hook
+// works here and behind every other adapter unchanged.
+func CSRF(opts ...auth.CSRFOption) ginfw.HandlerFunc {
+	o := auth.NewCSRFOptions(opts...)
 	return func(c *ginfw.Context) {
 		if auth.SafeMethod(c.Request.Method) {
 			return
 		}
 		if err := auth.VerifyCSRF(c.Request); err != nil {
+			r := c.Request
+			o.Report(r.Context(), auth.CSRFRejection{Method: r.Method, Path: r.URL.Path, Err: err})
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

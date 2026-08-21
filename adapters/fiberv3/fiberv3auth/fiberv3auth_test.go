@@ -3,6 +3,7 @@ package fiberv3auth_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -100,8 +101,10 @@ func body(t *testing.T, res *http.Response) string {
 }
 
 // clearedSession reports whether the response deletes the session
-// cookie the way fiber v3 must: v3 serializes via net/http, so MaxAge
-// -1 goes out as Max-Age=0 and parses back as MaxAge -1.
+// cookie the way fiber v3 must: the fasthttp release v3 requires writes
+// a negative MaxAge as Max-Age=0, which net/http parses back as MaxAge
+// -1. (v3 does not serialize through net/http — see
+// fiberv3auth.ClearSessionCookie.)
 func clearedSession(res *http.Response, name string) bool {
 	for _, ck := range res.Cookies() {
 		if ck.Name == name && ck.Value == "" && ck.MaxAge == -1 {
@@ -251,6 +254,32 @@ func TestAuthFlow(t *testing.T) {
 		}
 	})
 
+	t.Run("form token under a non-form content type is rejected", func(t *testing.T) {
+		// The gate auth.VerifyCSRF applies, applied here too: a body is
+		// only a form when the Content-Type says so. fasthttp would not
+		// have populated PostArgs for this request anyway — the point is
+		// that the two extractors now share the rule instead of
+		// agreeing by coincidence.
+		form := url.Values{auth.DefaultCSRFFormField: {csrfToken}}
+		req := withSession(http.MethodPost, "/private", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/json")
+		res := do(t, app, req)
+		if res.StatusCode != http.StatusForbidden {
+			t.Fatalf("got %d, want 403 — the body is only a token channel for form content types", res.StatusCode)
+		}
+	})
+
+	t.Run("charset on the form content type still passes", func(t *testing.T) {
+		// The common shape the shared gate must not break.
+		form := url.Values{auth.DefaultCSRFFormField: {csrfToken}}
+		req := withSession(http.MethodPost, "/private", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+		res := do(t, app, req)
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("got %d, want 200", res.StatusCode)
+		}
+	})
+
 	t.Run("sign-out clears the session cookie via Max-Age=0", func(t *testing.T) {
 		req := withSession(http.MethodPost, "/logout", nil)
 		req.Header.Set("X-CSRF-Token", csrfToken)
@@ -262,8 +291,12 @@ func TestAuthFlow(t *testing.T) {
 			t.Errorf("no clearing Set-Cookie in %v", res.Header.Values("Set-Cookie"))
 		}
 		// The v3 serialization pin: MaxAge -1 must go out as Max-Age=0
-		// (RFC 6265 "expire immediately") with no Expires — the issue's
-		// documented fiber trivia, owned here so users never write it.
+		// (RFC 6265 "expire immediately") with no Expires, where the
+		// same value under fiber v2's older fasthttp would vanish from
+		// the header — the fiber trivia this package owns so users
+		// never have to. Both halves matter: drop the max-age check and
+		// a regression leaves the session alive; drop the expires check
+		// and the two majors quietly converge on v2's workaround.
 		for _, raw := range res.Header.Values("Set-Cookie") {
 			if !strings.HasPrefix(raw, cfg.EffectiveCookieName()+"=") {
 				continue
@@ -304,6 +337,44 @@ func TestCSRFFailsClosedWithoutSessionMiddleware(t *testing.T) {
 	res := do(t, app, req)
 	if res.StatusCode != http.StatusForbidden {
 		t.Errorf("got %d, want 403", res.StatusCode)
+	}
+}
+
+// TestCSRFOnRejectHook: the core's option type must work through this
+// adapter unchanged, reporting the same request path the net/http
+// middleware would — not fiber's route pattern, which is what c.Path()
+// returns and what a native implementation would reach for first.
+func TestCSRFOnRejectHook(t *testing.T) {
+	var got []auth.CSRFRejection
+	app := fiberfw.New()
+	app.Post("/items/:id", fiberv3auth.CSRF(auth.WithOnReject(
+		func(_ context.Context, rej auth.CSRFRejection) { got = append(got, rej) },
+	)), func(c fiberfw.Ctx) error {
+		return c.SendString("reached")
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/items/42?"+auth.DefaultCSRFFormField+"=x", nil)
+	res := do(t, app, req)
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("got %d, want 403 — the hook must not change the outcome", res.StatusCode)
+	}
+	if len(got) != 1 {
+		t.Fatalf("hook fired %d times, want exactly 1", len(got))
+	}
+	if got[0].Method != http.MethodPost {
+		t.Errorf("Method = %q, want POST", got[0].Method)
+	}
+	if got[0].Path != "/items/42" {
+		t.Errorf("Path = %q, want /items/42 — the request path, not the route pattern or the query string", got[0].Path)
+	}
+	if !errors.Is(got[0].Err, auth.ErrCSRF) {
+		t.Errorf("Err %v does not wrap ErrCSRF", got[0].Err)
+	}
+
+	// A safe method is not a rejection.
+	do(t, app, httptest.NewRequest(http.MethodOptions, "/items/42", nil))
+	if len(got) != 1 {
+		t.Errorf("hook fired %d times, want 1 — safe methods never reach the check", len(got))
 	}
 }
 

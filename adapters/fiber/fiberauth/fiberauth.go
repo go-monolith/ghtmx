@@ -63,12 +63,23 @@ func New[ID any](cfg auth.Config[ID]) fiberfw.Handler {
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
-func CSRF() fiberfw.Handler {
+//
+// The options are the core package's, so one auth.WithOnReject hook
+// works here and behind every other adapter unchanged.
+func CSRF(opts ...auth.CSRFOption) fiberfw.Handler {
+	o := auth.NewCSRFOptions(opts...)
 	return func(c *fiberfw.Ctx) error {
 		if auth.SafeMethod(c.Method()) {
 			return c.Next()
 		}
 		if err := auth.VerifyCSRFToken(c.UserContext(), submittedCSRF(c)); err != nil {
+			o.Report(c.UserContext(), auth.CSRFRejection{
+				Method: c.Method(),
+				// Not c.Path(), which is the route pattern: the hook
+				// reports the same request path every other adapter does.
+				Path: string(c.Request().URI().Path()),
+				Err:  err,
+			})
 			return c.SendStatus(fiberfw.StatusForbidden)
 		}
 		return c.Next()
@@ -81,9 +92,19 @@ func CSRF() fiberfw.Handler {
 // uses c.FormValue, whose fasthttp implementation consults the query
 // string first — tokens must not ride in URLs, so only the POST body
 // (urlencoded via PostArgs, multipart via MultipartForm) is read.
+//
+// The body is read only for a form Content-Type, through the same
+// auth.HasFormContentType gate auth.VerifyCSRF applies, so the two
+// extractors share the rule rather than agreeing by coincidence. The
+// gate sits after the header check, not above it: hoisting it would
+// reject every JSON and htmx POST that carries the token in the header,
+// which is the channel this package prefers.
 func submittedCSRF(c *fiberfw.Ctx) string {
 	if v := c.Get(ghtmx.DefaultCSRFHeaderName); v != "" {
 		return v
+	}
+	if !auth.HasFormContentType(c.Get(fiberfw.HeaderContentType)) {
+		return ""
 	}
 	if v := c.Request().PostArgs().Peek(auth.DefaultCSRFFormField); len(v) > 0 {
 		return string(v)
