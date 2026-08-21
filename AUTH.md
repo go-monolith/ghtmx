@@ -136,8 +136,11 @@ priv := r.Group("/", ginauth.New(cfg), ginauth.CSRF())
 // echo
 priv := e.Group("", echoauth.New(cfg), echoauth.CSRF())
 
-// fiber v2 / v3
+// fiber v2
 priv := app.Group("/", fiberauth.New(cfg), fiberauth.CSRF())
+
+// fiber v3 — same shape, different package
+priv := app.Group("/", fiberv3auth.New(cfg), fiberv3auth.CSRF())
 ```
 
 The gin and echo glue delegate to the same engine functions the core
