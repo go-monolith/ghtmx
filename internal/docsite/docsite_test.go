@@ -67,6 +67,21 @@ func TestDocumentedInvariantsHold(t *testing.T) {
 		"Compile-time guarantee only")
 	assertContains("build-targets.md", read("docs", "official", "pages", "build-targets.md"), needles...)
 
+	// The htmx versions page enumerates every supported version by
+	// hand, so a pin added to the surface without a row here stales
+	// the page loudly; it also has to keep the contrast section.
+	versionRows := []string{config.DefaultHtmxVersion + "` | htmx 2 | **default pin**"}
+	for _, v := range supported {
+		versionRows = append(versionRows, "| `"+v+"` | htmx ")
+	}
+	versionRows = append(versionRows,
+		"## Supported versions",
+		"## htmx 2.x versus 4.x",
+		"## Moving a project from 2 to 4",
+		"GHTMX-E0502", "GHTMX-E0501", "GHTMX-W0202",
+		":inherited", "hx-status:404", "HX-Source")
+	assertContains("htmx-versions.md", read("docs", "official", "pages", "htmx-versions.md"), versionRows...)
+
 	assertContains("getting-started.md", read("docs", "official", "pages", "getting-started.md"),
 		"go install github.com/go-monolith/ghtmx/cmd/ghtmx",
 		"ghtmx generate",
