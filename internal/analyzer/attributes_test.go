@@ -5,24 +5,11 @@ import (
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
-	"github.com/go-monolith/ghtmx/internal/htmxsurface"
-	parser "github.com/go-monolith/ghtmx/internal/parser"
 )
 
 func validate(t *testing.T, version, src string) []diag.Diagnostic {
 	t.Helper()
-	tf, err := parser.ParseString(src)
-	if err != nil {
-		t.Fatalf("fixture does not parse: %v", err)
-	}
-	tf.Filepath = "app/page.ghtmx"
-	surface, err := htmxsurface.ForVersion(version)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sink := diag.NewSink(nil)
-	ValidateAttributes(tf, surface, sink)
-	return sink.Diagnostics()
+	return validateWith(t, version, nil, src)
 }
 
 func TestValidAttributesProduceNoDiagnostics(t *testing.T) {

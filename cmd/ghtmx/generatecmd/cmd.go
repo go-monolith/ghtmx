@@ -762,7 +762,14 @@ func (cmd *Generate) writeCentralPackage(table *routes.Table, modRoot string, ev
 	if cmd.Args.IncludeVersion {
 		version = ghtmx.Version()
 	}
-	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: htmxVersion})
+	// The after-settle and after-swap emitters exist only while the
+	// pinned htmx still honours their response headers (htmx 2).
+	omitTriggerAfter := false
+	if surface, err := htmxsurface.ForVersion(cmd.Args.Config.HtmxVersion); err == nil {
+		_, hasAfterSwap := surface.ResponseHeader("HX-Trigger-After-Swap")
+		omitTriggerAfter = !hasAfterSwap
+	}
+	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: htmxVersion, OmitTriggerAfterEmitters: omitTriggerAfter})
 	if err != nil {
 		return err
 	}

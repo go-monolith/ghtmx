@@ -38,6 +38,11 @@ type Options struct {
 	// version into the script tag (FR-091), so tag and configuration
 	// cannot diverge.
 	HtmxVersion string
+	// OmitTriggerAfterEmitters drops the Emit<Event>AfterSettle and
+	// Emit<Event>AfterSwap symbols: htmx 4 removed the
+	// HX-Trigger-After-Settle and HX-Trigger-After-Swap response headers
+	// they set, so under a 4.x pin only the plain emitter exists.
+	OmitTriggerAfterEmitters bool
 }
 
 // Event is one declared event to generate emission symbols for.
@@ -341,7 +346,7 @@ func Generate(table *routes.Table, opts Options) ([]byte, error) {
 	}
 
 	for _, e := range events {
-		if err := writeEvent(&sb, e); err != nil {
+		if err := writeEvent(&sb, e, opts.OmitTriggerAfterEmitters); err != nil {
 			return nil, err
 		}
 	}
@@ -444,8 +449,10 @@ func sanitizeParam(name string) string {
 // parameters) and its emission symbols (FR-037): the sole way to put the
 // event on the wire, so an undeclared event fails Go compilation at the
 // handler call site and a mismatched payload is a type error. Each event
-// gets three timing emitters, one per HX-Trigger header variant.
-func writeEvent(sb *strings.Builder, e Event) error {
+// gets three timing emitters, one per HX-Trigger header variant — or
+// only the plain one when the pinned htmx has dropped the after-settle
+// and after-swap headers (htmx 4).
+func writeEvent(sb *strings.Builder, e Event, omitTriggerAfter bool) error {
 	fields, err := eventFields(e.Params)
 	if err != nil {
 		return fmt.Errorf("event %s: %w", e.Name, err)
@@ -455,6 +462,9 @@ func writeEvent(sb *strings.Builder, e Event) error {
 		{"", "AppendTrigger", "HX-Trigger"},
 		{"AfterSettle", "AppendTriggerAfterSettle", "HX-Trigger-After-Settle"},
 		{"AfterSwap", "AppendTriggerAfterSwap", "HX-Trigger-After-Swap"},
+	}
+	if omitTriggerAfter {
+		timings = timings[:1]
 	}
 
 	if len(fields) > 0 {

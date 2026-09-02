@@ -14,6 +14,7 @@ import (
 	"github.com/go-monolith/ghtmx"
 	"github.com/go-monolith/ghtmx/cmd/ghtmx/generatecmd"
 	"github.com/go-monolith/ghtmx/internal/config"
+	"github.com/go-monolith/ghtmx/internal/htmxsurface"
 )
 
 func repoRoot(t *testing.T) string {
@@ -54,13 +55,17 @@ func TestDocumentedInvariantsHold(t *testing.T) {
 	// 2.0.10). This is the one assertion here with no substitute
 	// anywhere else: it is the only thing tying prose to Go constants.
 	supported := ghtmx.SupportedHtmxVersions()
-	assertContains("build-targets.md", read("docs", "official", "pages", "build-targets.md"),
-		config.DefaultHtmxVersion,
-		supported[0]+" – "+supported[len(supported)-1],
+	needles := []string{config.DefaultHtmxVersion, supported[0], supported[len(supported)-1]}
+	// One range per family ("2.0.0 – 2.0.10", "4.0.0"): a single
+	// first-to-last span would read as if every version between were
+	// supported.
+	needles = append(needles, htmxsurface.SupportedRanges()...)
+	needles = append(needles,
 		"GOOS=js GOARCH=wasm",
 		"wasip1",
 		"fiber",
 		"Compile-time guarantee only")
+	assertContains("build-targets.md", read("docs", "official", "pages", "build-targets.md"), needles...)
 
 	assertContains("getting-started.md", read("docs", "official", "pages", "getting-started.md"),
 		"go install github.com/go-monolith/ghtmx/cmd/ghtmx",

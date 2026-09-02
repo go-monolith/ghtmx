@@ -77,7 +77,7 @@ Args:
     Checks that generated files are up to date, without writing changes.
     Returns a non-zero exit code if any files need regenerating.
   -htmx-version <version>
-    The pinned htmx version driving attribute validation. (default from ghtmx.json, else 2.0.10)
+    The pinned htmx version driving attribute validation: an htmx 2.0.x or 4.0.x release. (default from ghtmx.json, else 2.0.10)
   -source-dir <dir>
     Template source directory; repeat the flag for several directories. (default from ghtmx.json, else .)
   -route-scope <pattern>

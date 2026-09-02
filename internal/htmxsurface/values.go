@@ -6,6 +6,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+
+	"golang.org/x/mod/semver"
 )
 
 // ValueError describes an invalid constant attribute value.
@@ -30,14 +33,16 @@ var timingPattern = regexp.MustCompile(`^(\d+(\.\d+)?|\.\d+)(ms|s|m)?$`)
 // interpolated expression is exempt from analysis entirely, mirroring the
 // FR-042 conservatism. A nil return means the value is valid.
 //
-// Validation depth (MVP): full grammar for swap, sync, params, and
-// enum-valued attributes; token-level checks for trigger; presence-only for
-// JSON-ish kinds (hx-vals, hx-headers, hx-request) and free-form kinds.
+// Validation depth (MVP): full grammar for swap, sync, params, status
+// configs, and enum-valued attributes; token-level checks for trigger;
+// presence-only for JSON-ish kinds (hx-vals, hx-headers, hx-config —
+// JSON, HCON, and js: forms alike) and free-form kinds.
 func (s *Surface) ValidateValue(attr string, value string) *ValueError {
-	def, ok := s.Attribute(attr)
-	if !ok {
+	p, nerr := s.ParseName(attr)
+	if nerr != nil {
 		return nil // Unknown attribute: reported separately as GHTMX-E0201.
 	}
+	def := s.attrs[p.Base]
 	switch def.Kind {
 	case KindEnum:
 		if slices.Contains(def.Values, value) {
@@ -54,14 +59,24 @@ func (s *Surface) ValidateValue(attr string, value string) *ValueError {
 		return s.validateParams(attr, value)
 	case KindTrigger:
 		return s.validateTrigger(attr, value)
+	case KindStatusConfig:
+		return s.validateStatusConfig(attr, value)
 	case KindExtendedSelector:
 		// Selectors are free-form, but value keywords carry version
 		// metadata: "inherit" on hx-include/hx-indicator/hx-disabled-elt
-		// exists only from htmx 2.0.5 (FR-052).
+		// exists only from htmx 2.0.5 (FR-052) and is gone in htmx 4.
 		for _, kw := range def.ExtraKeywords {
-			if value == kw.Value && !activeAt(s.version, kw.Introduced, kw.Removed) {
-				return &ValueError{Message: fmt.Sprintf("%s=%q requires htmx %s or later; the configured version is %s", attr, value, kw.Introduced, s.version)}
+			if value != kw.Value || activeAt(s.version, kw.Introduced, kw.Removed) {
+				continue
 			}
+			if kw.Removed != "" && semver.Compare("v"+s.version, "v"+kw.Removed) >= 0 {
+				msg := fmt.Sprintf("%s=%q was removed in htmx %s", attr, value, kw.Removed)
+				if kw.Hint != "" {
+					msg += "; " + kw.Hint
+				}
+				return &ValueError{Message: msg}
+			}
+			return &ValueError{Message: fmt.Sprintf("%s=%q requires htmx %s or later; the configured version is %s", attr, value, kw.Introduced, s.version)}
 		}
 		return nil
 	case KindBoolOrURL:
@@ -81,7 +96,7 @@ func (s *Surface) validateSwap(attr, value string) *ValueError {
 		return &ValueError{Message: fmt.Sprintf("%s must name a swap style", attr), Valid: s.fam.SwapStyles}
 	}
 	style := fields[0]
-	if !slices.Contains(s.fam.SwapStyles, style) {
+	if !s.isSwapStyle(style) {
 		return &ValueError{Message: fmt.Sprintf("unknown swap style %q in %s", style, attr), Valid: s.fam.SwapStyles}
 	}
 	for _, mod := range fields[1:] {
@@ -96,6 +111,9 @@ func (s *Surface) validateSwapModifier(attr, mod string) *ValueError {
 	name, arg, hasArg := strings.Cut(mod, ":")
 	grammar, ok := s.fam.SwapModifiers[name]
 	if !ok {
+		if renamed, renamedOK := s.fam.SwapModifierRenames[name]; renamedOK {
+			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s is spelled %q in htmx %s", name, attr, renamed, s.version), Valid: []string{renamed + ":" + arg}}
+		}
 		return &ValueError{Message: fmt.Sprintf("unknown swap modifier %q in %s", name, attr), Valid: sortedModifierNames(s.fam.SwapModifiers)}
 	}
 	switch grammar {
@@ -110,6 +128,10 @@ func (s *Surface) validateSwapModifier(attr, mod string) *ValueError {
 	case "flag-or-bool":
 		if hasArg && arg != "true" && arg != "false" {
 			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s takes no argument, or true/false", name, attr)}
+		}
+	case "selector":
+		if !hasArg || strings.TrimSpace(arg) == "" {
+			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s requires a CSS selector", name, attr), Valid: []string{name + ":<selector>"}}
 		}
 	case "scroll-spec", "show-spec":
 		// scroll:top|bottom, scroll:<sel>:top|bottom,
@@ -128,6 +150,31 @@ func (s *Surface) validateSwapModifier(attr, mod string) *ValueError {
 		if !valid {
 			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s must end in top or bottom", name, attr), Valid: []string{name + ":top", name + ":bottom", name + ":<selector>:top"}}
 		}
+	case "scroll-spec-4", "show-spec-4":
+		// htmx 4: scroll:top|bottom, scroll:window:top|bottom,
+		// show:top|bottom|none; the element to scroll is a separate
+		// scrollTarget:/showTarget: modifier.
+		positions := []string{"top", "bottom"}
+		if grammar == "show-spec-4" {
+			positions = append(positions, "none")
+		}
+		if !hasArg {
+			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s requires an argument", name, attr), Valid: []string{name + ":top", name + ":bottom"}}
+		}
+		if slices.Contains(positions, arg) {
+			return nil
+		}
+		if target, pos, ok := strings.Cut(arg, ":"); ok {
+			if target == "window" && slices.Contains(positions, pos) {
+				return nil
+			}
+			// The htmx 2 form scroll:<selector>:top — only when the last
+			// segment is a position, so the replacement suggested is valid.
+			if last := arg[strings.LastIndex(arg, ":")+1:]; slices.Contains(positions, last) {
+				return &ValueError{Message: fmt.Sprintf("swap modifier %s:<selector>:%s in %s was removed in htmx 4; use %s:%s %sTarget:<selector>", name, last, attr, name, last, name)}
+			}
+		}
+		return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s must be top or bottom", name, attr), Valid: []string{name + ":top", name + ":bottom", name + ":window:top"}}
 	}
 	return nil
 }
@@ -197,6 +244,66 @@ func (s *Surface) validateParams(attr, value string) *ValueError {
 	return nil
 }
 
+// statusConfigKeys are the hx-status:<code> configuration keys of htmx 4.
+var statusConfigKeys = []string{"swap", "target", "select", "push", "replace", "transition"}
+
+// validateStatusConfig checks hx-status:<code>. htmx 4 reads the value
+// with the parser it uses for hx-config: JSON when it starts with "{"
+// (presence-only here, as for hx-config), otherwise HCON — key:value
+// pairs separated by whitespace or commas, with optional space after the
+// colon and optional quotes. A selector argument (target:, select:) may
+// contain spaces ("closest form"), so tokens following one that carry no
+// colon are its continuation, and so are colon-bearing tokens that are
+// not a known key (form:has(input)).
+func (s *Surface) validateStatusConfig(attr, value string) *ValueError {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return &ValueError{Message: fmt.Sprintf("%s requires at least one key:value pair", attr), Valid: statusConfigKeys}
+	}
+	if strings.HasPrefix(value, "{") {
+		return nil
+	}
+	tokens := strings.FieldsFunc(value, func(r rune) bool { return r == ',' || unicode.IsSpace(r) })
+	inSelector := false
+	for i := 0; i < len(tokens); i++ {
+		key, arg, hasArg := strings.Cut(tokens[i], ":")
+		if !hasArg {
+			if inSelector {
+				continue
+			}
+			return &ValueError{Message: fmt.Sprintf("%q in %s is not a key:value pair", tokens[i], attr), Valid: statusConfigKeys}
+		}
+		key = strings.Trim(key, `"'`)
+		if !slices.Contains(statusConfigKeys, key) {
+			if inSelector {
+				continue
+			}
+			return &ValueError{Message: fmt.Sprintf("unknown key %q in %s; expected key:value pairs", key, attr), Valid: statusConfigKeys}
+		}
+		// "swap: none": the value is the next token.
+		if arg == "" && i+1 < len(tokens) && !strings.Contains(tokens[i+1], ":") {
+			i++
+			arg = tokens[i]
+		}
+		arg = strings.Trim(arg, `"'`)
+		if arg == "" {
+			return &ValueError{Message: fmt.Sprintf("%q in %s requires a value", key, attr), Valid: []string{key + ":<value>"}}
+		}
+		inSelector = key == "target" || key == "select"
+		switch key {
+		case "swap":
+			if !s.isSwapStyle(arg) {
+				return &ValueError{Message: fmt.Sprintf("unknown swap style %q in %s", arg, attr), Valid: s.fam.SwapStyles}
+			}
+		case "transition":
+			if arg != "true" && arg != "false" {
+				return &ValueError{Message: fmt.Sprintf("%q in %s requires true or false", key, attr), Valid: []string{"transition:true", "transition:false"}}
+			}
+		}
+	}
+	return nil
+}
+
 // selectorModifiers take an extended CSS selector argument that may itself
 // contain spaces (from:closest form, target:find .item, root:#parent).
 // Tokens following such a modifier are consumed as the selector until the
@@ -206,7 +313,8 @@ var selectorModifiers = map[string]bool{"from": true, "target": true, "root": tr
 // validateTrigger performs token-level validation of hx-trigger: event
 // names with optional [filter] and modifiers, comma separated. Filter
 // bracket contents are skipped verbatim; unknown event names pass (custom
-// events are legitimate), but unknown modifier names fail.
+// events are legitimate), but unknown modifier names fail, and htmx events
+// a previous family spelled differently get a migration hint.
 func (s *Surface) validateTrigger(attr, value string) *ValueError {
 	for _, spec := range splitTopLevel(value, ',') {
 		spec = strings.TrimSpace(spec)
@@ -221,10 +329,32 @@ func (s *Surface) validateTrigger(attr, value string) *ValueError {
 				return &ValueError{Message: fmt.Sprintf("polling trigger in %s requires a timing value, e.g. \"every 2s\"", attr)}
 			}
 			modifiers = tokens[2:]
+		} else if err := s.validateTriggerEvent(attr, tokens[0]); err != nil {
+			return err
 		}
 		if err := s.validateTriggerModifiers(attr, modifiers); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// validateTriggerEvent checks an htmx-namespaced event token against the
+// family's rename and removal tables (htmx 2 → 4 migration hints).
+func (s *Surface) validateTriggerEvent(attr, token string) *ValueError {
+	if len(s.fam.EventRenames) == 0 && len(s.fam.RemovedEvents) == 0 {
+		return nil
+	}
+	event, _, _ := strings.Cut(strings.TrimSpace(token), "[")
+	old, ok := strings.CutPrefix(event, "htmx:")
+	if !ok {
+		return nil
+	}
+	if current, renamed := s.fam.EventRenames[old]; renamed {
+		return &ValueError{Message: fmt.Sprintf("event htmx:%s in %s is htmx:%s in htmx %s", old, attr, current, s.version), Valid: []string{"htmx:" + current}}
+	}
+	if hint, removed := s.fam.RemovedEvents[old]; removed {
+		return &ValueError{Message: fmt.Sprintf("event htmx:%s in %s was removed in htmx %s; %s", old, attr, s.version, hint)}
 	}
 	return nil
 }
@@ -237,6 +367,9 @@ func (s *Surface) validateTriggerModifiers(attr string, tokens []string) *ValueE
 		}
 		name, arg, _ := strings.Cut(tok, ":")
 		if !slices.Contains(s.fam.TriggerModifiers, name) {
+			if hint, removed := s.fam.TriggerModifierRemoved[name]; removed {
+				return &ValueError{Message: fmt.Sprintf("trigger modifier %q in %s was removed in htmx %s; %s", name, attr, s.version, hint)}
+			}
 			return &ValueError{Message: fmt.Sprintf("unknown trigger modifier %q in %s", name, attr), Valid: s.fam.TriggerModifiers}
 		}
 		switch {

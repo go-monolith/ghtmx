@@ -269,6 +269,43 @@ func TestEventEmitterWithPayload(t *testing.T) {
 	}
 }
 
+// TestEventEmittersFollowThePinnedHeaders: htmx 4 removed the
+// HX-Trigger-After-Settle and HX-Trigger-After-Swap headers, so a 4.x pin
+// generates only the plain emitter; the htmx 2 output keeps all three.
+func TestEventEmittersFollowThePinnedHeaders(t *testing.T) {
+	events := []Event{
+		{Name: "UserCreated", WireName: "user-created", Params: "(id string)", DeclaredAt: "events.ghtmx"},
+		{Name: "CartCleared", WireName: "cart-cleared", Params: "()", DeclaredAt: "events.ghtmx"},
+	}
+	out, err := Generate(table(t), Options{PackageName: "ghtmxgen", Events: events, OmitTriggerAfterEmitters: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.ParseFile(token.NewFileSet(), "routes_ghtmx.go", out, 0); err != nil {
+		t.Fatalf("generated output does not parse: %v\n%s", err, out)
+	}
+	four := string(out)
+	for _, want := range []string{
+		"func EmitUserCreated(w http.ResponseWriter, p UserCreatedPayload) error {",
+		"func EmitCartCleared(w http.ResponseWriter) error {",
+	} {
+		if !strings.Contains(four, want) {
+			t.Errorf("missing %q in htmx 4 output:\n%s", want, four)
+		}
+	}
+	for _, gone := range []string{"AfterSettle", "AfterSwap", "HX-Trigger-After"} {
+		if strings.Contains(four, gone) {
+			t.Errorf("htmx 4 output must not mention %q:\n%s", gone, four)
+		}
+	}
+	two := generateEvents(t, events)
+	for _, want := range []string{"func EmitUserCreatedAfterSettle(", "func EmitUserCreatedAfterSwap(", "func EmitCartClearedAfterSwap("} {
+		if !strings.Contains(two, want) {
+			t.Errorf("htmx 2 output keeps %q:\n%s", want, two)
+		}
+	}
+}
+
 func TestEventEmitterPayloadLess(t *testing.T) {
 	out := generateEvents(t, []Event{{
 		Name:       "CartCleared",

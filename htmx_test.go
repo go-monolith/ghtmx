@@ -60,20 +60,32 @@ func TestTypedHeaderHelpers(t *testing.T) {
 	}
 }
 
+// familySurfaces resolves the newest version of every embedded family.
+func familySurfaces(t *testing.T) []*htmxsurface.Surface {
+	t.Helper()
+	var out []*htmxsurface.Surface
+	for _, f := range htmxsurface.Families() {
+		s, err := htmxsurface.ForVersion(f.Versions[len(f.Versions)-1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
 // TestSwapStylesMatchSurfaceData: the typed constants and the embedded
-// surface for the pinned htmx version describe the same set — a surface
-// update that adds or removes a style fails here until the constants
-// follow.
+// surfaces describe the same set — every style (or alias) of every family
+// has a constant, and every constant is a style of at least one family. A
+// surface update that adds or removes a style fails here until the
+// constants follow.
 func TestSwapStylesMatchSurfaceData(t *testing.T) {
 	constants := []SwapStyle{
 		SwapInnerHTML, SwapOuterHTML, SwapTextContent, SwapBeforeBegin,
 		SwapAfterBegin, SwapBeforeEnd, SwapAfterEnd, SwapDelete, SwapNone,
+		SwapInnerMorph, SwapOuterMorph, SwapOuterSync,
+		SwapBefore, SwapPrepend, SwapAppend, SwapAfter,
 	}
-	surface, err := htmxsurface.ForVersion("2.0.10")
-	if err != nil {
-		t.Fatal(err)
-	}
-	styles := surface.SwapStyles()
 	// Set comparison in both directions: count checks alone are blind to
 	// duplicates masking a drift.
 	have := map[string]bool{}
@@ -81,42 +93,63 @@ func TestSwapStylesMatchSurfaceData(t *testing.T) {
 		have[string(c)] = true
 	}
 	inSurface := map[string]bool{}
-	for _, s := range styles {
-		inSurface[s] = true
-		if !have[s] {
-			t.Errorf("surface style %q has no typed constant", s)
+	for _, surface := range familySurfaces(t) {
+		styles := surface.SwapStyles()
+		for alias := range surface.SwapStyleAliases() {
+			styles = append(styles, alias)
+		}
+		for _, s := range styles {
+			inSurface[s] = true
+			if !have[s] {
+				t.Errorf("htmx %s style %q has no typed constant", surface.Version(), s)
+			}
 		}
 	}
 	for c := range have {
 		if !inSurface[c] {
-			t.Errorf("constant %q is not in the pinned surface", c)
+			t.Errorf("constant %q is in no family's surface", c)
 		}
 	}
 }
 
-// TestSwapModifiersMatchSurfaceData: every modifier of the pinned surface
-// has a typed constructor here.
+// TestSwapModifiersMatchSurfaceData: every modifier of every family has a
+// typed constructor here, and no constructor outlives its modifier.
 func TestSwapModifiersMatchSurfaceData(t *testing.T) {
 	constructors := map[string]bool{
 		"transition": true, "swap": true, "settle": true, "ignoreTitle": true,
 		"scroll": true, "show": true, "focus-scroll": true,
+		"focusScroll": true, "scrollTarget": true, "showTarget": true,
+		"strip": true, "swapEmpty": true, "target": true,
 	}
-	surface, err := htmxsurface.ForVersion("2.0.10")
-	if err != nil {
-		t.Fatal(err)
-	}
-	names := surface.SwapModifierNames()
 	inSurface := map[string]bool{}
-	for _, name := range names {
-		inSurface[name] = true
-		if !constructors[name] {
-			t.Errorf("surface swap modifier %q has no typed constructor", name)
+	for _, surface := range familySurfaces(t) {
+		for _, name := range surface.SwapModifierNames() {
+			inSurface[name] = true
+			if !constructors[name] {
+				t.Errorf("htmx %s swap modifier %q has no typed constructor", surface.Version(), name)
+			}
 		}
 	}
 	for name := range constructors {
 		if !inSurface[name] {
 			t.Errorf("constructor for %q has no surface modifier: remove it", name)
 		}
+	}
+}
+
+func TestSetReswapHtmx4Modifiers(t *testing.T) {
+	rec := httptest.NewRecorder()
+	SetReswap(rec, SwapInnerMorph, SwapShow("top"), SwapShowTarget("#other"), SwapFocusScrollV4(false), SwapStrip(true), SwapEmpty(true), SwapTarget("#out"))
+	want := "innerMorph show:top showTarget:#other focusScroll:false strip:true swapEmpty:true target:#out"
+	if got := rec.Header().Get("HX-Reswap"); got != want {
+		t.Errorf("HX-Reswap = %q, want %q", got, want)
+	}
+	surface, err := htmxsurface.ForVersion("4.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verr := surface.ValidateValue("hx-swap", want); verr != nil {
+		t.Errorf("the header the helpers build must validate under htmx 4: %v", verr)
 	}
 }
 

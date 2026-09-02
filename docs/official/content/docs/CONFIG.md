@@ -10,7 +10,7 @@ setting exists in `internal/config` without an entry here, or a
 
 | Setting | Default | CLI flag (`ghtmx generate`) | Meaning |
 | --- | --- | --- | --- |
-| `htmxVersion` | `2.0.10` | `-htmx-version` | The pinned htmx version: attribute validation surface and the `ghtmxgen.HTMXScript()` asset. |
+| `htmxVersion` | `2.0.10` | `-htmx-version` | The pinned htmx version: attribute validation surface and the `ghtmxgen.HTMXScript()` asset. Any htmx 2.0.x release, or `4.0.0`. Under htmx 4 the tooling follows htmx 4 syntax — `:inherited`/`:append` name modifiers, `hx-status:<code>`, `hx-query`, morph swaps, colon-form events — reports htmx 2 leftovers with their replacement (`GHTMX-E0501`), and warns where an inheritable attribute no longer reaches the requests beneath it (`GHTMX-W0202`). |
 | `sourceDirs` | `["."]` | `-source-dir` (repeatable) | Directories walked for templates. |
 | `routeScope` | `["./..."]` | `-route-scope` (repeatable) | Package patterns route discovery loads. |
 | `generatedPackage.dir` | `ghtmxgen` | `-generated-pkg-dir` | Directory of the central generated package. |

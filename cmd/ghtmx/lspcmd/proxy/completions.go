@@ -24,7 +24,7 @@ var (
 	attrNameContext     = regexp.MustCompile(`<[^>]*\s(hx-[\w:-]*)$`)
 	attrNameLineContext = regexp.MustCompile(`^\s+(hx-[\w:-]*)$`)
 	// hx-post={ handlers.Cre| — the expression of a verb attribute.
-	verbExprContext = regexp.MustCompile(`(hx-(get|post|put|patch|delete))=\{\s*([\w.]*)$`)
+	verbExprContext = regexp.MustCompile(`(hx-(get|post|put|patch|delete|query))=\{\s*([\w.]*)$`)
 	// hx-swap="inner| — a quoted attribute value being typed.
 	attrValueContext       = regexp.MustCompile(`(hx-[\w:-]+)="([^"]*)$`)
 	attrValueSingleContext = regexp.MustCompile(`(hx-[\w:-]+)='([^']*)$`)
@@ -83,15 +83,22 @@ func (p *Server) ghtmxCompletions(templURI string, position lsp.Position) (items
 }
 
 // attributeNameCompletions offers hx-* names valid for the configured
-// version, plus event listeners on an hx-on: prefix (FR-082).
+// version, event listeners on an hx-on: prefix, htmx events on hx-on::,
+// and — where the family has them — attribute-name modifiers after a
+// base name (FR-082).
 func (p *Server) attributeNameCompletions(cctx completionContext) []lsp.CompletionItem {
 	if suffix, ok := strings.CutPrefix(cctx.partial, "hx-on:"); ok {
 		if strings.HasPrefix(suffix, ":") || strings.HasPrefix(suffix, "htmx:") {
-			return nil // The htmx namespace is not the declared-event registry.
+			// The htmx namespace is not the declared-event registry: it
+			// offers the htmx events of the configured version.
+			return p.htmxEventCompletions(suffix)
 		}
 		return p.eventListenerCompletions(suffix)
 	}
 	if suffix, ok := strings.CutPrefix(cctx.partial, "hx-on-"); ok && cctx.partial != "hx-only" {
+		if p.surface != nil && !p.surface.AcceptsOnPrefix("hx-on-") {
+			return nil // htmx 4 spells listeners hx-on:; the dash form is htmx 2.
+		}
 		if strings.HasPrefix(suffix, "-") || strings.HasPrefix(suffix, "htmx-") {
 			return nil // hx-on--x / hx-on-htmx-x are the htmx namespace.
 		}
@@ -100,16 +107,36 @@ func (p *Server) attributeNameCompletions(cctx completionContext) []lsp.Completi
 	if p.surface == nil {
 		return nil
 	}
+	// <base>: on an inheritable attribute opens the modifier set.
+	if base, rest, ok := strings.Cut(cctx.partial, ":"); ok && p.surface.HasNameModifiers() {
+		if def, known := p.surface.Definition(base); known && def.Inherited {
+			return p.nameModifierCompletions(base, rest)
+		}
+	}
 	var items []lsp.CompletionItem
 	for _, name := range p.surface.AttributeNames() {
 		if !strings.HasPrefix(name, cctx.partial) {
 			continue
 		}
+		def, _ := p.surface.Definition(name)
+		detail := "htmx " + p.surface.Version() + " attribute"
+		if def.Extension != "" {
+			detail += " (" + def.Extension + " extension)"
+		}
 		items = append(items, lsp.CompletionItem{
 			Label:  name,
 			Kind:   lsp.CompletionItemKindProperty,
-			Detail: "htmx " + p.surface.Version() + " attribute",
+			Detail: detail,
 		})
+		// A suffixed attribute (hx-status:<code>) also offers its prefix
+		// form, the way hx-on: does below.
+		if def.Prefix && def.SuffixPattern != "" && strings.HasPrefix(name+":", cctx.partial) {
+			items = append(items, lsp.CompletionItem{
+				Label:  name + ":",
+				Kind:   lsp.CompletionItemKindProperty,
+				Detail: detail + " (add the suffix)",
+			})
+		}
 	}
 	// hx-on: opens the event-listener namespace.
 	if strings.HasPrefix("hx-on:", cctx.partial) {
@@ -117,6 +144,49 @@ func (p *Server) attributeNameCompletions(cctx completionContext) []lsp.Completi
 			Label:  "hx-on:",
 			Kind:   lsp.CompletionItemKindProperty,
 			Detail: "event listener (DOM event or declared ghtmx event)",
+		})
+	}
+	return items
+}
+
+// htmxEventCompletions offers the htmx events of the configured version
+// after hx-on:: (or hx-on:htmx:).
+func (p *Server) htmxEventCompletions(suffix string) []lsp.CompletionItem {
+	if p.surface == nil {
+		return nil
+	}
+	partial := strings.TrimPrefix(strings.TrimPrefix(suffix, ":"), "htmx:")
+	var items []lsp.CompletionItem
+	for _, event := range p.surface.HtmxEventNames() {
+		if !strings.HasPrefix(event, partial) {
+			continue
+		}
+		items = append(items, lsp.CompletionItem{
+			Label:  event,
+			Kind:   lsp.CompletionItemKindEvent,
+			Detail: "htmx " + p.surface.Version() + " event",
+		})
+	}
+	return items
+}
+
+// nameModifierCompletions offers the attribute-name modifiers of the
+// configured version on an inheritable base (hx-target:inherited).
+func (p *Server) nameModifierCompletions(base, partial string) []lsp.CompletionItem {
+	mods := p.surface.NameModifiers()
+	forms := append([]string{}, mods...)
+	if len(mods) == 2 {
+		forms = append(forms, mods[0]+":"+mods[1])
+	}
+	var items []lsp.CompletionItem
+	for _, form := range forms {
+		if !strings.HasPrefix(form, partial) {
+			continue
+		}
+		items = append(items, lsp.CompletionItem{
+			Label:  base + ":" + form,
+			Kind:   lsp.CompletionItemKindProperty,
+			Detail: "htmx " + p.surface.Version() + " attribute-name modifier",
 		})
 	}
 	return items
@@ -228,14 +298,33 @@ func (p *Server) attributeValueCompletions(cctx completionContext) []lsp.Complet
 	if i := strings.LastIndexAny(partial, " ,"); i >= 0 {
 		partial = partial[i+1:]
 	}
+	// The base name decides the grammar: hx-swap:inherited completes
+	// like hx-swap.
+	attr := cctx.attr
+	if parsed, err := p.surface.ParseName(attr); err == nil {
+		attr = parsed.Base
+	}
 	var candidates []lsp.CompletionItem
-	switch cctx.attr {
+	switch attr {
 	case "hx-swap":
 		for _, style := range p.surface.SwapStyles() {
 			candidates = append(candidates, lsp.CompletionItem{
 				Label:  style,
 				Kind:   lsp.CompletionItemKindEnumMember,
 				Detail: "hx-swap style",
+			})
+		}
+		aliases := p.surface.SwapStyleAliases()
+		names := make([]string, 0, len(aliases))
+		for alias := range aliases {
+			names = append(names, alias)
+		}
+		sort.Strings(names)
+		for _, alias := range names {
+			candidates = append(candidates, lsp.CompletionItem{
+				Label:  alias,
+				Kind:   lsp.CompletionItemKindEnumMember,
+				Detail: "hx-swap style (alias of " + aliases[alias] + ")",
 			})
 		}
 	case "hx-trigger":

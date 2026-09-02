@@ -74,6 +74,24 @@ templ list() {
 	}
 }
 
+// TestModifiedTargetNameStillChecked: htmx 4's hx-target:inherited is an
+// hx-target for the dangling-ID check, and a resolved one is fine.
+func TestModifiedTargetNameStillChecked(t *testing.T) {
+	diags := checkTargets(t, map[string]string{
+		"a.ghtmx": `package main
+
+templ list() {
+	<div hx-target:inherited="#missing"><button hx-get={ handlers.Load }>Go</button></div>
+	<div hx-select:inherited:append="#detail"></div>
+	<div id="detail"></div>
+}
+`,
+	}, nil)
+	if len(diags) != 1 || diags[0].ID != diag.DanglingTarget || !strings.Contains(diags[0].Message, "#missing") {
+		t.Fatalf("expected exactly the #missing warning, got %+v", diags)
+	}
+}
+
 func TestInterpolatedSelectorsAndIDsExempt(t *testing.T) {
 	// A dynamic selector is never checked; a dynamic id contributes
 	// nothing — but the literal target matching a literal id elsewhere

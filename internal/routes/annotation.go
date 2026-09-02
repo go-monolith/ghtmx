@@ -89,7 +89,7 @@ func parseAnnotation(s string, pkg *Package, imports importMap, types map[string
 	}
 	verb := Verb(strings.ToUpper(fields[0]))
 	switch verb {
-	case GET, POST, PUT, PATCH, DELETE:
+	case GET, POST, PUT, PATCH, DELETE, QUERY:
 	default:
 		return Route{}, fmt.Sprintf("malformed //ghtmx:route annotation: unknown verb %q", fields[0])
 	}

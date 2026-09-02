@@ -21,7 +21,7 @@ type Check struct {
 //	GHTMX-E05xx  version errors
 //	GHTMX-E06xx  templ carve-out errors (FR-004)
 //	GHTMX-W01xx  reachability warnings
-//	GHTMX-W02xx  target warnings
+//	GHTMX-W02xx  target and inheritance warnings
 //	GHTMX-W03xx  build hygiene warnings
 const (
 	// Route binding errors.
@@ -67,8 +67,9 @@ const (
 	UnboundRoute      = "GHTMX-W0104"
 	MultiPathHandler  = "GHTMX-W0105"
 
-	// Target warnings.
-	DanglingTarget = "GHTMX-W0201"
+	// Target and inheritance warnings.
+	DanglingTarget      = "GHTMX-W0201"
+	ImplicitInheritance = "GHTMX-W0202"
 
 	// Build hygiene warnings.
 	StaleOutput = "GHTMX-W0301"
@@ -112,7 +113,8 @@ var Registry = map[string]Check{
 	UnboundRoute:      {UnboundRoute, Warning, "discovered route is never bound from any template"},
 	MultiPathHandler:  {MultiPathHandler, Warning, "handler is registered for the same verb at more than one path; template bindings resolve to one of them"},
 
-	DanglingTarget: {DanglingTarget, Warning, "hx-target or hx-select literal ID selector matches no literal ID in the compiled template set"},
+	DanglingTarget:      {DanglingTarget, Warning, "hx-target or hx-select literal ID selector matches no literal ID in the compiled template set"},
+	ImplicitInheritance: {ImplicitInheritance, Warning, "an inheritable hx-* attribute without :inherited does not reach the descendants that issue requests (htmx 4 inheritance is explicit)"},
 
 	StaleOutput: {StaleOutput, Warning, "generated output is stale relative to its source"},
 }

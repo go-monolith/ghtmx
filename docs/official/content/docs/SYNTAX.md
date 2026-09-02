@@ -306,10 +306,17 @@ AST: `FragmentDeclaration`.
 
 `event Name(typed params)` declares a server-driven event
 (FR-036/FR-037). The kebab-case wire name (`user-created`) is the only
-listener token the compiler owns in `hx-on:*`/`hx-on-*` suffixes and
-`hx-trigger` values (the `::`/`--`/`-htmx-` shorthands stay in htmx's
-own namespace); declarations generate the only `HX-Trigger` emission
-symbols (`ghtmxgen.EmitName*`).
+listener token the compiler owns in `hx-on:*` suffixes (and, under an
+htmx 2 pin, the `hx-on-*` dash form — htmx 4 spells every listener
+`hx-on:`) and `hx-trigger` values; the `::`/`--`/`-htmx-` shorthands
+stay in htmx's own namespace, whose event names follow the pinned
+version (`hx-on::after-request` under htmx 2, `hx-on::after:request`
+under htmx 4). htmx 4's attribute-name modifiers (`hx-target:inherited`,
+`hx-vals:inherited:append`) and suffixed attributes (`hx-status:422`)
+are validated against the pinned surface, not this namespace.
+Declarations generate the only `HX-Trigger` emission symbols
+(`ghtmxgen.EmitName*`; the `AfterSwap`/`AfterSettle` variants exist only
+under an htmx 2 pin, whose headers htmx 4 removed).
 
 ```templ
 event ItemSaved(id string)

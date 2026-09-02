@@ -119,6 +119,25 @@ func computeFileFacts(file *parser.TemplateFile) *fileFacts {
 	return facts
 }
 
+// baseAttrName strips htmx 4 attribute-name modifiers (:inherited,
+// :append) so hx-target:inherited is collected like hx-target. Purely
+// syntactic — this pass runs without a surface — and only the two
+// modifier words are stripped, so hx-sse:connect and hx-on:… stay whole.
+func baseAttrName(name string) string {
+	for {
+		i := strings.LastIndex(name, ":")
+		if i < 0 {
+			return name
+		}
+		switch name[i+1:] {
+		case "inherited", "append":
+			name = name[:i]
+		default:
+			return name
+		}
+	}
+}
+
 func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFacts) {
 	for _, a := range attrs {
 		switch attr := a.(type) {
@@ -143,7 +162,7 @@ func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFact
 					facts.eventRefs = append(facts.eventRefs, eventRef{wire: wire, attr: name, pos: refPos()})
 				}
 			}
-			switch name {
+			switch baseAttrName(name) {
 			case "id":
 				facts.emittedIDs[attr.Value] = true
 			case "hx-target", "hx-select":
