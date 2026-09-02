@@ -39,6 +39,7 @@ var Docs = []Doc{
 	{Slug: "config", Title: "Configuration", File: "CONFIG.md"},
 	{Slug: "auth", Title: "Authentication", File: "AUTH.md"},
 	{Slug: "build-targets", Title: "Build targets", File: "build-targets.md"},
+	{Slug: "htmx-versions", Title: "htmx versions", File: "htmx-versions.md"},
 	{Slug: "editors", Title: "Editor support", File: "editors.md"},
 	{Slug: "conformance", Title: "templ conformance", File: "CONFORMANCE.md"},
 	{Slug: "baseline", Title: "Fork baseline", File: "TEMPL_SYNTAX_BASELINE.md"},
@@ -181,7 +182,7 @@ func docsBySlug(slugs ...string) []Doc {
 }
 
 var (
-	ReferenceDocs = docsBySlug("diagnostics", "config", "auth", "build-targets", "editors")
+	ReferenceDocs = docsBySlug("diagnostics", "config", "auth", "build-targets", "htmx-versions", "editors")
 	ProjectDocs   = docsBySlug("overview", "conformance", "baseline", "contributing", "releasing", "changelog")
 )
 
@@ -403,7 +404,7 @@ func rewriteLinks(source []byte) []byte {
 			continue // inside a fence
 		}
 		for _, d := range Docs {
-			if d.Slug == "build-targets" {
+			if d.Slug == "build-targets" || d.Slug == "htmx-versions" {
 				continue // site-only source; its base name is not a repo document
 			}
 			segments[i] = linkifyMentions(segments[i], d.File, "/docs/"+d.Slug)

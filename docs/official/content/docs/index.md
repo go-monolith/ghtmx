@@ -20,7 +20,11 @@ fork baseline) and adds three things:
 Everything ships in one Go module with a stdlib-only runtime, a
 build-time compiler with live-reload watch mode, an LSP with
 route-aware completion, and editor extensions for VS Code, Neovim, and
-JetBrains.
+JetBrains. Every `hx-*` attribute is checked against the htmx version
+the project pins — any 2.0.x release, or htmx 4.0.0 with its explicit
+inheritance, `hx-status`, and morph swaps — and a template that mixes
+generations is reported with the replacement to use; see
+[htmx versions](/docs/htmx-versions).
 
 Start with [Getting started](/getting-started), then the
 [Syntax](/docs/syntax) specification. The

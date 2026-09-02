@@ -23,21 +23,8 @@ fast with `GHTMX-E0502`; a construct the pinned version lacks — newer,
 or removed and renamed by it — reports `GHTMX-E0501` naming the
 replacement.
 
-Pinning `4.0.0` switches the whole toolchain to htmx 4 syntax: the
-`:inherited` and `:append` attribute-name modifiers, `hx-status:<code>`,
-`hx-query`, `hx-action`/`hx-method`, `hx-config`, `hx-ignore` and the
-new meaning of `hx-disable`, the `innerMorph`/`outerMorph`/`outerSync`
-swap styles with `showTarget:`/`scrollTarget:` modifiers, the trigger
-modifiers `prevent stop halt capture passive`, the colon-form event
-names (`hx-on::after:swap`), the attributes of every extension shipped
-with htmx 4 (`hx-sse:connect`, `hx-ws:send`, `hx-live`, `hx-preload`,
-…), and the `<hx-partial>` element. htmx 2 leftovers — `hx-vars`,
-`hx-ext`, `hx-disabled-elt`, `queue:` triggers, `show:#id:top`,
-`hx-on::after-swap` — are reported with their replacement, and
-`GHTMX-W0202` warns where an inheritable attribute without `:inherited`
-no longer reaches the requests beneath it. The generated central
-package drops the `Emit*AfterSwap`/`Emit*AfterSettle` emitters, whose
-response headers htmx 4 removed.
+What each pin accepts, and how to move a project from htmx 2 to 4,
+is on the [htmx versions](/docs/htmx-versions) page.
 
 ## WebAssembly (NFR-014)
 
