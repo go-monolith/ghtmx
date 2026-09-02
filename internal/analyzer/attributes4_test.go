@@ -126,11 +126,14 @@ templ page() {
 }
 `)
 	if len(diags) != 2 {
-		t.Fatalf("expected two unknown-attribute diagnostics, got %+v", diags)
+		t.Fatalf("expected two version-mismatch diagnostics, got %+v", diags)
 	}
 	for _, d := range diags {
-		if d.ID != diag.UnknownAttribute {
-			t.Errorf("ID = %s, want %s (%s)", d.ID, diag.UnknownAttribute, d.Message)
+		if d.ID != diag.VersionMismatch {
+			t.Errorf("ID = %s, want %s (%s)", d.ID, diag.VersionMismatch, d.Message)
+		}
+		if !strings.Contains(d.Message, "introduced in 4.0.0") {
+			t.Errorf("the message must name htmx 4, got %q", d.Message)
 		}
 	}
 }

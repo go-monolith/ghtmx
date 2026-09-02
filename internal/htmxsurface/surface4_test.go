@@ -481,3 +481,44 @@ func TestHeadersAndConflicts4(t *testing.T) {
 		}
 	}
 }
+
+func TestStripNameModifiers(t *testing.T) {
+	cases := map[string]string{
+		"hx-target":                  "hx-target",
+		"hx-target:inherited":        "hx-target",
+		"hx-select:inherited:append": "hx-select",
+		"hx-sse:connect":             "hx-sse:connect",
+		"hx-on::after:swap":          "hx-on::after:swap",
+		"hx-status:422":              "hx-status:422",
+		"id":                         "id",
+	}
+	for in, want := range cases {
+		if got := StripNameModifiers(in); got != want {
+			t.Errorf("StripNameModifiers(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestStatusConfigSelectorsMayContainColons(t *testing.T) {
+	s := mustSurface(t, "4.0.0")
+	for _, v := range []string{"target: form:has(input) swap:none", "select: #x:first-child", "target:closest form, swap:none", `target: "form:has(input)"`} {
+		if err := s.ValidateValue("hx-status:422", v); err != nil {
+			t.Errorf("hx-status:422=%q should be valid: %v", v, err)
+		}
+	}
+	// A bare key followed by the next pair still lacks its value.
+	if err := s.ValidateValue("hx-status:422", "target: swap:none"); err == nil || !strings.Contains(err.Error(), "requires a value") {
+		t.Errorf("target: swap:none must report the missing value, got %v", err)
+	}
+}
+
+func TestSwapModifierRenameHintIsValidSpelling(t *testing.T) {
+	s := mustSurface(t, "4.0.0")
+	cases := map[string]string{"innerHTML focus-scroll": "focusScroll", "innerHTML focus-scroll:true": "focusScroll:true"}
+	for value, want := range cases {
+		err := s.ValidateValue("hx-swap", value)
+		if err == nil || len(err.Valid) != 1 || err.Valid[0] != want {
+			t.Errorf("hx-swap=%q: want the replacement %q, got %+v", value, want, err)
+		}
+	}
+}

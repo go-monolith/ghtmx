@@ -112,7 +112,11 @@ func (s *Surface) validateSwapModifier(attr, mod string) *ValueError {
 	grammar, ok := s.fam.SwapModifiers[name]
 	if !ok {
 		if renamed, renamedOK := s.fam.SwapModifierRenames[name]; renamedOK {
-			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s is spelled %q in htmx %s", name, attr, renamed, s.version), Valid: []string{renamed + ":" + arg}}
+			valid := renamed
+			if hasArg {
+				valid += ":" + arg
+			}
+			return &ValueError{Message: fmt.Sprintf("swap modifier %q in %s is spelled %q in htmx %s", name, attr, renamed, s.version), Valid: []string{valid}}
 		}
 		return &ValueError{Message: fmt.Sprintf("unknown swap modifier %q in %s", name, attr), Valid: sortedModifierNames(s.fam.SwapModifiers)}
 	}
@@ -280,8 +284,9 @@ func (s *Surface) validateStatusConfig(attr, value string) *ValueError {
 			}
 			return &ValueError{Message: fmt.Sprintf("unknown key %q in %s; expected key:value pairs", key, attr), Valid: statusConfigKeys}
 		}
-		// "swap: none": the value is the next token.
-		if arg == "" && i+1 < len(tokens) && !strings.Contains(tokens[i+1], ":") {
+		// "swap: none": the value is the next token — unless that token
+		// opens the next pair ("target: form:has(input)" is one pair).
+		if arg == "" && i+1 < len(tokens) && !isStatusConfigPair(tokens[i+1]) {
 			i++
 			arg = tokens[i]
 		}
@@ -302,6 +307,13 @@ func (s *Surface) validateStatusConfig(attr, value string) *ValueError {
 		}
 	}
 	return nil
+}
+
+// isStatusConfigPair reports whether an HCON token opens a key:value pair
+// of a known hx-status key, as opposed to a colon-bearing selector token.
+func isStatusConfigPair(token string) bool {
+	key, _, hasArg := strings.Cut(token, ":")
+	return hasArg && slices.Contains(statusConfigKeys, strings.Trim(key, `"'`))
 }
 
 // selectorModifiers take an extended CSS selector argument that may itself

@@ -115,7 +115,7 @@ func TestImplicitInheritanceHeuristics(t *testing.T) {
 		{"boost wrapper over a form", `<nav hx-boost="true"><form action="/x"></form></nav>`, "not boosted"},
 		{"headers without descendants", `<body hx-headers='{"X-Token":"t"}'></body>`, "hx-headers on <body>"},
 		{"headers with a CSRF token", `<body hx-headers='{"X-CSRF-Token":"t"}'></body>`, "CSRF"},
-		{"headers with an expression value", `<body hx-headers={ ghtmx.CSRFHeader(token) }></body>`, "hx-headers on <body>"},
+		{"headers with an expression value", `<body hx-headers={ ghtmx.CSRFHeader(token) }></body>`, "CSRF"},
 		{"conditional attribute counts", `<div if x { hx-target="#a" }><button hx-get={ handlers.Load }>x</button></div>`, "hx-target on <div>"},
 		{"control flow is transparent", `<div hx-target="#out">
 		for _, i := range items {
@@ -165,22 +165,5 @@ func TestImplicitInheritanceSilenceable(t *testing.T) {
 	diags = validateWith(t, "4.0.0", map[string]diag.Severity{diag.ImplicitInheritance: diag.Error}, wrapperFixture)
 	if len(diags) != 2 || diags[0].Severity != diag.Error {
 		t.Fatalf("GHTMX-W0202=error must promote the check, got %+v", diags)
-	}
-}
-
-func TestBaseAttrName(t *testing.T) {
-	cases := map[string]string{
-		"hx-target":                  "hx-target",
-		"hx-target:inherited":        "hx-target",
-		"hx-select:inherited:append": "hx-select",
-		"hx-sse:connect":             "hx-sse:connect",
-		"hx-on::after:swap":          "hx-on::after:swap",
-		"hx-status:422":              "hx-status:422",
-		"id":                         "id",
-	}
-	for in, want := range cases {
-		if got := baseAttrName(in); got != want {
-			t.Errorf("baseAttrName(%q) = %q, want %q", in, got, want)
-		}
 	}
 }

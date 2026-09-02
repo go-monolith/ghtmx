@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"slices"
 	"strings"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
@@ -88,9 +89,7 @@ func parseAnnotation(s string, pkg *Package, imports importMap, types map[string
 		}
 	}
 	verb := Verb(strings.ToUpper(fields[0]))
-	switch verb {
-	case GET, POST, PUT, PATCH, DELETE, QUERY:
-	default:
+	if !slices.Contains(BindableVerbs, verb) {
 		return Route{}, fmt.Sprintf("malformed //ghtmx:route annotation: unknown verb %q", fields[0])
 	}
 	path := fields[1]

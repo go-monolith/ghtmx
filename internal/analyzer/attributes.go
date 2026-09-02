@@ -90,7 +90,7 @@ func (v *attrValidator) validateElement(attrs []parser.Attribute, elementRange p
 		if !ok {
 			return
 		}
-		def, _ := v.surface.Attribute(name)
+		def, _ := v.surface.Definition(parsed.Base)
 		if hasConstantValue {
 			// templ carve-out 1 (FR-004): a verb attribute with a string URL
 			// is reinterpreted as a typed binding in .ghtmx.
@@ -129,8 +129,11 @@ func (v *attrValidator) validateElement(attrs []parser.Attribute, elementRange p
 // walkAttributes visits every attribute with a constant name, descending
 // into conditional branches (marked conditional=true, exempt from
 // combination checks since their presence is not statically certain).
-// bare reports the valueless boolean forms (hx-disable, hx-disable?={ c }).
-func (v *attrValidator) walkAttributes(attrs []parser.Attribute, conditional bool, fn func(name string, rng parser.Range, constantValue string, hasConstantValue, bare, conditional bool)) {
+// value is the constant value when hasConstantValue is set, and the Go
+// expression text of a dynamic value otherwise (so a check can still look
+// at hx-headers={ ghtmx.CSRFHeader(token) }). bare reports the valueless
+// boolean forms (hx-disable, hx-disable?={ c }).
+func (v *attrValidator) walkAttributes(attrs []parser.Attribute, conditional bool, fn func(name string, rng parser.Range, value string, hasConstantValue, bare, conditional bool)) {
 	for _, a := range attrs {
 		switch attr := a.(type) {
 		case *parser.ConstantAttribute:
@@ -144,7 +147,7 @@ func (v *attrValidator) walkAttributes(attrs []parser.Attribute, conditional boo
 		case *parser.ExpressionAttribute:
 			// Dynamic value: name check only.
 			if name, rng, ok := constantKey(attr.Key); ok {
-				fn(name, rng, "", false, false, conditional)
+				fn(name, rng, attr.Expression.Value, false, false, conditional)
 			}
 		case *parser.BoolExpressionAttribute:
 			if name, rng, ok := constantKey(attr.Key); ok {
@@ -261,14 +264,18 @@ func (v *attrValidator) validateName(name string, rng parser.Range) (htmxsurface
 			fmt.Sprintf("%s is not available in htmx %s", name, version), hint)
 		return parsed, false
 	}
-	// Known to the htmx family but not active at the configured version:
-	// the FR-052 message contract names both versions.
-	if introduced, ok := v.surface.Introduced(name); ok {
-		msg := fmt.Sprintf("%s is not available in htmx %s: it was introduced in %s", name, version, introduced)
-		if removed, wasRemoved := v.surface.Removed(name); wasRemoved {
-			msg = fmt.Sprintf("%s is not available in htmx %s: it was removed in %s", name, version, removed)
-		}
-		v.sink.Add(diag.VersionMismatch, pos, msg, "change the pinned htmxVersion in ghtmx.json, or avoid the attribute")
+	// Known to htmx but not active at the configured version — introduced
+	// later in this family, or only by a later family (hx-query under a
+	// 2.0.x pin): the FR-052 message contract names both versions. An
+	// attribute this version removed was reported by Migration above.
+	introduced, ok := v.surface.Introduced(name)
+	if !ok {
+		introduced, ok = v.surface.Introduced(base)
+	}
+	if ok {
+		v.sink.Add(diag.VersionMismatch, pos,
+			fmt.Sprintf("%s is not available in htmx %s: it was introduced in %s", name, version, introduced),
+			"change the pinned htmxVersion in ghtmx.json, or avoid the attribute")
 		return parsed, false
 	}
 	suggest := ""

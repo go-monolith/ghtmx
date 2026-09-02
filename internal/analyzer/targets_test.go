@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
+	"github.com/go-monolith/ghtmx/internal/htmxsurface"
 	parser "github.com/go-monolith/ghtmx/internal/parser"
 	"github.com/go-monolith/ghtmx/internal/routes"
 )
@@ -251,5 +252,49 @@ func TestNavOnlyRouteExemptFromUnboundWarning(t *testing.T) {
 	}
 	if !strings.Contains(diags[0].Suggest, "nav") {
 		t.Errorf("the remedy must mention the nav marker, got %q", diags[0].Suggest)
+	}
+}
+
+// The pinned surface decides which attribute forms a file contributes:
+// a form the pin rejects is reported by the attribute validator and must
+// not also surface as a dangling target or an undeclared event.
+func TestSurfaceGatesCollectedAttributeForms(t *testing.T) {
+	src := map[string]string{"a.ghtmx": `package main
+
+templ v() {
+	<button hx-target:inherited="#gone" hx-on-item-saved="x()">Go</button>
+}
+`}
+	cases := []struct {
+		version                      string
+		wantDangling, wantUndeclared bool
+	}{
+		{"2.0.10", false, true}, // hx-target:inherited is htmx 4; hx-on- is htmx 2.
+		{"4.0.0", true, false},
+	}
+	for _, tc := range cases {
+		surface, err := htmxsurface.ForVersion(tc.version)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sa := NewSetAnalysis()
+		sa.SetSurface(surface)
+		collectFiles(t, sa, src)
+		sink := diag.NewSink(nil)
+		sa.Check(nil, sink)
+		gotDangling, gotUndeclared := false, false
+		for _, d := range sink.Diagnostics() {
+			switch d.ID {
+			case diag.DanglingTarget:
+				gotDangling = true
+			case diag.UndeclaredEvent:
+				gotUndeclared = true
+			default:
+				t.Errorf("htmx %s: unexpected %s: %s", tc.version, d.ID, d.Message)
+			}
+		}
+		if gotDangling != tc.wantDangling || gotUndeclared != tc.wantUndeclared {
+			t.Errorf("htmx %s: dangling=%v undeclared=%v, want %v/%v", tc.version, gotDangling, gotUndeclared, tc.wantDangling, tc.wantUndeclared)
+		}
 	}
 }

@@ -24,7 +24,7 @@ var (
 	attrNameContext     = regexp.MustCompile(`<[^>]*\s(hx-[\w:-]*)$`)
 	attrNameLineContext = regexp.MustCompile(`^\s+(hx-[\w:-]*)$`)
 	// hx-post={ handlers.Cre| — the expression of a verb attribute.
-	verbExprContext = regexp.MustCompile(`(hx-(get|post|put|patch|delete|query))=\{\s*([\w.]*)$`)
+	verbExprContext = regexp.MustCompile(`(hx-(` + routes.BindableVerbPattern() + `))=\{\s*([\w.]*)$`)
 	// hx-swap="inner| — a quoted attribute value being typed.
 	attrValueContext       = regexp.MustCompile(`(hx-[\w:-]+)="([^"]*)$`)
 	attrValueSingleContext = regexp.MustCompile(`(hx-[\w:-]+)='([^']*)$`)

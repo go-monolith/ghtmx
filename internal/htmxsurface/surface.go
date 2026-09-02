@@ -394,6 +394,20 @@ func (e *NameError) Error() string {
 // used to tell "modifier the family lacks" from "unknown attribute".
 var modifierWords = []string{"inherited", "append"}
 
+// StripNameModifiers removes trailing attribute-name modifiers from name
+// (hx-target:inherited:append → hx-target) without consulting a surface,
+// for passes that run before or without one. Only the modifier words are
+// stripped, so hx-sse:connect and hx-on:… stay whole.
+func StripNameModifiers(name string) string {
+	for {
+		i := strings.LastIndex(name, ":")
+		if i < 0 || !slices.Contains(modifierWords, name[i+1:]) {
+			return name
+		}
+		name = name[:i]
+	}
+}
+
 // ParseName resolves an attribute name to its definition: an exact name,
 // an hx-on listener, a suffixed attribute (hx-status:422, hx-live:disabled),
 // or a name with attribute-name modifiers (hx-target:inherited,
@@ -572,14 +586,30 @@ func (s *Surface) IssuesRequest(base string) bool {
 // the embedded metadata records one. ok is false when the attribute is
 // unknown to the family entirely.
 func (s *Surface) Introduced(name string) (version string, ok bool) {
-	def, ok := s.fam.Attributes[name]
-	if !ok {
-		return "", false
+	if def, ok := s.fam.Attributes[name]; ok {
+		if def.Introduced == "" {
+			return s.fam.Versions[0], true
+		}
+		return def.Introduced, true
 	}
-	if def.Introduced == "" {
-		return s.fam.Versions[0], true
+	// Not this family's attribute at all: a later family may have
+	// introduced it (hx-query, hx-status under a 2.0.x pin). Only families
+	// that start after this version qualify, so the hint never points
+	// backwards.
+	for _, f := range families {
+		if len(f.Versions) == 0 || semver.Compare("v"+f.Versions[0], "v"+s.version) <= 0 {
+			continue
+		}
+		def, ok := f.Attributes[name]
+		if !ok || def.Removed != "" {
+			continue
+		}
+		if def.Introduced == "" {
+			return f.Versions[0], true
+		}
+		return def.Introduced, true
 	}
-	return def.Introduced, true
+	return "", false
 }
 
 // Removed returns the version that removed the named attribute, if any.

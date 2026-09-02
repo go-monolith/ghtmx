@@ -939,7 +939,7 @@ func TestUpdateRouteBindingsSwapsLowering(t *testing.T) {
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		dir, false, nil, false, false, FileWriter, false,
 		WithSetAnalysis(analyzer.NewSetAnalysis()),
-		attributeValidationOption(slog.New(slog.NewTextHandler(io.Discard, nil)), config.Default()),
+		(&Generate{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Args: Arguments{Config: config.Default()}}).attributeValidationOption(),
 		WithRouteBindings(oldTable, "example.com/swap", "ghtmxgen", oldNames),
 	)
 	ctx := context.Background()

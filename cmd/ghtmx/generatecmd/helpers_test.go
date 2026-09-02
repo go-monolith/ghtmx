@@ -88,7 +88,8 @@ func TestAttributeValidationOptionDegradesOnAnUnknownVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opt := attributeValidationOption(quietLog(), config.Config{HtmxVersion: tt.version})
+			cmd := &Generate{Log: quietLog(), Args: Arguments{Config: config.Config{HtmxVersion: tt.version}}}
+			opt := cmd.attributeValidationOption()
 			if opt == nil {
 				t.Fatal("attributeValidationOption returned nil; it must always return a usable option")
 			}
