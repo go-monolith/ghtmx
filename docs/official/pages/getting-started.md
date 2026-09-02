@@ -122,6 +122,12 @@ ghtmx not being in `go.mod` yet (the tidy that follows fixes it), and
 `GHTMX-W0104` for the `GET /` page route, which is navigated to rather
 than bound — full-page routes always warn like this.
 
+Without a `ghtmx.json` the project is pinned to htmx 2.0.10: that is
+the script `HTMXScript()` serves and the syntax the compiler checks. To
+build on htmx 4 instead, create `ghtmx.json` with
+`{"htmxVersion": "4.0.0"}` before generating — see
+[htmx versions](/docs/htmx-versions) for what changes.
+
 ## 5. Run it — and render a fragment
 
 ```sh

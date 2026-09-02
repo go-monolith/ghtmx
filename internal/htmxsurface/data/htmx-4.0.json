@@ -1,0 +1,564 @@
+{
+  "family": "4.0",
+  "versions": [
+    "4.0.0"
+  ],
+  "nameModifiers": [
+    "inherited",
+    "append"
+  ],
+  "onEventPrefixes": [
+    "hx-on:"
+  ],
+  "attributes": {
+    "hx-get": {
+      "kind": "url",
+      "verb": "GET",
+      "issuesRequest": true
+    },
+    "hx-post": {
+      "kind": "url",
+      "verb": "POST",
+      "issuesRequest": true
+    },
+    "hx-put": {
+      "kind": "url",
+      "verb": "PUT",
+      "issuesRequest": true
+    },
+    "hx-patch": {
+      "kind": "url",
+      "verb": "PATCH",
+      "issuesRequest": true
+    },
+    "hx-delete": {
+      "kind": "url",
+      "verb": "DELETE",
+      "issuesRequest": true
+    },
+    "hx-query": {
+      "kind": "url",
+      "verb": "QUERY",
+      "issuesRequest": true
+    },
+    "hx-action": {
+      "kind": "url",
+      "issuesRequest": true
+    },
+    "hx-method": {
+      "kind": "enum",
+      "values": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "QUERY"
+      ],
+      "issuesRequest": true
+    },
+    "hx-on": {
+      "kind": "on",
+      "prefix": true
+    },
+    "hx-trigger": {
+      "kind": "trigger"
+    },
+    "hx-swap": {
+      "kind": "swap",
+      "inherited": true
+    },
+    "hx-swap-oob": {
+      "kind": "swap-oob"
+    },
+    "hx-target": {
+      "kind": "extended-selector",
+      "inherited": true
+    },
+    "hx-select": {
+      "kind": "selector",
+      "inherited": true
+    },
+    "hx-select-oob": {
+      "kind": "selector-list",
+      "inherited": true
+    },
+    "hx-vals": {
+      "kind": "json",
+      "inherited": true
+    },
+    "hx-include": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "extraKeywords": [
+        {
+          "value": "inherit",
+          "removed": "4.0.0",
+          "hint": "put :inherited on the ancestor's attribute instead"
+        }
+      ]
+    },
+    "hx-headers": {
+      "kind": "json",
+      "inherited": true
+    },
+    "hx-config": {
+      "kind": "json",
+      "inherited": true
+    },
+    "hx-encoding": {
+      "kind": "enum",
+      "values": [
+        "multipart/form-data"
+      ],
+      "inherited": true
+    },
+    "hx-push-url": {
+      "kind": "bool-or-url",
+      "inherited": true
+    },
+    "hx-replace-url": {
+      "kind": "bool-or-url",
+      "inherited": true
+    },
+    "hx-boost": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ],
+      "inherited": true
+    },
+    "hx-confirm": {
+      "kind": "string",
+      "inherited": true
+    },
+    "hx-indicator": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "extraKeywords": [
+        {
+          "value": "inherit",
+          "removed": "4.0.0",
+          "hint": "put :inherited on the ancestor's attribute instead"
+        }
+      ]
+    },
+    "hx-sync": {
+      "kind": "sync",
+      "inherited": true
+    },
+    "hx-validate": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ],
+      "inherited": true
+    },
+    "hx-disable": {
+      "kind": "extended-selector",
+      "inherited": true,
+      "requiresValue": true,
+      "hint": "in htmx 4 hx-disable names the elements to disable during a request (the htmx 2 hx-disabled-elt); the htmx 2 hx-disable flag that skipped processing is hx-ignore"
+    },
+    "hx-ignore": {
+      "kind": "flag"
+    },
+    "hx-preserve": {
+      "kind": "flag"
+    },
+    "hx-history-elt": {
+      "kind": "flag"
+    },
+    "hx-status": {
+      "kind": "status-config",
+      "prefix": true,
+      "suffixPattern": "^(\\d{3}|\\d{2}x|\\dxx)$"
+    },
+    "hx-morph-skip": {
+      "kind": "flag"
+    },
+    "hx-morph-skip-children": {
+      "kind": "flag"
+    },
+    "hx-vars": {
+      "kind": "json",
+      "removed": "4.0.0",
+      "hint": "use hx-vals with a js: prefix"
+    },
+    "hx-params": {
+      "kind": "params",
+      "removed": "4.0.0",
+      "hint": "filter parameters in an htmx:config:request listener"
+    },
+    "hx-ext": {
+      "kind": "ext-list",
+      "removed": "4.0.0",
+      "hint": "include the extension script directly; htmx 4 activates extensions on load"
+    },
+    "hx-disinherit": {
+      "kind": "attr-list",
+      "removed": "4.0.0",
+      "hint": "inheritance is explicit in htmx 4: mark inherited attributes with :inherited and drop hx-disinherit"
+    },
+    "hx-inherit": {
+      "kind": "attr-list",
+      "removed": "4.0.0",
+      "hint": "inheritance is explicit in htmx 4: mark inherited attributes with :inherited and drop hx-inherit"
+    },
+    "hx-request": {
+      "kind": "request",
+      "removed": "4.0.0",
+      "renamedTo": "hx-config"
+    },
+    "hx-disabled-elt": {
+      "kind": "extended-selector",
+      "removed": "4.0.0",
+      "renamedTo": "hx-disable"
+    },
+    "hx-sse:connect": {
+      "kind": "url",
+      "issuesRequest": true,
+      "extension": "hx-sse"
+    },
+    "hx-sse:close": {
+      "kind": "string",
+      "extension": "hx-sse"
+    },
+    "hx-ws:connect": {
+      "kind": "url",
+      "issuesRequest": true,
+      "extension": "hx-ws"
+    },
+    "hx-ws:send": {
+      "kind": "flag",
+      "issuesRequest": true,
+      "extension": "hx-ws"
+    },
+    "hx-live": {
+      "kind": "string",
+      "suffixPattern": "^.+$",
+      "extension": "hx-live"
+    },
+    "hx-preload": {
+      "kind": "string",
+      "inherited": true,
+      "extension": "hx-preload"
+    },
+    "hx-pending": {
+      "kind": "string",
+      "extension": "hx-pending"
+    },
+    "hx-prompt": {
+      "kind": "string",
+      "inherited": true,
+      "extension": "hx-prompt"
+    },
+    "hx-targets": {
+      "kind": "selector",
+      "inherited": true,
+      "extension": "hx-targets"
+    },
+    "hx-head": {
+      "kind": "string",
+      "extension": "hx-head"
+    },
+    "hx-browser-indicator": {
+      "kind": "flag",
+      "extension": "hx-browser-indicator"
+    },
+    "hx-ptag": {
+      "kind": "string",
+      "extension": "hx-ptag"
+    },
+    "hx-history": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ],
+      "extension": "hx-history-cache"
+    },
+    "hx-nonce": {
+      "kind": "string",
+      "extension": "hx-csp"
+    }
+  },
+  "swapStyles": [
+    "innerHTML",
+    "outerHTML",
+    "textContent",
+    "beforebegin",
+    "afterbegin",
+    "beforeend",
+    "afterend",
+    "delete",
+    "none",
+    "innerMorph",
+    "outerMorph",
+    "outerSync"
+  ],
+  "swapStyleAliases": {
+    "before": "beforebegin",
+    "prepend": "afterbegin",
+    "append": "beforeend",
+    "after": "afterend"
+  },
+  "extensionSwapStyles": [
+    "upsert",
+    "download"
+  ],
+  "swapModifiers": {
+    "transition": "bool",
+    "swap": "timing",
+    "settle": "timing",
+    "ignoreTitle": "flag-or-bool",
+    "scroll": "scroll-spec-4",
+    "show": "show-spec-4",
+    "scrollTarget": "selector",
+    "showTarget": "selector",
+    "focusScroll": "bool",
+    "strip": "bool",
+    "swapEmpty": "flag-or-bool",
+    "target": "selector"
+  },
+  "swapModifierRenames": {
+    "focus-scroll": "focusScroll"
+  },
+  "triggerModifiers": [
+    "once",
+    "changed",
+    "delay",
+    "throttle",
+    "from",
+    "target",
+    "prevent",
+    "stop",
+    "consume",
+    "halt",
+    "capture",
+    "passive",
+    "root",
+    "rootMargin",
+    "threshold"
+  ],
+  "triggerModifierRemoved": {
+    "queue": "queue requests with hx-sync=\"<selector>:queue first|last|all\" instead"
+  },
+  "triggerSpecialEvents": [
+    "load",
+    "revealed",
+    "intersect",
+    "every"
+  ],
+  "syncStrategies": [
+    "drop",
+    "abort",
+    "replace",
+    "queue",
+    "queue first",
+    "queue last",
+    "queue all"
+  ],
+  "conflicts": [
+    {
+      "attrs": [
+        "hx-action",
+        "hx-get",
+        "hx-post",
+        "hx-put",
+        "hx-patch",
+        "hx-delete",
+        "hx-query"
+      ],
+      "atMostOne": true,
+      "message": "an element can issue only one htmx request; use a single verb attribute, or hx-action with hx-method"
+    }
+  ],
+  "requestHeaders": [
+    "HX-Boosted",
+    "HX-Current-URL",
+    "HX-History-Restore-Request",
+    "HX-Request",
+    "HX-Request-Type",
+    "HX-Source",
+    "HX-Target"
+  ],
+  "responseHeaders": {
+    "HX-Location": {
+      "kind": "url-or-json"
+    },
+    "HX-Push-Url": {
+      "kind": "bool-or-url"
+    },
+    "HX-Redirect": {
+      "kind": "url"
+    },
+    "HX-Refresh": {
+      "kind": "enum",
+      "values": [
+        "true",
+        "false"
+      ]
+    },
+    "HX-Replace-Url": {
+      "kind": "bool-or-url"
+    },
+    "HX-Reswap": {
+      "kind": "swap"
+    },
+    "HX-Retarget": {
+      "kind": "selector"
+    },
+    "HX-Reselect": {
+      "kind": "selector"
+    },
+    "HX-Trigger": {
+      "kind": "trigger-events"
+    }
+  },
+  "htmxEvents": [
+    "abort",
+    "after:cleanup",
+    "after:history:push",
+    "after:history:replace",
+    "after:history:update",
+    "after:init",
+    "after:process",
+    "after:request",
+    "after:settle",
+    "after:swap",
+    "after:viewtransition",
+    "before:cleanup",
+    "before:history:restore",
+    "before:history:update",
+    "before:init",
+    "before:on:init",
+    "before:process",
+    "before:request",
+    "before:response",
+    "before:settle",
+    "before:swap",
+    "before:viewtransition",
+    "config:request",
+    "confirm",
+    "error",
+    "finally:request",
+    "finally:swap",
+    "response:error",
+    "sse:after:connection",
+    "sse:after:message",
+    "sse:before:message",
+    "sse:close",
+    "sse:error",
+    "ws:after:connection",
+    "ws:after:message:incoming",
+    "ws:after:message:outgoing",
+    "ws:before:connection",
+    "ws:before:message:incoming",
+    "ws:before:message:outgoing",
+    "ws:close",
+    "ws:error"
+  ],
+  "eventRenames": {
+    "after-on-load": "after:init",
+    "afterOnLoad": "after:init",
+    "after-process-node": "after:init",
+    "afterProcessNode": "after:init",
+    "load": "after:init",
+    "after-request": "after:request",
+    "afterRequest": "after:request",
+    "after-settle": "after:settle",
+    "afterSettle": "after:settle",
+    "after-swap": "after:swap",
+    "afterSwap": "after:swap",
+    "oob-after-swap": "after:swap",
+    "oobAfterSwap": "after:swap",
+    "before-cleanup-element": "before:cleanup",
+    "beforeCleanupElement": "before:cleanup",
+    "before-history-save": "before:history:update",
+    "beforeHistorySave": "before:history:update",
+    "before-history-update": "before:history:update",
+    "beforeHistoryUpdate": "before:history:update",
+    "before-on-load": "before:init",
+    "beforeOnLoad": "before:init",
+    "before-process-node": "before:process",
+    "beforeProcessNode": "before:process",
+    "before-request": "before:request",
+    "beforeRequest": "before:request",
+    "before-send": "before:request",
+    "beforeSend": "before:request",
+    "before-swap": "before:swap",
+    "beforeSwap": "before:swap",
+    "oob-before-swap": "before:swap",
+    "oobBeforeSwap": "before:swap",
+    "before-transition": "before:viewTransition",
+    "beforeTransition": "before:viewTransition",
+    "config-request": "config:request",
+    "configRequest": "config:request",
+    "history-cache-miss": "before:history:restore",
+    "historyCacheMiss": "before:history:restore",
+    "history-restore": "before:history:restore",
+    "historyRestore": "before:history:restore",
+    "pushed-into-history": "after:history:push",
+    "pushedIntoHistory": "after:history:push",
+    "replaced-in-history": "after:history:replace",
+    "replacedInHistory": "after:history:replace",
+    "response-error": "response:error",
+    "responseError": "response:error",
+    "send-error": "error",
+    "sendError": "error",
+    "send-abort": "error",
+    "sendAbort": "error",
+    "swap-error": "error",
+    "swapError": "error",
+    "target-error": "error",
+    "targetError": "error",
+    "timeout": "error",
+    "sse-open": "sse:after:connection",
+    "sseOpen": "sse:after:connection",
+    "sse-error": "sse:error",
+    "sseError": "sse:error",
+    "sse-before-message": "sse:before:message",
+    "sseBeforeMessage": "sse:before:message",
+    "sse-message": "sse:after:message",
+    "sseMessage": "sse:after:message",
+    "sse-close": "sse:close",
+    "sseClose": "sse:close",
+    "ws-open": "ws:after:connection",
+    "wsOpen": "ws:after:connection",
+    "ws-close": "ws:close",
+    "wsClose": "ws:close",
+    "ws-config-send": "ws:before:message:outgoing",
+    "wsConfigSend": "ws:before:message:outgoing",
+    "ws-before-send": "ws:before:message:outgoing",
+    "wsBeforeSend": "ws:before:message:outgoing",
+    "ws-after-send": "ws:after:message:outgoing",
+    "wsAfterSend": "ws:after:message:outgoing",
+    "ws-before-message": "ws:before:message:incoming",
+    "wsBeforeMessage": "ws:before:message:incoming",
+    "ws-after-message": "ws:after:message:incoming",
+    "wsAfterMessage": "ws:after:message:incoming"
+  },
+  "removedEvents": {
+    "validation:validate": "htmx 4 relies on native form validation; listen for the DOM invalid event or use hx-validate",
+    "validation:failed": "htmx 4 relies on native form validation; listen for the DOM invalid event or use hx-validate",
+    "validation:halted": "htmx 4 relies on native form validation; listen for the DOM invalid event or use hx-validate",
+    "xhr:loadstart": "htmx 4 uses fetch(); use before:request instead",
+    "xhr:loadend": "htmx 4 uses fetch(); use finally:request instead",
+    "xhr:progress": "htmx 4 uses fetch(), which reports no upload progress",
+    "xhr:abort": "htmx 4 uses fetch(); listen for abort instead",
+    "history-cache-error": "htmx 4 keeps no history cache; use the hx-history-cache extension",
+    "history-cache-miss-error": "htmx 4 keeps no history cache; use before:history:restore",
+    "history-cache-miss-load": "htmx 4 keeps no history cache; use before:history:restore",
+    "no-sse-source-error": "the hx-sse extension reports connection problems as sse:error",
+    "on-load-error": "htmx 4 reports initialisation problems as error",
+    "oob-error-no-target": "htmx 4 reports a missing out-of-band target as error",
+    "prompt": "hx-prompt is an extension in htmx 4; use confirm"
+  },
+  "removedAttributePrefixes": {
+    "hx-target-": "the response-targets extension is not part of htmx 4; use hx-status:<code>=\"target:<selector>\""
+  },
+  "extensionAttributePrefixes": []
+}

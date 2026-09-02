@@ -68,6 +68,13 @@ type Generate struct {
 	// .ghtmx file (FR-061 tier two): pages referencing its fragments and
 	// files listening for its events. Nil outside watch mode.
 	dependentsOf func(file string) []string
+	// surface is the pinned htmx surface, resolved once by htmxSurface
+	// (eagerly at the top of Run, before the value is copied into
+	// goroutines) and shared by attribute validation, the whole-set
+	// collector, and the central generator so they cannot disagree about
+	// the pin. surfaceResolved records an attempt that yielded nil.
+	surface         *htmxsurface.Surface
+	surfaceResolved bool
 	// walkDone flips once the initial filesystem walk finishes: tier-two
 	// expansion applies to watch events only — during the walk every file
 	// is processed anyway.
@@ -104,6 +111,7 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 	if cmd.Args.NotifyProxy {
 		return proxy.NotifyProxy(cmd.Args.ProxyBind, cmd.Args.ProxyPort)
 	}
+	cmd.htmxSurface()
 	if cmd.Args.PPROFPort > 0 {
 		go func() {
 			_ = http.ListenAndServe(fmt.Sprintf("localhost:%d", cmd.Args.PPROFPort), nil)
@@ -142,6 +150,7 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 	table, fragRefs, modRoot, modulePath, discoveryErrors, _ := cmd.discoverRoutes()
 	discoveryDuration := time.Since(discoveryStart)
 	setAnalysis := analyzer.NewSetAnalysis()
+	setAnalysis.SetSurface(cmd.htmxSurface())
 	setAnalysis.MarkGoFragmentRefs(fragRefs)
 	constructors, nameConflicts := central.Naming(table)
 	for _, group := range nameConflicts {
@@ -280,7 +289,7 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 		cmd.Args.Lazy,
 		WithGeneratedSuffix(cmd.Args.Config.GeneratedSuffix),
 		WithTemplateExtension(cmd.Args.Config.TemplateExtension),
-		attributeValidationOption(cmd.Log, cmd.Args.Config),
+		cmd.attributeValidationOption(),
 		WithRouteBindings(table, modulePath, cmd.Args.Config.GeneratedPackage.Name, constructors),
 		WithCentralFile(cmd.centralFilePath(modRoot)),
 		WithSetAnalysis(setAnalysis),
@@ -762,7 +771,14 @@ func (cmd *Generate) writeCentralPackage(table *routes.Table, modRoot string, ev
 	if cmd.Args.IncludeVersion {
 		version = ghtmx.Version()
 	}
-	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: htmxVersion})
+	// The after-settle and after-swap emitters exist only while the
+	// pinned htmx still honours their response headers (htmx 2).
+	omitTriggerAfter := false
+	if surface := cmd.htmxSurface(); surface != nil {
+		_, hasAfterSwap := surface.ResponseHeader("HX-Trigger-After-Swap")
+		omitTriggerAfter = !hasAfterSwap
+	}
+	content, err := central.Generate(table, central.Options{PackageName: cmd.Args.Config.GeneratedPackage.Name, Version: version, ModRoot: modRoot, Events: events, HtmxVersion: htmxVersion, OmitTriggerAfterEmitters: omitTriggerAfter})
 	if err != nil {
 		return err
 	}
@@ -793,16 +809,33 @@ func (cmd *Generate) writeCentralPackage(table *routes.Table, modRoot string, ev
 	return nil
 }
 
-// attributeValidationOption builds the hx-* validation option from the
-// resolved configuration. The version was already validated during argument
-// resolution; a failure here only disables validation and is logged.
-func attributeValidationOption(log *slog.Logger, cfg config.Config) FSEventHandlerOption {
-	surface, err := htmxsurface.ForVersion(cfg.HtmxVersion)
+// htmxSurface resolves the pinned htmx surface once. The version was
+// already validated during argument resolution; a failure here (a Generate
+// built without a configuration) is logged and yields nil, which disables
+// attribute validation. Run resolves before it starts goroutines; later
+// calls only read.
+func (cmd *Generate) htmxSurface() *htmxsurface.Surface {
+	if cmd.surfaceResolved {
+		return cmd.surface
+	}
+	cmd.surfaceResolved = true
+	surface, err := htmxsurface.ForVersion(cmd.Args.Config.HtmxVersion)
 	if err != nil {
-		log.Error("hx-* attribute validation disabled", slog.Any("error", err))
+		cmd.Log.Error("hx-* attribute validation disabled", slog.Any("error", err))
+		return nil
+	}
+	cmd.surface = surface
+	return surface
+}
+
+// attributeValidationOption builds the hx-* validation option from the
+// resolved surface; without one it is a no-op.
+func (cmd *Generate) attributeValidationOption() FSEventHandlerOption {
+	surface := cmd.htmxSurface()
+	if surface == nil {
 		return func(h *FSEventHandler) {}
 	}
-	return WithAttributeValidation(surface, cfg.SeverityOverrides())
+	return WithAttributeValidation(surface, cmd.Args.Config.SeverityOverrides())
 }
 
 func (cmd *Generate) walkAndWatch(ctx context.Context, events chan fsnotify.Event, errs chan error) {

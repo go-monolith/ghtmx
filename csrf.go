@@ -12,8 +12,11 @@ const DefaultCSRFHeaderName = "X-CSRF-Token"
 //	<form hx-post={ handlers.CreateUser } hx-headers={ ghtmx.CSRFHeader(token) }>
 //
 // The same attribute works for all state-changing verbs (hx-post, hx-put,
-// hx-patch, hx-delete); placed on a common ancestor it is inherited by
-// every element below it. The token is supplied by the application — the
+// hx-patch, hx-delete). Placed on a common ancestor it reaches every
+// element below it — implicitly under htmx 2.0.x, and only as
+// hx-headers:inherited={ ghtmx.CSRFHeader(token) } under htmx 4, whose
+// attribute inheritance is explicit (a bare hx-headers on a wrapper is
+// reported as GHTMX-W0202 there). The token is supplied by the application — the
 // engine neither generates nor validates tokens — and the value is JSON,
 // escaped like any attribute value when rendered, so no hand-written
 // header plumbing is involved.

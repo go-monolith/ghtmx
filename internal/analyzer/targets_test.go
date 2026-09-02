@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
+	"github.com/go-monolith/ghtmx/internal/htmxsurface"
 	parser "github.com/go-monolith/ghtmx/internal/parser"
 	"github.com/go-monolith/ghtmx/internal/routes"
 )
@@ -71,6 +72,24 @@ templ list() {
 	}
 	if d.Pos.File != "a.ghtmx" || d.Pos.Line != 4 {
 		t.Errorf("position = %+v", d.Pos)
+	}
+}
+
+// TestModifiedTargetNameStillChecked: htmx 4's hx-target:inherited is an
+// hx-target for the dangling-ID check, and a resolved one is fine.
+func TestModifiedTargetNameStillChecked(t *testing.T) {
+	diags := checkTargets(t, map[string]string{
+		"a.ghtmx": `package main
+
+templ list() {
+	<div hx-target:inherited="#missing"><button hx-get={ handlers.Load }>Go</button></div>
+	<div hx-select:inherited:append="#detail"></div>
+	<div id="detail"></div>
+}
+`,
+	}, nil)
+	if len(diags) != 1 || diags[0].ID != diag.DanglingTarget || !strings.Contains(diags[0].Message, "#missing") {
+		t.Fatalf("expected exactly the #missing warning, got %+v", diags)
 	}
 }
 
@@ -233,5 +252,49 @@ func TestNavOnlyRouteExemptFromUnboundWarning(t *testing.T) {
 	}
 	if !strings.Contains(diags[0].Suggest, "nav") {
 		t.Errorf("the remedy must mention the nav marker, got %q", diags[0].Suggest)
+	}
+}
+
+// The pinned surface decides which attribute forms a file contributes:
+// a form the pin rejects is reported by the attribute validator and must
+// not also surface as a dangling target or an undeclared event.
+func TestSurfaceGatesCollectedAttributeForms(t *testing.T) {
+	src := map[string]string{"a.ghtmx": `package main
+
+templ v() {
+	<button hx-target:inherited="#gone" hx-on-item-saved="x()">Go</button>
+}
+`}
+	cases := []struct {
+		version                      string
+		wantDangling, wantUndeclared bool
+	}{
+		{"2.0.10", false, true}, // hx-target:inherited is htmx 4; hx-on- is htmx 2.
+		{"4.0.0", true, false},
+	}
+	for _, tc := range cases {
+		surface, err := htmxsurface.ForVersion(tc.version)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sa := NewSetAnalysis()
+		sa.SetSurface(surface)
+		collectFiles(t, sa, src)
+		sink := diag.NewSink(nil)
+		sa.Check(nil, sink)
+		gotDangling, gotUndeclared := false, false
+		for _, d := range sink.Diagnostics() {
+			switch d.ID {
+			case diag.DanglingTarget:
+				gotDangling = true
+			case diag.UndeclaredEvent:
+				gotUndeclared = true
+			default:
+				t.Errorf("htmx %s: unexpected %s: %s", tc.version, d.ID, d.Message)
+			}
+		}
+		if gotDangling != tc.wantDangling || gotUndeclared != tc.wantUndeclared {
+			t.Errorf("htmx %s: dangling=%v undeclared=%v, want %v/%v", tc.version, gotDangling, gotUndeclared, tc.wantDangling, tc.wantUndeclared)
+		}
 	}
 }

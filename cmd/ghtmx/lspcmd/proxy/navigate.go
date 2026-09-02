@@ -31,7 +31,7 @@ import (
 var (
 	hxOnAttrName   = regexp.MustCompile(`hx-on[\w:.-]*`)
 	hxTriggerValue = regexp.MustCompile(`hx-trigger="([^"]*)"|hx-trigger='([^']*)'`)
-	verbExprAround = regexp.MustCompile(`hx-(get|post|put|patch|delete)=\{\s*([\w.]+)`)
+	verbExprAround = regexp.MustCompile(`hx-(` + routes.BindableVerbPattern() + `)=\{\s*([\w.]+)`)
 )
 
 // eventRefAt returns the declared-event wire name under the cursor, if

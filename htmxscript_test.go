@@ -2,6 +2,7 @@ package ghtmx
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -72,8 +73,29 @@ func TestScriptVersionsMatchSurface(t *testing.T) {
 
 func TestSupportedHtmxVersionsNumericOrder(t *testing.T) {
 	versions := SupportedHtmxVersions()
-	if versions[len(versions)-1] != "2.0.10" {
-		t.Errorf("2.0.10 must sort last numerically, got %v", versions)
+	if versions[len(versions)-1] != "4.0.0" {
+		t.Errorf("4.0.0 must sort last numerically, got %v", versions)
+	}
+	// Numeric, not lexical: 2.0.10 follows 2.0.9 and precedes 4.0.0.
+	i9, i10 := slices.Index(versions, "2.0.9"), slices.Index(versions, "2.0.10")
+	if i9 < 0 || i10 < 0 || i9 > i10 {
+		t.Errorf("2.0.9 must precede 2.0.10, got %v", versions)
+	}
+}
+
+func TestHTMXScriptTagHtmx4(t *testing.T) {
+	var sb strings.Builder
+	if err := HTMXScriptTag("4.0.0").Render(context.Background(), &sb); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	for _, want := range []string{
+		`src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"`,
+		`integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %s in tag:\n%s", want, out)
+		}
 	}
 }
 

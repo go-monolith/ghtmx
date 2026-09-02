@@ -136,6 +136,41 @@ func TestAllFiveVerbsResolve(t *testing.T) {
 	}
 }
 
+// TestQueryVerbResolvesUnderHtmx4: hx-query is the sixth verb attribute
+// of htmx 4; it binds QUERY routes like the others and refuses a route of
+// another verb.
+func TestQueryVerbResolvesUnderHtmx4(t *testing.T) {
+	table := testTable(t)
+	if _, ok := table.Add(routes.Route{Verb: routes.QUERY, Path: "/search", Handler: routes.SymbolRef{PkgPath: "example.com/app/handlers", Name: "Search"}}); !ok {
+		t.Fatal("add failed")
+	}
+	surface, err := htmxsurface.ForVersion("4.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := func(markup string) (*parser.TemplateFile, []diag.Diagnostic) {
+		t.Helper()
+		tf, err := parser.ParseString(bindingHeader + "templ page() {\n\t" + markup + "\n}\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tf.Filepath = "app/page.ghtmx"
+		sink := diag.NewSink(nil)
+		ResolveBindings(tf, BindingEnv{Table: table, Surface: surface, PkgPath: "example.com/app", GeneratedPkgName: "ghtmxgen"}, sink)
+		return tf, sink.Diagnostics()
+	}
+	tf, diags := run(`<form hx-query={ handlers.Search }>q</form>`)
+	if len(diags) != 0 {
+		t.Fatalf("expected hx-query to resolve, got %+v", diags)
+	}
+	if ca, ok := firstHxAttribute(t, tf).(*parser.ConstantAttribute); !ok || ca.Value != "/search" {
+		t.Errorf("hx-query must lower to the registered path /search, got %+v", firstHxAttribute(t, tf))
+	}
+	if _, diags := run(`<form hx-query={ handlers.ListUsers }>q</form>`); len(diags) != 1 || diags[0].ID != diag.VerbMismatch {
+		t.Fatalf("a GET route bound from hx-query is a verb mismatch, got %+v", diags)
+	}
+}
+
 func TestBareIdentResolvesInCurrentPackage(t *testing.T) {
 	tf, diags := resolve(t, `package main
 

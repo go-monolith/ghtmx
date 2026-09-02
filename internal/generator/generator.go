@@ -1382,15 +1382,18 @@ func (g *generator) writeExpressionAttributeValueURL(indentLevel int, attr *pars
 	return g.writeErrorHandler(indentLevel)
 }
 
-// isHxVerbAttribute reports whether the attribute is one of the five
-// route-aware htmx verb attributes.
+// isHxVerbAttribute reports whether the attribute is one of the
+// route-aware htmx verb attributes (the five htmx 2 verbs plus htmx 4's
+// hx-query). The pinned surface is the authority on which of them a
+// project may use: the analyzer rejects an unsupported one before
+// generation, so this set only has to be the union.
 func isHxVerbAttribute(key parser.AttributeKey) bool {
 	k, ok := key.(parser.ConstantAttributeKey)
 	if !ok {
 		return false
 	}
 	switch k.Name {
-	case "hx-get", "hx-post", "hx-put", "hx-patch", "hx-delete":
+	case "hx-get", "hx-post", "hx-put", "hx-patch", "hx-delete", "hx-query":
 		return true
 	}
 	return false

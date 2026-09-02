@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-monolith/ghtmx/internal/diag"
+	"github.com/go-monolith/ghtmx/internal/htmxsurface"
 	parser "github.com/go-monolith/ghtmx/internal/parser"
 	"github.com/go-monolith/ghtmx/internal/routes"
 )
@@ -28,6 +29,12 @@ type SetAnalysis struct {
 	// Replaced wholesale by MarkGoFragmentRefs and never mutated
 	// afterwards, so snapshots may alias it.
 	goFragmentRefs map[string]bool
+	// surface, when set, decides which hx-* names a file contributes:
+	// hx-target:inherited is collected under a 4.x pin and hx-on-<event>
+	// under a 2.x pin, and the form the pin rejects (reported by the
+	// attribute validator) is not collected at all. Without a surface the
+	// collection is purely syntactic.
+	surface *htmxsurface.Surface
 }
 
 type fileFacts struct {
@@ -49,6 +56,21 @@ func NewSetAnalysis() *SetAnalysis {
 	return &SetAnalysis{files: map[string]*fileFacts{}, bound: map[string]bool{}}
 }
 
+// SetSurface pins the htmx surface the collector resolves attribute
+// names against; nil keeps the syntactic collection. Call it before the
+// first Collect/CollectFile: facts collected earlier are not recomputed.
+func (s *SetAnalysis) SetSurface(surface *htmxsurface.Surface) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.surface = surface
+}
+
+func (s *SetAnalysis) currentSurface() *htmxsurface.Surface {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.surface
+}
+
 // literalIDSelector matches a fully-literal CSS ID selector: exactly one
 // #id with no combinators, classes, or extended-selector prefixes.
 // Anything else is exempt from analysis entirely (FR-042).
@@ -58,7 +80,7 @@ var literalIDSelector = regexp.MustCompile(`^#[A-Za-z][A-Za-z0-9_.:-]*$`)
 // target selectors. Selectors and IDs containing any interpolated
 // expression are never collected: the check is deliberately conservative.
 func (s *SetAnalysis) CollectFile(file *parser.TemplateFile) {
-	facts := computeFileFacts(file)
+	facts := computeFileFacts(file, s.currentSurface())
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.files[file.Filepath] = facts
@@ -67,7 +89,7 @@ func (s *SetAnalysis) CollectFile(file *parser.TemplateFile) {
 // Collect records the file's facts and fragment data in one step, so a
 // concurrent snapshot never sees one map updated and the other not.
 func (s *SetAnalysis) Collect(file *parser.TemplateFile, pkgPath string) {
-	facts := computeFileFacts(file)
+	facts := computeFileFacts(file, s.currentSurface())
 	frags := computeFragmentFacts(file, pkgPath)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -87,8 +109,30 @@ func (s *SetAnalysis) RemoveFile(file string) {
 	delete(s.fragments, file)
 }
 
-func computeFileFacts(file *parser.TemplateFile) *fileFacts {
+// attrResolver maps an hx-* attribute name to its base name (hx-target
+// for hx-target:inherited) and reports whether the pinned surface accepts
+// the name at all.
+type attrResolver func(name string) (base string, ok bool)
+
+func syntacticResolver(name string) (string, bool) {
+	return htmxsurface.StripNameModifiers(name), true
+}
+
+func surfaceResolver(surface *htmxsurface.Surface) attrResolver {
+	return func(name string) (string, bool) {
+		if p, err := surface.ParseName(name); err == nil {
+			return p.Base, true
+		}
+		return name, surface.KnownExtension(name)
+	}
+}
+
+func computeFileFacts(file *parser.TemplateFile, surface *htmxsurface.Surface) *fileFacts {
 	facts := &fileFacts{emittedIDs: map[string]bool{}}
+	resolve := attrResolver(syntacticResolver)
+	if surface != nil {
+		resolve = surfaceResolver(surface)
+	}
 	var children [][]parser.Node
 	for _, node := range file.Nodes {
 		switch t := node.(type) {
@@ -113,19 +157,32 @@ func computeFileFacts(file *parser.TemplateFile) *fileFacts {
 			default:
 				return
 			}
-			collectAttrFacts(attrs, file.Filepath, facts)
+			collectAttrFacts(attrs, file.Filepath, facts, resolve)
 		})
 	}
 	return facts
 }
 
-func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFacts) {
+// hxBase resolves an attribute name through the resolver when it is an
+// hx-* name; other names (id) pass through.
+func hxBase(name string, resolve attrResolver) (string, bool) {
+	if !strings.HasPrefix(name, "hx-") {
+		return name, true
+	}
+	return resolve(name)
+}
+
+func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFacts, resolve attrResolver) {
 	for _, a := range attrs {
 		switch attr := a.(type) {
 		case *parser.ConstantAttribute:
 			name, rng, ok := constantKey(attr.Key)
 			if !ok {
 				continue
+			}
+			base, accepted := hxBase(name, resolve)
+			if !accepted {
+				continue // Rejected by the pin; the attribute validator reports it.
 			}
 			refPos := func() diag.Position {
 				return diag.Position{
@@ -143,7 +200,7 @@ func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFact
 					facts.eventRefs = append(facts.eventRefs, eventRef{wire: wire, attr: name, pos: refPos()})
 				}
 			}
-			switch name {
+			switch base {
 			case "id":
 				facts.emittedIDs[attr.Value] = true
 			case "hx-target", "hx-select":
@@ -165,6 +222,9 @@ func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFact
 			// The value is dynamic but the key is static: an hx-on key
 			// still names the event it listens for.
 			if name, rng, ok := constantKey(attr.Key); ok {
+				if _, accepted := hxBase(name, resolve); !accepted {
+					continue
+				}
 				if wire, isEvent := EventNameFromAttr(name); isEvent {
 					facts.eventRefs = append(facts.eventRefs, eventRef{wire: wire, attr: name, pos: diag.Position{
 						File:  filePath,
@@ -177,8 +237,8 @@ func collectAttrFacts(attrs []parser.Attribute, filePath string, facts *fileFact
 		case *parser.ConditionalAttribute:
 			// IDs in conditional branches count as emitted (conservative);
 			// targets in branches are still statically-literal and checked.
-			collectAttrFacts(attr.Then, filePath, facts)
-			collectAttrFacts(attr.Else, filePath, facts)
+			collectAttrFacts(attr.Then, filePath, facts, resolve)
+			collectAttrFacts(attr.Else, filePath, facts, resolve)
 		}
 	}
 }

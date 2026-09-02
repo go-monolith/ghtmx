@@ -22,12 +22,26 @@ const (
 	PUT    Verb = "PUT"
 	PATCH  Verb = "PATCH"
 	DELETE Verb = "DELETE"
+	// QUERY is the safe request method with a body (RFC draft), issued by
+	// htmx 4's hx-query.
+	QUERY Verb = "QUERY"
 	// AnyVerb matches all methods (a ServeMux pattern with no method).
 	AnyVerb Verb = ""
 )
 
 // BindableVerbs are the verbs addressable from hx-* attributes (FR-020).
-var BindableVerbs = []Verb{GET, POST, PUT, PATCH, DELETE}
+var BindableVerbs = []Verb{GET, POST, PUT, PATCH, DELETE, QUERY}
+
+// BindableVerbPattern is the regular-expression alternation of the
+// bindable verbs in attribute spelling ("get|post|…"), so every regexp
+// that recognises hx-<verb>= derives from BindableVerbs.
+func BindableVerbPattern() string {
+	parts := make([]string, len(BindableVerbs))
+	for i, v := range BindableVerbs {
+		parts[i] = strings.ToLower(string(v))
+	}
+	return strings.Join(parts, "|")
+}
 
 // SymbolRef identifies a Go function by package import path and name,
 // resolved syntactically (constitution A3.1): no type information exists or

@@ -47,6 +47,7 @@ var referenceDocs = []struct {
 	{"docs/official/pages/index.md", "index.md"},
 	{"docs/official/pages/getting-started.md", "getting-started.md"},
 	{"docs/official/pages/build-targets.md", "build-targets.md"},
+	{"docs/official/pages/htmx-versions.md", "htmx-versions.md"},
 }
 
 // exampleDirs are the example applications shown on the site,

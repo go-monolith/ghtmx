@@ -343,7 +343,17 @@ func (p *Server) loadAnalyzerConfig(params *lsp.InitializeParams) {
 	p.severityOverrides = cfg.SeverityOverrides()
 	p.generatedPkgName = cfg.GeneratedPackage.Name
 	p.templateExtension.Set(cfg.TemplateExtension)
+	// The surface is pinned before anything is collected: the whole-set
+	// collector resolves attribute names against it, and the seeded
+	// workspace must be collected under the same pin as later edits.
+	surface, err := htmxsurface.ForVersion(cfg.HtmxVersion)
+	if err != nil {
+		p.Log.Warn("hx-* attribute diagnostics disabled", slog.Any("error", err))
+	} else {
+		p.surface = surface
+	}
 	p.setAnalysis = analyzer.NewSetAnalysis()
+	p.setAnalysis.SetSurface(p.surface)
 	if root != "" {
 		// Route discovery feeds route-aware completion (FR-081); a
 		// failure degrades completion only.
@@ -362,12 +372,6 @@ func (p *Server) loadAnalyzerConfig(params *lsp.InitializeParams) {
 		// completion works before files are opened (FR-082).
 		p.seedEventRegistry(root)
 	}
-	surface, err := htmxsurface.ForVersion(cfg.HtmxVersion)
-	if err != nil {
-		p.Log.Warn("hx-* attribute diagnostics disabled", slog.Any("error", err))
-		return
-	}
-	p.surface = surface
 }
 
 // seedEventRegistry parses the workspace's templates once so the event

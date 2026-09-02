@@ -44,6 +44,16 @@ const (
 	SwapAfterEnd    SwapStyle = "afterend"
 	SwapDelete      SwapStyle = "delete"
 	SwapNone        SwapStyle = "none"
+
+	// htmx 4 styles; htmx 2 does not recognise them.
+	SwapInnerMorph SwapStyle = "innerMorph"
+	SwapOuterMorph SwapStyle = "outerMorph"
+	SwapOuterSync  SwapStyle = "outerSync"
+	// htmx 4 aliases of the four insertion positions.
+	SwapBefore  SwapStyle = "before"
+	SwapPrepend SwapStyle = "prepend"
+	SwapAppend  SwapStyle = "append"
+	SwapAfter   SwapStyle = "after"
 )
 
 // SwapModifier is one hx-swap modifier, constructed only through the
@@ -73,12 +83,29 @@ func SwapIgnoreTitle() SwapModifier { return SwapModifier{s: "ignoreTitle:true"}
 // optionally prefixed with a selector ("#list:bottom"). The spec must not
 // contain whitespace — hx-swap specs are space-separated, so htmx itself
 // cannot express such selectors; whitespace here yields a zero modifier.
+// htmx 4 dropped the selector prefix: pair SwapScroll("bottom") with
+// SwapScrollTarget instead.
 func SwapScroll(spec string) SwapModifier { return swapSpecModifier("scroll", spec) }
 
 // SwapShow scrolls the viewport to show the target after the swap: "top"
 // or "bottom", optionally prefixed with a selector. The spec must not
-// contain whitespace (see SwapScroll).
+// contain whitespace (see SwapScroll). htmx 4 dropped the selector prefix:
+// pair SwapShow("top") with SwapShowTarget instead.
 func SwapShow(spec string) SwapModifier { return swapSpecModifier("show", spec) }
+
+// SwapScrollTarget names the element SwapScroll scrolls (htmx 4). The
+// selector must not contain whitespace (see SwapScroll).
+func SwapScrollTarget(selector string) SwapModifier {
+	return swapSpecModifier("scrollTarget", selector)
+}
+
+// SwapShowTarget names the element SwapShow brings into view (htmx 4).
+// The selector must not contain whitespace (see SwapScroll).
+func SwapShowTarget(selector string) SwapModifier { return swapSpecModifier("showTarget", selector) }
+
+// SwapTarget retargets the swap from within the swap spec (htmx 4). The
+// selector must not contain whitespace (see SwapScroll).
+func SwapTarget(selector string) SwapModifier { return swapSpecModifier("target", selector) }
 
 func swapSpecModifier(name, spec string) SwapModifier {
 	if spec == "" || strings.ContainsAny(spec, " \t\r\n") {
@@ -87,9 +114,29 @@ func swapSpecModifier(name, spec string) SwapModifier {
 	return SwapModifier{s: name + ":" + spec}
 }
 
-// SwapFocusScroll overrides focus preservation scrolling for the swap.
+// SwapFocusScroll overrides focus preservation scrolling for the swap, in
+// the htmx 2 spelling (focus-scroll:). htmx 4 renamed the modifier: use
+// SwapFocusScrollV4 there.
 func SwapFocusScroll(enabled bool) SwapModifier {
 	return SwapModifier{s: fmt.Sprintf("focus-scroll:%t", enabled)}
+}
+
+// SwapFocusScrollV4 is SwapFocusScroll in the htmx 4 spelling
+// (focusScroll:); htmx 2 does not recognise it.
+func SwapFocusScrollV4(enabled bool) SwapModifier {
+	return SwapModifier{s: fmt.Sprintf("focusScroll:%t", enabled)}
+}
+
+// SwapStrip controls whether the response's outer wrapper element is
+// removed before swapping (htmx 4).
+func SwapStrip(enabled bool) SwapModifier {
+	return SwapModifier{s: fmt.Sprintf("strip:%t", enabled)}
+}
+
+// SwapEmpty controls whether the main swap still runs when the response
+// holds only out-of-band content (htmx 4).
+func SwapEmpty(enabled bool) SwapModifier {
+	return SwapModifier{s: fmt.Sprintf("swapEmpty:%t", enabled)}
 }
 
 // SetReswap sets HX-Reswap: the swap style (and modifiers) overriding

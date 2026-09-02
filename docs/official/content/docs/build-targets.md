@@ -15,12 +15,16 @@ The engine pins one htmx version per project and validates every
 | | |
 | --- | --- |
 | Default pinned version | **2.0.10** |
-| Supported range | **2.0.0 – 2.0.10** (each with a pinned script asset and subresource-integrity hash) |
+| Supported versions | **2.0.0 – 2.0.10** and **4.0.0** (each with a pinned script asset and subresource-integrity hash) |
 | Configure | `htmxVersion` in `ghtmx.json` or `-htmx-version` |
 
-htmx 1.x is not supported. A version outside the range fails fast with
-`GHTMX-E0502`; constructs newer than the pinned version report
-`GHTMX-E0501`.
+htmx 1.x and 3.x are not supported. A version outside the set fails
+fast with `GHTMX-E0502`; a construct the pinned version lacks — newer,
+or removed and renamed by it — reports `GHTMX-E0501` naming the
+replacement.
+
+What each pin accepts, and how to move a project from htmx 2 to 4,
+is on the [htmx versions](/docs/htmx-versions) page.
 
 ## WebAssembly (NFR-014)
 

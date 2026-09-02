@@ -160,7 +160,7 @@ func Load(dir string) (Config, error) {
 // allowedKeys is the configuration schema: top-level key to a short
 // description used in error suggestions.
 var allowedKeys = map[string]string{
-	"htmxVersion":       "pinned htmx version, e.g. \"2.0.10\"",
+	"htmxVersion":       "pinned htmx version, e.g. \"2.0.10\" or \"4.0.0\"",
 	"sourceDirs":        "template source directories",
 	"routeScope":        "route discovery package patterns",
 	"generatedPackage":  "central generated package {dir, name}",

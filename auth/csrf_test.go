@@ -306,7 +306,7 @@ func TestCSRFWithoutHook(t *testing.T) {
 // TestSafeMethod pins the safe-list the glue packages share.
 func TestSafeMethod(t *testing.T) {
 	for method, want := range map[string]bool{
-		http.MethodGet: true, http.MethodHead: true, http.MethodOptions: true,
+		http.MethodGet: true, http.MethodHead: true, http.MethodOptions: true, auth.MethodQuery: true,
 		http.MethodPost: false, http.MethodPut: false, http.MethodPatch: false, http.MethodDelete: false,
 	} {
 		if got := auth.SafeMethod(method); got != want {
