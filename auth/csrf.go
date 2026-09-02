@@ -120,16 +120,23 @@ func CSRF(opts ...CSRFOption) func(http.Handler) http.Handler {
 	}
 }
 
-// SafeMethod reports whether method needs no CSRF token: GET, HEAD, and
-// OPTIONS, which must never change state. Exported so the glue packages
-// share one safe-list.
+// SafeMethod reports whether method needs no CSRF token: GET, HEAD,
+// OPTIONS, and QUERY, which must never change state. QUERY is the
+// safe, idempotent method with a body that htmx 4's hx-query issues;
+// like GET it must not mutate, and unlike a form post a browser sends
+// it cross-origin only after a CORS preflight. Exported so the glue
+// packages share one safe-list.
 func SafeMethod(method string) bool {
 	switch method {
-	case http.MethodGet, http.MethodHead, http.MethodOptions:
+	case http.MethodGet, http.MethodHead, http.MethodOptions, MethodQuery:
 		return true
 	}
 	return false
 }
+
+// MethodQuery is the HTTP QUERY method (safe, idempotent, with a body),
+// which net/http does not name yet.
+const MethodQuery = "QUERY"
 
 // VerifyCSRF extracts the submitted CSRF token from the request and
 // checks it against the session's ([VerifyCSRFToken]). The header is

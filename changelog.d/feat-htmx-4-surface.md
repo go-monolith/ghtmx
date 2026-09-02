@@ -27,7 +27,11 @@
   aliases, and the `SwapScrollTarget`, `SwapShowTarget`, `SwapTarget`,
   `SwapStrip`, `SwapEmpty`, and `SwapFocusScrollV4` modifiers.
 - `QUERY` as a bindable route verb (`hx-query={ handler }`,
-  `//ghtmx:route QUERY /search handlers.Search`).
+  `//ghtmx:route QUERY /search handlers.Search`), and `auth.MethodQuery`
+  naming the method.
+- An opt-in test, `GHTMX_SRI_CHECK=1 go test -run PinnedIntegrity .`,
+  re-hashes every pinned htmx build from the CDN against the embedded
+  subresource-integrity values.
 - Language-server completion for htmx 4: htmx events after `hx-on::`,
   `:inherited`/`:append` after an inheritable attribute, `hx-status:`,
   morph styles and aliases for `hx-swap`, and `hx-query` bindings.
@@ -49,3 +53,15 @@
   version family.
 
   Migration: none required.
+- `auth.SafeMethod` (and so the CSRF middleware of every adapter) treats
+  QUERY as a safe method alongside GET, HEAD, and OPTIONS: an `hx-query`
+  request needs no CSRF token.
+
+  Migration: none required unless a handler mutates state on QUERY — it
+  must not; move such work to POST/PUT/PATCH/DELETE.
+- `ghtmx.CSRFHeader`'s documentation and `AUTH.md` now spell out that
+  under htmx 4 the header on a common ancestor must be written
+  `hx-headers:inherited={ ghtmx.CSRFHeader(token) }`.
+
+  Migration: none required for htmx 2 projects; htmx 4 projects add
+  `:inherited` (the compiler reports the bare form as `GHTMX-W0202`).

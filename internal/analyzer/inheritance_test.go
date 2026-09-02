@@ -75,8 +75,11 @@ func TestImplicitInheritanceSilentCases(t *testing.T) {
 		<button hx-get={ handlers.Load }>Load</button>
 	</div>`,
 		"no requesting descendant": `<div hx-target="#out"><span>x</span></div>`,
-		"element issues its own request": `<form hx-post={ handlers.Save } hx-target="#out" hx-headers='{"X-CSRF-Token":"t"}'>
+		"element issues its own request": `<form hx-post={ handlers.Save } hx-target="#out" hx-swap="outerHTML">
 		<button hx-get={ handlers.Load }>Load</button>
+	</form>`,
+		"own request consumes its own headers": `<form hx-post={ handlers.Save } hx-headers='{"X-CSRF-Token":"t"}'>
+		<input name="q"/>
 	</form>`,
 		"hx-action counts as a request": `<form hx-action="/save" hx-method="POST" hx-target="#out"><input/></form>`,
 		"boost on an anchor":            `<a hx-boost="true" href="/x">x</a>`,
@@ -122,6 +125,9 @@ func TestImplicitInheritanceHeuristics(t *testing.T) {
 		}
 	</div>`, "line 7"},
 		{"sse connection counts as a request", `<div hx-target="#out"><div hx-sse:connect="/events"></div></div>`, "hx-target on <div>"},
+		{"self-issuing form still loses its headers on a descendant request", `<form hx-post={ handlers.Save } hx-headers='{"X-CSRF-Token":"t"}'>
+		<button hx-delete={ handlers.Remove }>x</button>
+	</form>`, "CSRF"},
 		{"wrapper inside a component block", `@layout() {
 		<div hx-target="#out"><button hx-get={ handlers.Load }>x</button></div>
 	}`, "hx-target on <div>"},

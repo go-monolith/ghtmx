@@ -254,21 +254,31 @@ token is derived from the session token (domain-separated, so it is
 computable from neither the stored hash nor vice versa) and installed
 in the request context by the session middleware.
 
-Unsafe methods (everything but GET/HEAD/OPTIONS) must carry the token
-in one of two channels:
+Unsafe methods (everything but GET, HEAD, OPTIONS, and QUERY — the
+`auth.SafeMethod` list; QUERY is htmx 4's read-only method with a body)
+must carry the token in one of two channels:
 
 - **The `X-CSRF-Token` header** (`ghtmx.DefaultCSRFHeaderName`) — the
   stronger channel: a browser won't attach a custom header cross-origin
   without a CORS preflight. For htmx elements, the existing
-  `ghtmx.CSRFHeader` helper emits the `hx-headers` attribute; placed on
-  a common ancestor (e.g. `<body>`) it is inherited by every element
-  below it:
+  `ghtmx.CSRFHeader` helper emits the `hx-headers` attribute. Placed on
+  a common ancestor (e.g. `<body>`) it reaches every element below it —
+  but **how it reaches them depends on the pinned htmx version**:
 
   ```html
+  <!-- htmx 2.0.x: attributes are inherited implicitly -->
   <body hx-headers={ ghtmx.CSRFHeader(token) }>
+
+  <!-- htmx 4.0.0: inheritance is explicit; without :inherited the
+       header never leaves <body> and every unsafe request is rejected -->
+  <body hx-headers:inherited={ ghtmx.CSRFHeader(token) }>
   ```
 
   with `token` read from the request context via `auth.CSRFTokenFrom`.
+  Under an htmx 4 pin the compiler reports the first form as
+  `GHTMX-W0202` (with a CSRF remark), so the mistake does not reach
+  production silently; see `docs/official/pages/htmx-versions.md` for
+  the rest of the 2 → 4 differences.
 
 - **A hidden form field** named `_csrf` (`auth.DefaultCSRFFormField`)
   for plain HTML form posts:

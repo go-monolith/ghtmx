@@ -107,26 +107,33 @@ func (v *attrValidator) inheritanceElement(e *parser.Element) subtreeFacts {
 		below.merge(v.inheritanceSubtree(c))
 	}
 
-	// An element issuing its own request uses its own attributes; the
-	// response-routing attributes of <hx-partial> and <template hx> are
-	// swap instructions, not inheritance.
-	if !self && e.Name != "hx-partial" && e.Name != "template" {
+	// The response-routing attributes of <hx-partial> and <template hx>
+	// are swap instructions, not inheritance. An element issuing its own
+	// request consumes its own attributes — except hx-headers, which a
+	// descendant's separate request still needs (a form carrying the
+	// CSRF header around a row's hx-delete button).
+	if e.Name != "hx-partial" && e.Name != "template" {
 		for _, a := range own {
 			def, ok := v.surface.Attribute(a.name)
 			if !ok || !def.Inherited || a.inherited {
 				continue
 			}
-			switch a.base {
-			case "hx-boost":
-				if isAnchorOrForm || !below.anchorOrForm {
-					continue
-				}
-			case "hx-headers":
-				// Warns regardless of descendants.
-			default:
+			switch {
+			case self && a.base == "hx-headers":
 				if !below.request {
 					continue
 				}
+			case self:
+				continue
+			case a.base == "hx-boost":
+				if isAnchorOrForm || !below.anchorOrForm {
+					continue
+				}
+			case a.base == "hx-headers":
+				// Warns regardless of descendants: layouts render their
+				// children elsewhere.
+			case !below.request:
+				continue
 			}
 			v.warnInheritance(e, a, below)
 		}
