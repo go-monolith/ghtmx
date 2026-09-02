@@ -18,6 +18,171 @@ in a Changed, Removed, or Breaking section must carry a `Migration:` note
 build otherwise — for the fragments in `changelog.d/` too. Releases follow
 `RELEASING.md`.
 
+## [0.1.23] - 2026-09-02
+
+### Added
+
+- htmx 4.0.0 support, side by side with htmx 2.0.x: pin `htmxVersion:
+  "4.0.0"` in `ghtmx.json` (or `-htmx-version 4.0.0`) and the compiler,
+  `ghtmx generate -check`, the language server, and `ghtmxgen.HTMXScript()`
+  follow htmx 4 syntax — the `:inherited`/`:append` attribute-name
+  modifiers, `hx-status:<code>`, `hx-query`, `hx-action`/`hx-method`,
+  `hx-config`, `hx-ignore` and the new `hx-disable`, the morph swap styles
+  and `showTarget:`/`scrollTarget:` modifiers, the htmx 4 trigger
+  modifiers, colon-form event names (`hx-on::after:swap`), the attributes
+  of every extension shipped with htmx 4, and `<hx-partial>`. The 4.0.0
+  script asset is pinned with its subresource-integrity hash. Projects
+  without an explicit pin stay on 2.0.10.
+- Migration hints under an htmx 4 pin: htmx 2 leftovers (`hx-vars`,
+  `hx-ext`, `hx-disabled-elt`, `hx-request`, `hx-target-404`, `hx-on-click`,
+  `hx-on::after-swap`, `queue:` triggers, `show:#id:top`, `focus-scroll:`,
+  `hx-include="inherit"`) report `GHTMX-E0501` naming the replacement
+  instead of a generic unknown-attribute error.
+- `GHTMX-W0202`: under htmx 4 an inheritable attribute without
+  `:inherited` on an element that issues no request, while a descendant
+  does, warns that the descendant no longer sees it (htmx 4 inheritance is
+  explicit); `hx-headers` and `hx-boost` wrappers warn on their own, with
+  a CSRF remark when the header looks like a token. Silence with
+  `GHTMX-W0202=off`.
+- Typed swap API for htmx 4: `ghtmx.SwapInnerMorph`, `SwapOuterMorph`,
+  `SwapOuterSync`, the `SwapBefore`/`SwapPrepend`/`SwapAppend`/`SwapAfter`
+  aliases, and the `SwapScrollTarget`, `SwapShowTarget`, `SwapTarget`,
+  `SwapStrip`, `SwapEmpty`, and `SwapFocusScrollV4` modifiers.
+- `QUERY` as a bindable route verb (`hx-query={ handler }`,
+  `//ghtmx:route QUERY /search handlers.Search`), and `auth.MethodQuery`
+  naming the method.
+- An opt-in test, `GHTMX_SRI_CHECK=1 go test -run PinnedIntegrity .`,
+  re-hashes every pinned htmx build from the CDN against the embedded
+  subresource-integrity values.
+- Language-server completion for htmx 4: htmx events after `hx-on::`,
+  `:inherited`/`:append` after an inheritable attribute, `hx-status:`,
+  morph styles and aliases for `hx-swap`, and `hx-query` bindings.
+
+### Changed
+
+- Under an htmx 4 pin the generated central package no longer emits the
+  `Emit<Event>AfterSwap` and `Emit<Event>AfterSettle` symbols: htmx 4
+  removed the `HX-Trigger-After-Swap` and `HX-Trigger-After-Settle`
+  response headers they set. Projects pinned to htmx 2 are unchanged.
+
+  Migration: none required for htmx 2 projects. When moving a project to
+  `htmxVersion: "4.0.0"`, replace calls to the `AfterSwap`/`AfterSettle`
+  emitters with the plain `Emit<Event>` and listen for the event on
+  `htmx:after:swap` if the timing mattered.
+- `GHTMX-E0501` now also covers constructs the pinned version removed or
+  renamed (previously only constructs newer than the pin), and the
+  unsupported-version error (`GHTMX-E0502`) lists every supported
+  version family.
+
+  Migration: none required.
+- `auth.SafeMethod` (and so the CSRF middleware of every adapter) treats
+  QUERY as a safe method alongside GET, HEAD, and OPTIONS: an `hx-query`
+  request needs no CSRF token.
+
+  Migration: none required unless a handler mutates state on QUERY — it
+  must not; move such work to POST/PUT/PATCH/DELETE.
+- `ghtmx.CSRFHeader`'s documentation and `AUTH.md` now spell out that
+  under htmx 4 the header on a common ancestor must be written
+  `hx-headers:inherited={ ghtmx.CSRFHeader(token) }`.
+
+  Migration: none required for htmx 2 projects; htmx 4 projects add
+  `:inherited` (the compiler reports the bare form as `GHTMX-W0202`).
+
+## [0.1.22] - 2026-08-21
+
+### Added
+
+- `auth.WithOnReject`: an observability hook on the CSRF middleware,
+  called just before it answers 403 with the request's method, path, and
+  an error wrapping `auth.ErrCSRF`. Applications can now count probes or
+  debug a migration without wrapping the middleware. The option type is
+  the core package's and every adapter's `CSRF` accepts it, so one hook
+  value works behind gin, echo, fiber v2, and fiber v3 unchanged; read
+  the identity from the same context with `auth.IdentityFrom`.
+- `auth.HasFormContentType`: the rule deciding whether a request body may
+  carry a CSRF token, exported so the fiber adapters — which read the
+  body natively through fasthttp — apply the same gate `auth.VerifyCSRF`
+  does instead of an equivalent one.
+
+### Changed
+
+- The fiber v2 and fiber v3 CSRF middleware now consult the request body
+  for a `_csrf` field only when the Content-Type names a form, matching
+  the net/http middleware exactly rather than relying on fasthttp to
+  parse nothing for other types.
+
+  Migration: none required for well-formed requests. Urlencoded and
+  multipart submissions are unaffected, including with a `charset` or
+  `boundary` parameter. The change is strictly fail-closed: a POST whose
+  Content-Type is unparseable, or merely starts with
+  `application/x-www-form-urlencoded` without being it, is now rejected
+  instead of having its body searched for a token. A request carrying the
+  token in the `X-CSRF-Token` header is never gated.
+
+### Fixed
+
+- `fiberv3auth`'s documentation no longer claims fiber v3 serializes
+  cookies through `net/http`. It does not — like v2 it writes the header
+  with fasthttp, and builds an `http.Cookie` only to validate it. The
+  reason `MaxAge -1` suffices in v3 where v2 needs a past `Expires` is
+  the newer fasthttp release v3 requires. The code was always correct;
+  the explanation would have misled anyone "fixing" it to match.
+
+## [0.1.21] - 2026-08-21
+
+### Security
+
+- The `adapters/iris` module floors its indirect `github.com/sirupsen/logrus`
+  dependency at 1.8.3. Iris pulls logrus in transitively — no ghtmx code
+  calls it — and 1.8.3 is the release that fixes upstream's
+  `logrus.Writer()` denial of service on single-line payloads larger
+  than 64KB, so an application that does reach logrus through Iris is
+  not held back by the adapter's module graph.
+
+## [0.1.20] - 2026-08-10
+
+### Added
+
+- `auth` package: secure cookie session authentication middleware for
+  server-rendered apps. The application implements one interface —
+  `Authenticate(ctx, token) (ID, error)` — and the library owns the
+  request-side mechanics: opaque 256-bit session tokens with the
+  store-the-hash pattern, always-`HttpOnly` host-only cookies
+  (`Secure` by default, `SameSite` Strict or Lax only, automatic
+  `__Host-` prefix when site-wide), htmx-aware login redirects (303
+  for browser navigations, `HX-Redirect` + 204 for htmx requests),
+  always-on per-session CSRF protection (derived synchronizer tokens,
+  header or hidden-field channel, constant-time compare), and a
+  pre-session double-submit token for the login form itself. The
+  middleware is net/http-shaped, so `adapters/nethttp` servers and chi
+  routers use it directly.
+- Auth glue packages for the framework adapters whose contexts differ:
+  `adapters/gin/ginauth`, `adapters/echo/echoauth`,
+  `adapters/fiber/fiberauth`, and `adapters/fiberv3/fiberv3auth`, each
+  exporting the same seven-function surface (`New`, `CSRF`,
+  `IdentityFrom`, `SetSessionCookie`, `ClearSessionCookie`,
+  `SetLoginCSRFCookie`, `ValidLoginCSRF`), enforced by a parity gate.
+  Each fiber glue owns its major version's correct cookie-deletion
+  serialization (past `Expires` on v2, `Max-Age=0` on v3).
+- `AUTH.md`: the authentication reference — configuration, per-framework
+  quick starts, the login flow, and the security model — also on the
+  docs site under /docs/auth.
+
+## [0.1.19] - 2026-08-09
+
+### Added
+
+- Four more first-party render adapters — `adapters/beego` (Beego v2),
+  `adapters/iris` (Iris v12), `adapters/revel` (Revel), and
+  `adapters/martini` (Martini) — extending FR-035 automatic render-mode
+  selection to every framework in common circulation alongside the
+  existing chi, echo, gin, and fiber adapters. Each is a nested module
+  released in lockstep as `adapters/<name>/vX.Y.Z` and delegates to
+  `adapters/nethttp`, so mode selection, status, and header behavior
+  are identical by construction. Revel's adapter is `Result`-based to
+  match that framework's controller idiom; Martini is archived upstream
+  and its adapter pins the framework's last published revision.
+
 ## [0.1.18] - 2026-08-08
 
 The entries below accumulated in this file's former `[Unreleased]`
