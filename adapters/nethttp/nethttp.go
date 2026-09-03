@@ -3,14 +3,19 @@
 //
 // Automatic selection is active only inside Render: htmx requests
 // (HX-Request: true) receive the standalone fragment, every other
-// request receives the full page. The core runtime never inspects
+// request receives the full page. The one htmx request that gets the
+// page is a history restore (HX-History-Restore-Request: true): htmx
+// refetches the URL on back/forward navigation and selects the
+// [hx-history-elt] element out of the response, so it needs the
+// document that element lives in. The core runtime never inspects
 // request headers, and an application that imports no adapter keeps the
 // fully supported explicit path — calling Render or RenderFragment
 // itself (FR-034).
 //
 // Defaults, and how to override them:
 //
-//   - Render mode: selected from HX-Request. Override with Mode.
+//   - Render mode: selected from HX-Request and
+//     HX-History-Restore-Request. Override with Mode.
 //   - Status code: 200 via the response's first write. Override with
 //     Status, which calls WriteHeader before the body.
 //   - Content-Type: set to "text/html; charset=utf-8" when the handler
@@ -39,7 +44,9 @@ type RenderMode int
 
 const (
 	// ModeAuto selects from the request: htmx requests render
-	// standalone, everything else renders the full page.
+	// standalone, everything else — including an htmx history restore,
+	// which selects its [hx-history-elt] out of the page — renders the
+	// full page.
 	ModeAuto RenderMode = iota
 	// ModeFull always renders the full page.
 	ModeFull
@@ -148,7 +155,7 @@ func Render(w http.ResponseWriter, r *http.Request, f ghtmx.Fragment, opts ...Op
 	mode := cfg.mode
 	if mode == ModeAuto {
 		mode = ModeFull
-		if htmxRequest {
+		if htmxRequest && !ghtmx.IsHistoryRestoreRequest(r) {
 			mode = ModeStandalone
 		}
 	}

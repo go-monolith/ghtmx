@@ -940,7 +940,7 @@ func TestUpdateRouteBindingsSwapsLowering(t *testing.T) {
 		dir, false, nil, false, false, FileWriter, false,
 		WithSetAnalysis(analyzer.NewSetAnalysis()),
 		(&Generate{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Args: Arguments{Config: config.Default()}}).attributeValidationOption(),
-		WithRouteBindings(oldTable, "example.com/swap", "ghtmxgen", oldNames),
+		WithRouteBindings(oldTable, "", "example.com/swap", "ghtmxgen", oldNames),
 	)
 	ctx := context.Background()
 	if _, err := fseh.HandleEvent(ctx, fsnotify.Event{Name: target, Op: fsnotify.Create}); err != nil {

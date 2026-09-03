@@ -85,6 +85,8 @@ func TestCopyName(t *testing.T) {
 		{"handlers/handlers.go", "handlers/handlers.go.txt", true},
 		{"README.md", "README.md", true},
 		{"crud.css", "crud.css", true},
+		{"ghtmx.json", "ghtmx.json.txt", true},
+		{"other.json", "", false},
 		{"crud_ghtmx.go", "", false},
 		{"main_test.go", "", false},
 		{"notes.txt", "", false},

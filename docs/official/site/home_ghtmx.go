@@ -36,7 +36,7 @@ func ghtmxFragmentBody_homeBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "\" hx-get=\"/getting-started\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Get started</a> <a class=\"btn\" href=\"")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 2, "\" hx-get=\"/getting-started\">Get started</a> <a class=\"btn\" href=\"")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
@@ -49,7 +49,7 @@ func ghtmxFragmentBody_homeBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCompo
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">Browse examples</a> <a class=\"btn\" href=\"https://github.com/go-monolith/ghtmx\" target=\"_blank\" rel=\"noopener\">GitHub</a></p></div><div class=\"features\"><div class=\"feature\"><h3>Route-aware bindings</h3><p>Every hx-get and hx-post URL resolves against a real Go route at build time — rename a route and the build breaks at every binding site.</p></div><div class=\"feature\"><h3>Compile-time fragments</h3><p><code>fragment</code> blocks render inline in a page and standalone for htmx swaps, byte-identically — no drift between full pages and partial updates.</p></div><div class=\"feature\"><h3>Typed server events</h3><p><code>event</code> declarations generate the only HX-Trigger emitters, with typed payloads shared by handlers and templates.</p></div></div><pre class=\"hero-code\"><code class=\"language-templ\">")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 3, "\" hx-get=\"/examples\">Browse examples</a> <a class=\"btn\" href=\"https://github.com/go-monolith/ghtmx\" target=\"_blank\" rel=\"noopener\">GitHub</a></p></div><div class=\"features\"><div class=\"feature\"><h3>Route-aware bindings</h3><p>Every hx-get and hx-post URL resolves against a real Go route at build time — rename a route and the build breaks at every binding site.</p></div><div class=\"feature\"><h3>Compile-time fragments</h3><p><code>fragment</code> blocks render inline in a page and standalone for htmx swaps, byte-identically — no drift between full pages and partial updates.</p></div><div class=\"feature\"><h3>Typed server events</h3><p><code>event</code> declarations generate the only HX-Trigger emitters, with typed payloads shared by handlers and templates.</p></div></div><pre class=\"hero-code\"><code class=\"language-templ\">")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}

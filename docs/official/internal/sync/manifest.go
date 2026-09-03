@@ -58,6 +58,9 @@ var exampleDirs = []string{
 	"examples/fragments",
 	"examples/events",
 	"examples/crud",
+	"examples/htmx4-inheritance",
+	"examples/htmx4-status",
+	"examples/htmx4-query",
 }
 
 // moduleRoot returns the absolute path of docs/official.
@@ -146,8 +149,11 @@ func Entries() ([]Entry, error) {
 
 // copyName decides whether an example file is copied and under what
 // relative name. Go and template sources gain a .txt suffix so the
-// copies are invisible to go build, gofmt, and ghtmx generate;
-// stylesheets need no such hiding and are copied verbatim. Generated
+// copies are invisible to go build, gofmt, and ghtmx generate, and so
+// does an example's own ghtmx.json — the htmx pin its templates were
+// checked against, which the site shows as a source but which must
+// never read as this module's configuration; stylesheets need no such
+// hiding and are copied verbatim. Generated
 // pairs and tests are not shown on the site. Dot- and
 // underscore-prefixed names are never copied — go:embed's plain
 // patterns exclude them, so a copy would silently miss the binary.
@@ -164,7 +170,7 @@ func copyName(rel string) (string, bool) {
 		return slash, true
 	case strings.HasSuffix(base, "_ghtmx.go"), strings.HasSuffix(base, "_test.go"):
 		return "", false
-	case strings.HasSuffix(base, ".go"), strings.HasSuffix(base, ".ghtmx"):
+	case strings.HasSuffix(base, ".go"), strings.HasSuffix(base, ".ghtmx"), base == "ghtmx.json":
 		return slash + ".txt", true
 	default:
 		return "", false

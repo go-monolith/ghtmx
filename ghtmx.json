@@ -1,3 +1,10 @@
 {
-  "routeScope": ["./examples/...", "./benchmarks/..."]
+  "routeScope": [
+    "./examples/crud/...",
+    "./examples/events/...",
+    "./examples/fragments/...",
+    "./examples/hello-world/...",
+    "./examples/hx-bindings/...",
+    "./benchmarks/..."
+  ]
 }

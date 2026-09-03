@@ -31,11 +31,22 @@ to ask on skips the question. `--no-interactive` turns off every prompt,
 `GHTMX_INSTALL_VSCODE=1` answers yes in advance, and
 `GHTMX_SKIP_VSCODE=1` leaves the editor alone.
 
-## 2. Create a module
+## 2. Create a module and pin htmx
 
 ```sh
 mkdir hello && cd hello
 go mod init example.com/hello
+```
+
+Create `ghtmx.json` — the htmx version the project runs on. It decides
+both the script `HTMXScript()` serves and the syntax the compiler
+checks, so the markup you validate and the htmx the browser runs cannot
+disagree:
+
+```json
+{
+  "htmxVersion": "4.0.0"
+}
 ```
 
 ## 3. Write the app
@@ -112,21 +123,21 @@ go mod tidy
 ```
 
 Generation writes `page_ghtmx.go` beside the template and the central
-`ghtmxgen` package (the pinned htmx script helper, and — for
-parameterised routes — typed URL constructors). If you rename
-`Greeting` later, both the registration and the binding break the
-build: that is the point.
+`ghtmxgen` package (`HTMXScript()`, which serves htmx 4.0.0 with its
+integrity hash, and — for parameterised routes — typed URL
+constructors). If you rename `Greeting` later, both the registration
+and the binding break the build: that is the point.
 
 Two expected notices on this first run: a version-check note about
 ghtmx not being in `go.mod` yet (the tidy that follows fixes it), and
 `GHTMX-W0104` for the `GET /` page route, which is navigated to rather
 than bound — full-page routes always warn like this.
 
-Without a `ghtmx.json` the project is pinned to htmx 2.0.10: that is
-the script `HTMXScript()` serves and the syntax the compiler checks. To
-build on htmx 4 instead, create `ghtmx.json` with
-`{"htmxVersion": "4.0.0"}` before generating — see
-[htmx versions](/docs/htmx-versions) for what changes.
+Without a `ghtmx.json` the project is pinned to htmx 2.0.10 instead —
+any 2.0.x release works, and the compiler then checks htmx 2 syntax.
+See [htmx versions](/docs/htmx-versions) for what differs between the
+two and how to move a project across; the `htmx4-*` entries under
+[Examples](/examples) are complete htmx 4 applications.
 
 ## 5. Run it — and render a fragment
 

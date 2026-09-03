@@ -287,6 +287,8 @@ func sourceLanguage(name string) string {
 		return "language-go"
 	case strings.HasSuffix(name, ".css"):
 		return "language-css"
+	case strings.HasSuffix(name, ".json"):
+		return "language-json"
 	default:
 		return "language-plaintext"
 	}
@@ -331,6 +333,11 @@ var Examples = []Example{
 	{Name: "fragments", Title: "Fragments", Description: "Compile-time fragments rendered inline in a page and standalone for htmx swaps, byte-identically.", DemoPath: "/fragments"},
 	{Name: "events", Title: "Events", Description: "The server-driven event contract: declared events, generated HX-Trigger emitters, and CSRF headers.", DemoPath: "/events"},
 	{Name: "crud", Title: "CRUD todos", Description: "The reference application: full CRUD with partial updates and zero hand-written htmx glue.", DemoPath: "/todos"},
+	// The htmx 4 examples pin 4.0.0 in their own ghtmx.json; the five
+	// above stay on the 2.0.10 default.
+	{Name: "htmx4-inheritance", Title: "htmx 4: explicit inheritance", Description: "htmx 4 inherits nothing by default: :inherited and :inherited:append declare a wrapper's reach, and the compiler warns where it was lost.", DemoPath: "/inherit"},
+	{Name: "htmx4-status", Title: "htmx 4: status routing and partials", Description: "hx-status:422 sends validation errors to their own region, 5xx bodies are dropped, and <hx-partial> updates a second region from one response.", DemoPath: "/signup"},
+	{Name: "htmx4-query", Title: "htmx 4: QUERY and morph swaps", Description: "The bound QUERY verb searches as you type, and innerMorph keeps the entries you expanded while the list changes.", DemoPath: "/search"},
 }
 
 // ExampleByName returns the example for an /examples/{name} URL.
@@ -521,17 +528,20 @@ func ExampleFiles(name string) ([]SourceFile, string, error) {
 }
 
 // sourceRank orders an example's files for display: templates first,
-// then the package sources, then the stylesheet the templates pull in,
-// with the thin cmd/ entry point last.
+// then the project's ghtmx.json (the htmx pin the templates were
+// checked against), then the package sources, then the stylesheet the
+// templates pull in, with the thin cmd/ entry point last.
 func sourceRank(name string) int {
 	switch {
 	case strings.HasSuffix(name, ".ghtmx"):
 		return 0
-	case strings.HasPrefix(name, "cmd/"):
-		return 3
-	case strings.HasSuffix(name, ".css"):
-		return 2
-	default:
+	case name == "ghtmx.json":
 		return 1
+	case strings.HasPrefix(name, "cmd/"):
+		return 4
+	case strings.HasSuffix(name, ".css"):
+		return 3
+	default:
+		return 2
 	}
 }

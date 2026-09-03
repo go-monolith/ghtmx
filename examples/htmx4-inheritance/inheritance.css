@@ -1,0 +1,40 @@
+:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+	:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; }
+}
+* { box-sizing: border-box; }
+body {
+	font-family: system-ui, sans-serif; margin: 0; min-height: 100vh;
+	background: var(--bg); color: var(--text);
+	display: flex; justify-content: center; align-items: flex-start;
+}
+.app {
+	width: min(40rem, 92vw); margin: 3rem 0; padding: 1.6rem 1.8rem;
+	background: var(--surface); border: 1px solid var(--border);
+	border-radius: .6rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .1);
+}
+.badge {
+	display: inline-block; font-size: .72rem; font-weight: 600;
+	color: var(--primary); border: 1px solid var(--primary);
+	border-radius: 999px; padding: .1rem .6rem; margin-bottom: .8rem;
+}
+h1 { margin: 0 0 .4rem; font-size: 1.5rem; }
+.tagline { margin: 0 0 1.2rem; color: var(--muted); font-size: .95rem; }
+.fields { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.fields label { flex: 1; display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; color: var(--muted); }
+input {
+	font-size: 1rem; padding: .45rem .7rem; border-radius: .45rem;
+	border: 1px solid var(--border); background: var(--bg); color: inherit;
+}
+.panel { border: 1px dashed var(--primary); border-radius: .5rem; padding: .8rem 1rem; margin: .6rem 0; }
+.panel.nested { border-style: solid; margin-top: .8rem; }
+.hint { margin: 0 0 .5rem; font-size: .85rem; color: var(--muted); }
+button {
+	font-size: .9rem; padding: .45rem .9rem; border-radius: .45rem; cursor: pointer;
+	border: 1px solid var(--border); background: var(--bg); color: inherit;
+}
+button:hover { border-color: var(--primary); color: var(--primary); }
+.out { margin-top: 1rem; padding: .8rem 1rem; border-radius: .5rem; background: var(--bg); min-height: 3rem; }
+.out p, .out ul { margin: 0; }
+.received { padding-left: 1.2rem; }
+.muted { color: var(--muted); }

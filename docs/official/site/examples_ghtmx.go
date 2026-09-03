@@ -48,14 +48,14 @@ func ghtmxFragmentBody_examplesBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedC
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 4, "\">")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 		var ghtmx_7f3b9d1a_Var3 string
 		ghtmx_7f3b9d1a_Var3, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(e.Title)
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 12, Col: 163}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/examples.ghtmx`, Line: 12, Col: 103}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var3))
 		if ghtmx_7f3b9d1a_Err != nil {
@@ -277,7 +277,7 @@ func ghtmxFragmentBody_exampleBody(ghtmx_7f3b9d1a_Input ghtmxruntime.GeneratedCo
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}
-	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\" hx-get=\"/examples\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">All examples</a></p></article>")
+	ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 19, "\" hx-get=\"/examples\">All examples</a></p></article>")
 	if ghtmx_7f3b9d1a_Err != nil {
 		return ghtmx_7f3b9d1a_Err
 	}

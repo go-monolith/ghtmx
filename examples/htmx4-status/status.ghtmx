@@ -1,0 +1,53 @@
+package htmx4status
+
+import "github.com/go-monolith/ghtmx/examples/htmx4-status/ghtmxgen"
+
+templ page() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>htmx 4: status routing and partials</title>
+			@ghtmxgen.HTMXScript()
+			@styleSheet()
+		</head>
+		<body>
+			<main class="app">
+				<span class="badge">ghtmx example · htmx 4</span>
+				<h1>Status routing and partials</h1>
+				<p class="tagline">htmx 4 swaps every response; <code>hx-status:&lt;code&gt;</code> says where each status goes. A 422 lands in <code>#errors</code>, a 5xx body is dropped, and a 200 fills <code>#result</code> while an <code>&lt;hx-partial&gt;</code> in the same response updates the footer.</p>
+				<form hx-post={ Signup } hx-target="#result" hx-status:422="target:#errors" hx-status:5xx="swap:none" hx-disable="find button">
+					<label>email <input name="email" placeholder="you@example.com" autocomplete="off"/></label>
+					<label>handle <input name="handle" placeholder="no spaces" autocomplete="off"/></label>
+					<label class="check"><input type="checkbox" name="outage"/> answer with a 500 instead</label>
+					<button type="submit">Sign up</button>
+				</form>
+				<div id="errors"></div>
+				<div id="result" class="out"><p class="muted">Submit the form: an invalid signup answers 422, a valid one 200.</p></div>
+				<p class="footer">last signup: <strong id="last-signup">—</strong></p>
+			</main>
+		</body>
+	</html>
+}
+
+// validationErrors is the 422 body; hx-status:422 routes it to #errors.
+fragment validationErrors(problems []string) {
+	<ul class="errors">
+		for _, p := range problems {
+			<li>{ p }</li>
+		}
+	</ul>
+}
+
+// welcome is the 200 body for #result, plus two partials: one clears
+// #errors, one updates the footer — each names its own target and swap.
+fragment welcome(handle string, email string) {
+	<p class="ok">Welcome, <strong>{ handle }</strong>. A confirmation is on its way to { email }.</p>
+	<hx-partial hx-target="#errors" hx-swap="innerHTML">
+		<p class="ok small">no problems</p>
+	</hx-partial>
+	<hx-partial hx-target="#last-signup" hx-swap="innerHTML">
+		{ handle }
+	</hx-partial>
+}

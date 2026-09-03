@@ -1,0 +1,42 @@
+:root { --primary: #008391; --bg: #f5f6f7; --surface: #ffffff; --text: #1c1e21; --muted: #525860; --border: #dadde1; --error: #b3261e; --ok: #2e7d32; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) {
+	:root { --primary: #dbbc30; --bg: #1b1b1d; --surface: #242526; --text: #e3e3e3; --muted: #a5adba; --border: #444950; --error: #ff8a80; --ok: #81c995; }
+}
+* { box-sizing: border-box; }
+body {
+	font-family: system-ui, sans-serif; margin: 0; min-height: 100vh;
+	background: var(--bg); color: var(--text);
+	display: flex; justify-content: center; align-items: flex-start;
+}
+.app {
+	width: min(40rem, 92vw); margin: 3rem 0; padding: 1.6rem 1.8rem;
+	background: var(--surface); border: 1px solid var(--border);
+	border-radius: .6rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .1);
+}
+.badge {
+	display: inline-block; font-size: .72rem; font-weight: 600;
+	color: var(--primary); border: 1px solid var(--primary);
+	border-radius: 999px; padding: .1rem .6rem; margin-bottom: .8rem;
+}
+h1 { margin: 0 0 .4rem; font-size: 1.5rem; }
+.tagline { margin: 0 0 1.2rem; color: var(--muted); font-size: .95rem; }
+form { display: grid; gap: .7rem; }
+form label { display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; color: var(--muted); }
+form label.check { flex-direction: row; align-items: center; gap: .5rem; }
+input:not([type="checkbox"]) {
+	font-size: 1rem; padding: .45rem .7rem; border-radius: .45rem;
+	border: 1px solid var(--border); background: var(--bg); color: inherit;
+}
+button {
+	font-size: .9rem; padding: .45rem .9rem; border-radius: .45rem; cursor: pointer;
+	border: 1px solid var(--primary); background: var(--primary); color: var(--surface);
+	justify-self: start;
+}
+button[disabled] { opacity: .5; cursor: progress; }
+.errors { margin: .8rem 0 0; padding: .6rem 1rem .6rem 2rem; border-radius: .45rem; border: 1px solid var(--error); color: var(--error); }
+.out { margin-top: 1rem; padding: .8rem 1rem; border-radius: .5rem; background: var(--bg); min-height: 3rem; }
+.out p { margin: 0; }
+.ok { color: var(--ok); }
+.ok.small { margin: .8rem 0 0; font-size: .85rem; }
+.muted { color: var(--muted); }
+.footer { margin: 1rem 0 0; font-size: .85rem; color: var(--muted); }

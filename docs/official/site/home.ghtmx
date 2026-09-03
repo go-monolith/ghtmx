@@ -10,8 +10,8 @@ fragment homeBody(intro string) {
 			<h1 class="hero-title">ghtmx <span class="hero-accent">— build HTML with Go and htmx</span></h1>
 			<p class="hero-tagline">A templ-compatible template engine that makes htmx a compile-checked language concept: every URL, fragment, and server event in your templates is verified against your Go code at build time.</p>
 			<p class="hero-actions">
-				<a class="btn btn-primary" href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Get started</a>
-				<a class="btn" href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Browse examples</a>
+				<a class="btn btn-primary" href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted }>Get started</a>
+				<a class="btn" href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex }>Browse examples</a>
 				<a class="btn" href="https://github.com/go-monolith/ghtmx" target="_blank" rel="noopener">GitHub</a>
 			</p>
 		</div>

@@ -2,12 +2,14 @@ package docsite
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -87,6 +89,21 @@ func TestDocumentedInvariantsHold(t *testing.T) {
 		"ghtmx generate",
 		"HX-Request",
 		"Hello, htmx!")
+
+	// The site dogfoods a supported pin, and the versions page says
+	// which — tying that sentence to docs/official/ghtmx.json keeps the
+	// claim from outliving a pin change.
+	var siteConfig struct {
+		HtmxVersion string `json:"htmxVersion"`
+	}
+	if err := json.Unmarshal([]byte(read("docs", "official", "ghtmx.json")), &siteConfig); err != nil {
+		t.Fatalf("docs/official/ghtmx.json: %v", err)
+	}
+	if !slices.Contains(supported, siteConfig.HtmxVersion) {
+		t.Errorf("docs/official/ghtmx.json pins htmx %q, which is not a supported version %v", siteConfig.HtmxVersion, supported)
+	}
+	assertContains("htmx-versions.md", read("docs", "official", "pages", "htmx-versions.md"),
+		"ghtmx.dev itself is pinned to `"+siteConfig.HtmxVersion+"`")
 	// The landing page has to reach the rest of the site. It used to
 	// link to <slug>.html, which only resolved in a builder that no
 	// longer exists; docs/official serves /getting-started and
@@ -168,6 +185,7 @@ func TestGettingStartedGuideCompilesAndRenders(t *testing.T) {
 
 	mainGo := fence(t, doc, "go")
 	pageGhtmx := fence(t, doc, "templ")
+	ghtmxJSON := fence(t, doc, "json")
 	expectedFragment := strings.TrimSpace(fence(t, doc, "html"))
 
 	dir := t.TempDir()
@@ -179,6 +197,10 @@ func TestGettingStartedGuideCompilesAndRenders(t *testing.T) {
 	}
 	write("main.go", mainGo)
 	write("page.ghtmx", pageGhtmx)
+	// The guide pins htmx 4; generation below reads this file, so the
+	// walkthrough is compiled against the surface it tells the reader
+	// about.
+	write("ghtmx.json", ghtmxJSON)
 	// A real user gets the require via `go install` + tidy; the replace
 	// stands in for @latest, everything else follows the guide's exact
 	// command order: generate FIRST (it creates ghtmxgen/), then tidy.
@@ -218,4 +240,19 @@ func TestRenderedFragment(t *testing.T) {
 	}
 	runGo("mod", "tidy")
 	runGo("test", ".")
+
+	// The pin the guide wrote is the build the generated helper serves.
+	var pinned struct {
+		HtmxVersion string `json:"htmxVersion"`
+	}
+	if err := json.Unmarshal([]byte(ghtmxJSON), &pinned); err != nil || pinned.HtmxVersion == "" {
+		t.Fatalf("the guide's ghtmx.json fence does not pin an htmxVersion: %v", err)
+	}
+	central, err := os.ReadFile(filepath.Join(dir, "ghtmxgen", "routes_ghtmx.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(central), `HTMXScriptTag("`+pinned.HtmxVersion+`"`) {
+		t.Errorf("the guide's project does not serve the htmx %s it pins:\n%s", pinned.HtmxVersion, central)
+	}
 }

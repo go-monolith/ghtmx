@@ -112,13 +112,16 @@ func WithAttributeValidation(surface *htmxsurface.Surface, severityOverrides map
 }
 
 // WithRouteBindings enables route-aware hx-* binding resolution (FR-020,
-// FR-022) against the discovered route table. modulePath is the module's
-// import path, used to derive each template's package path for bare
-// handler identifiers; generatedPkgName is the central generated package's
-// name.
-func WithRouteBindings(table *routes.Table, modulePath, generatedPkgName string, constructors map[string]central.Constructor) FSEventHandlerOption {
+// FR-022) against the discovered route table. modRoot and modulePath are
+// the module's directory and import path, used to derive each template's
+// package path for bare handler identifiers (relative to the module, so
+// a generate root below it resolves correctly; an empty modRoot falls
+// back to the generate root); generatedPkgName is the central generated
+// package's name.
+func WithRouteBindings(table *routes.Table, modRoot, modulePath, generatedPkgName string, constructors map[string]central.Constructor) FSEventHandlerOption {
 	return func(h *FSEventHandler) {
 		h.routeTable = table
+		h.modRoot = modRoot
 		h.modulePath = modulePath
 		h.generatedPkgName = generatedPkgName
 		h.constructors = constructors
@@ -228,6 +231,7 @@ type FSEventHandler struct {
 	analyzeNanos          atomic.Int64
 	emitNanos             atomic.Int64
 	routeTable            *routes.Table
+	modRoot               string
 	modulePath            string
 	generatedPkgName      string
 	constructors          map[string]central.Constructor
@@ -363,7 +367,9 @@ func (h *FSEventHandler) HandleEvent(ctx context.Context, event fsnotify.Event) 
 
 // pkgPathFor derives the import path of the package containing fileName
 // from the module path and the file's directory relative to the module
-// root.
+// root — not the generate root: a -path below the module root (a
+// nested project with its own ghtmx.json, such as an example pinned to
+// another htmx version) still lives in the module's import space.
 func (h *FSEventHandler) pkgPathFor(fileName string) string {
 	if h.modulePath == "" {
 		return ""
@@ -372,7 +378,11 @@ func (h *FSEventHandler) pkgPathFor(fileName string) string {
 	if err != nil {
 		return h.modulePath
 	}
-	rel, err := filepath.Rel(h.dir, filepath.Dir(abs))
+	base := h.modRoot
+	if base == "" {
+		base = h.dir
+	}
+	rel, err := filepath.Rel(base, filepath.Dir(abs))
 	if err != nil || rel == "." {
 		return h.modulePath
 	}

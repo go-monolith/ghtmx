@@ -1,3 +1,6 @@
 {
-  "routeScope": ["./site/..."]
+  "htmxVersion": "4.0.0",
+  "routeScope": [
+    "./site/..."
+  ]
 }

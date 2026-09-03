@@ -23,6 +23,18 @@ func IsHTMXRequest(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 
+// IsHistoryRestoreRequest reports whether the request is htmx refetching
+// a page for back/forward navigation (the HX-History-Restore-Request
+// header, sent alongside HX-Request). Such a request wants the full
+// page: htmx 4 selects the [hx-history-elt] element out of the response
+// and swaps it over the current one, and htmx 2 does the same when the
+// element is present. A bare fragment has no such element, so htmx 4
+// would swap in nothing. Adapters' automatic render-mode selection
+// treats it as a full-page request for that reason.
+func IsHistoryRestoreRequest(r *http.Request) bool {
+	return r.Header.Get("HX-History-Restore-Request") == "true"
+}
+
 // SetRetarget sets HX-Retarget: a CSS selector overriding the swap target
 // for this response.
 func SetRetarget(w http.ResponseWriter, selector string) {

@@ -1,0 +1,53 @@
+package htmx4inheritance
+
+import "github.com/go-monolith/ghtmx/examples/htmx4-inheritance/ghtmxgen"
+
+templ page() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>htmx 4: explicit inheritance</title>
+			@ghtmxgen.HTMXScript()
+			@styleSheet()
+		</head>
+		<body>
+			<main class="app">
+				<span class="badge">ghtmx example · htmx 4</span>
+				<h1>Explicit inheritance</h1>
+				<p class="tagline">htmx 4 inherits nothing by default. The panel below declares its swap target and its included field once with <code>:inherited</code>; the nested group extends the included fields with <code>:inherited:append</code>; the buttons carry only their bound <code>hx-post</code>.</p>
+				<div class="fields">
+					<label>team <input id="team" name="team" value="core" autocomplete="off"/></label>
+					<label>role <input id="role" name="role" value="admin" autocomplete="off"/></label>
+				</div>
+				<section class="panel" hx-target:inherited="#out" hx-include:inherited="#team">
+					<p class="hint"><code>hx-target:inherited="#out" hx-include:inherited="#team"</code></p>
+					<button hx-post={ Assign }>Assign — sends team</button>
+					<div class="panel nested" hx-include:inherited:append="#role">
+						<p class="hint"><code>hx-include:inherited:append="#role"</code></p>
+						<button hx-post={ Assign }>Assign — sends team and role</button>
+					</div>
+				</section>
+				<p class="hint">Outside the panel nothing is inherited, so this button names its own target and includes nothing:</p>
+				<button hx-post={ Assign } hx-target="#out">Assign — sends nothing</button>
+				<div id="out" class="out">
+					<p class="muted">Press a button: the handler echoes the fields it received.</p>
+				</div>
+			</main>
+		</body>
+	</html>
+}
+
+// received is what every Assign response swaps into #out.
+fragment received(fields []Field) {
+	if len(fields) == 0 {
+		<p class="muted">received no fields</p>
+	} else {
+		<ul class="received">
+			for _, f := range fields {
+				<li><code>{ f.Name }</code> = { f.Value }</li>
+			}
+		</ul>
+	}
+}
