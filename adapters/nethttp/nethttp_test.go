@@ -87,13 +87,26 @@ func request(htmx string) *http.Request {
 	return r
 }
 
+// historyRestoreRequest is what htmx sends when it refetches a page for
+// back/forward navigation: HX-Request plus HX-History-Restore-Request
+// (whose literal value is the argument).
+func historyRestoreRequest(value string) *http.Request {
+	r := request("true")
+	r.Header.Set("HX-History-Restore-Request", value)
+	return r
+}
+
 // TestAutomaticModeSelection: FR-035 — an htmx request renders
 // standalone, a normal request renders the full page, and only the
 // literal HX-Request: true opts a request into the standalone mode.
+// The one htmx request that gets the page is a history restore (the
+// literal HX-History-Restore-Request: true), which htmx selects its
+// [hx-history-elt] out of.
 func TestAutomaticModeSelection(t *testing.T) {
 	tests := []struct {
 		name     string
 		hxHeader string
+		history  string // HX-History-Restore-Request value, if any
 		opts     []Option
 		want     string
 	}{
@@ -102,11 +115,21 @@ func TestAutomaticModeSelection(t *testing.T) {
 		{name: "HX-Request false is not an htmx request", hxHeader: "false", want: "<html>page</html>"},
 		{name: "ModeFull overrides an htmx request", hxHeader: "true", opts: []Option{Mode(ModeFull)}, want: "<html>page</html>"},
 		{name: "ModeStandalone overrides a plain request", hxHeader: "", opts: []Option{Mode(ModeStandalone)}, want: "<tr>row</tr>"},
+		// htmx selects [hx-history-elt] out of a history-restore
+		// response (htmx 4 swaps nothing when it is missing), so the
+		// restore gets the document that element lives in.
+		{name: "history restore renders the full page", history: "true", want: "<html>page</html>"},
+		{name: "HX-History-Restore-Request false is not a restore", history: "false", want: "<tr>row</tr>"},
+		{name: "ModeStandalone overrides a history restore", history: "true", opts: []Option{Mode(ModeStandalone)}, want: "<tr>row</tr>"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := newRecorder()
-			if err := Render(w, request(tt.hxHeader), pagedFixture(), tt.opts...); err != nil {
+			r := request(tt.hxHeader)
+			if tt.history != "" {
+				r = historyRestoreRequest(tt.history)
+			}
+			if err := Render(w, r, pagedFixture(), tt.opts...); err != nil {
 				t.Fatalf("Render failed: %v", err)
 			}
 			if got := w.body.String(); got != tt.want {
@@ -208,6 +231,20 @@ func TestHtmxHeaderOptions(t *testing.T) {
 	}
 	if w.header.Get("HX-Retarget") != "" || w.body.String() != "<tr>row</tr>" {
 		t.Errorf("ModeStandalone on a plain request must drop headers and render the fragment, got %q %q",
+			w.header.Get("HX-Retarget"), w.body.String())
+	}
+}
+
+// TestHistoryRestoreKeepsHtmxHeaders: a history restore is still an
+// htmx request — it renders the page, but the htmx response headers
+// it opted into are sent, unlike on a browser's own full-page load.
+func TestHistoryRestoreKeepsHtmxHeaders(t *testing.T) {
+	w := newRecorder()
+	if err := Render(w, historyRestoreRequest("true"), pagedFixture(), Retarget("#list")); err != nil {
+		t.Fatal(err)
+	}
+	if w.header.Get("HX-Retarget") != "#list" || w.body.String() != "<html>page</html>" {
+		t.Errorf("history restore: HX-Retarget=%q body=%q, want the header and the full page",
 			w.header.Get("HX-Retarget"), w.body.String())
 	}
 }

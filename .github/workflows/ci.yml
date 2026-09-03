@@ -177,6 +177,13 @@ jobs:
       # regenerates with its own -path and the same drift check below.
       - name: Regenerate docs site
         run: go run ./cmd/ghtmx generate -include-version=false -cache=false -path docs/official
+      # The htmx 4 examples pin 4.0.0 in their own ghtmx.json (also
+      # excluded from the root pass); each is its own generate root.
+      - name: Regenerate htmx 4 examples
+        run: |
+          for e in htmx4-inheritance htmx4-status htmx4-query; do
+            go run ./cmd/ghtmx generate -include-version=false -cache=false -path "examples/$e"
+          done
       - name: Ensure no drift
         run: |
           git diff --exit-code

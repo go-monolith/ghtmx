@@ -11,9 +11,20 @@ event DocViewed(slug string)
 // a sticky top navbar, a grouped sidebar bound to real routes (symbol
 // bindings for zero-param routes, ghtmxgen constructors for
 // parameterised ones), and the content region every fragment swaps
-// into. Code blocks highlight client-side (highlight.js from a
-// pinned, SRI-checked CDN asset — same policy as the htmx tag), so
-// the wasm binary carries no highlighter.
+// into. The site runs on htmx 4, so the swap target, style, and URL
+// push are declared once on <body> with :inherited — every link
+// beneath carries only its typed hx-get — and the after-swap work
+// (highlighting, sidebar state) is an hx-on::after:settle listener
+// whose event name the compiler checks against the pinned version.
+// The one element that opts out is #content itself: on back/forward
+// htmx 4 refetches with the history element as the source element,
+// so the push it would inherit from <body> would re-push the restored
+// URL and truncate the forward stack; hx-push-url="false" on the
+// element (not :inherited, so the links inside it still push) keeps
+// restores silent.
+// Code blocks highlight client-side (highlight.js from a pinned,
+// SRI-checked CDN asset — same policy as the htmx tag), so the wasm
+// binary carries no highlighter.
 templ shell(active string) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -266,15 +277,15 @@ templ shell(active string) {
 				}
 			</style>
 		</head>
-		<body hx-on:doc-viewed="document.getElementById('last-viewed').textContent = event.detail.slug">
+		<body hx-target:inherited="#content" hx-swap:inherited="innerHTML" hx-push-url:inherited="true" hx-on:doc-viewed="document.getElementById('last-viewed').textContent = event.detail.slug" hx-on::after:settle="ghtmxHighlight(event.target); ghtmxMarkActive()">
 			<header class="navbar">
 				<div class="navbar-left">
-					<a class="navbar-brand" href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">ghtmx</a>
+					<a class="navbar-brand" href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home }>ghtmx</a>
 					<a class="built-with" href="https://myspec.dev/" target="_blank" rel="noopener">Built with MySpec.dev</a>
 				</div>
 				<div class="navbar-links">
-					<a href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Docs</a>
-					<a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Examples</a>
+					<a href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted }>Docs</a>
+					<a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex }>Examples</a>
 					<a href="https://github.com/go-monolith/ghtmx" target="_blank" rel="noopener">GitHub</a>
 					<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme"></button>
 				</div>
@@ -283,40 +294,40 @@ templ shell(active string) {
 				<nav class="sidebar">
 					<div class="sidebar-group">
 						<div class="sidebar-label">Getting started</div>
-						<a class={ navClass("", active == "home") } href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Introduction</a>
-						<a class={ navClass("", active == "getting-started") } href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Getting started</a>
+						<a class={ navClass("", active == "home") } href={ ghtmx.URL(ghtmxgen.HomePath) } hx-get={ Home }>Introduction</a>
+						<a class={ navClass("", active == "getting-started") } href={ ghtmx.URL(ghtmxgen.GettingStartedPath) } hx-get={ GettingStarted }>Getting started</a>
 					</div>
 					<div class="sidebar-group">
 						<div class="sidebar-label">Language</div>
 						<details class="sidebar-cat" open?={ inSyntax(active) }>
 							<summary>Syntax and usage</summary>
-							<a class={ navClass("", active == "syntax") } href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Overview</a>
+							<a class={ navClass("", active == "syntax") } href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") }>Overview</a>
 							for _, s := range syntaxNav() {
-								<a class={ navClass("", active == "syntax/"+s.ID) } href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ s.Title }</a>
+								<a class={ navClass("", active == "syntax/"+s.ID) } href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) }>{ s.Title }</a>
 							}
 						</details>
 					</div>
 					<div class="sidebar-group">
 						<div class="sidebar-label">Reference</div>
 						for _, d := range ReferenceDocs {
-							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
+							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) }>{ d.Title }</a>
 						}
 					</div>
 					<div class="sidebar-group">
 						<div class="sidebar-label">Project</div>
 						for _, d := range ProjectDocs {
-							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ d.Title }</a>
+							<a class={ navClass("", active == d.Slug) } href={ ghtmxgen.DocPage(d.Slug) } hx-get={ ghtmxgen.DocPage(d.Slug) }>{ d.Title }</a>
 						}
 					</div>
 					<div class="sidebar-group">
 						<div class="sidebar-label">Examples</div>
-						<a class={ navClass("", active == "examples") } href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">All examples</a>
+						<a class={ navClass("", active == "examples") } href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex }>All examples</a>
 						for _, e := range Examples {
-							<a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a>
+							<a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) }>{ e.Title }</a>
 						}
 					</div>
 				</nav>
-				<main id="content" hx-history-elt>
+				<main id="content" hx-history-elt hx-push-url="false">
 					{ children... }
 				</main>
 			</div>
@@ -348,15 +359,6 @@ templ shell(active string) {
 				}
 				document.addEventListener("DOMContentLoaded", function () {
 					ghtmxHighlight(document);
-				});
-				document.body.addEventListener("htmx:afterSwap", function (e) {
-					ghtmxHighlight(e.target);
-				});
-				document.body.addEventListener("htmx:afterSettle", function () {
-					ghtmxMarkActive();
-				});
-				window.addEventListener("popstate", function () {
-					ghtmxMarkActive();
 				});
 				document.addEventListener("click", function (e) {
 					if (!e.target.closest("#theme-toggle")) {

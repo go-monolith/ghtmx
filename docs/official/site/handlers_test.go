@@ -56,9 +56,18 @@ func navRoutes() []string {
 	return routes
 }
 
-// TestEveryNavRouteFullPage: a browser navigation to any route gets a
-// complete document — chrome, content region, and the pinned htmx
-// script tag.
+// historyElt is the chrome's content region as rendered: the htmx
+// history element, opted out of the URL push it would otherwise
+// inherit from <body> (a restore's source element is the element
+// itself).
+const historyElt = `<main id="content" hx-history-elt hx-push-url="false">`
+
+// TestEveryNavRouteFullPage: every sidebar/navbar route serves a
+// complete document — chrome, content region, the pinned htmx 4
+// script tag, and the htmx 4 shape of the chrome: the swap target,
+// style, and URL push declared once on <body> with :inherited, and the
+// after-swap work registered as a compiler-checked hx-on:: listener
+// rather than an htmx 2 event name in a script the compiler cannot see.
 func TestEveryNavRouteFullPage(t *testing.T) {
 	srv := serve(t)
 	for _, path := range navRoutes() {
@@ -67,9 +76,28 @@ func TestEveryNavRouteFullPage(t *testing.T) {
 			t.Errorf("GET %s = %d, want 200", path, resp.StatusCode)
 			continue
 		}
-		for _, marker := range []string{`class="sidebar"`, `class="navbar"`, `id="content"`, "hx-history-elt", "https://cdn.jsdelivr.net/npm/htmx.org@", "highlight.min.js"} {
+		for _, marker := range []string{
+			`class="sidebar"`, `class="navbar"`, `id="content"`,
+			historyElt,
+			"https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js",
+			`hx-target:inherited="#content"`, `hx-swap:inherited="innerHTML"`, `hx-push-url:inherited="true"`,
+			"hx-on::after:settle=",
+			"highlight.min.js",
+		} {
 			if !strings.Contains(body, marker) {
 				t.Errorf("GET %s: full page missing %q", path, marker)
+			}
+		}
+		// The stale forms are checked on the chrome only: reference
+		// pages legitimately spell out the htmx 2 names they explain.
+		chrome := body
+		if head, tail, ok := strings.Cut(body, historyElt); ok {
+			_, after, _ := strings.Cut(tail, "</main>")
+			chrome = head + after
+		}
+		for _, stale := range []string{"htmx:afterSwap", "htmx:afterSettle", `hx-target="#content"`, "htmx.org@2."} {
+			if strings.Contains(chrome, stale) {
+				t.Errorf("GET %s: page chrome still carries the htmx 2 form %q", path, stale)
 			}
 		}
 	}
@@ -222,14 +250,17 @@ func TestHighlightScriptPinnedWithSRI(t *testing.T) {
 }
 
 // TestHistoryRestoreScopedToContent: htmx back/forward restores must
-// stay inside #content — the page declares hx-history-elt there, and
-// a history-restore request (HX-Request is set on those too) gets the
-// bare fragment that belongs in it, never a nested full document.
+// stay inside #content — the page declares hx-history-elt there. htmx
+// 4 refetches the URL (HX-Request plus HX-History-Restore-Request) and
+// selects the [hx-history-elt] element out of the response to swap
+// over the current one, so that response has to be the full document
+// the element lives in: a bare fragment would select nothing and blank
+// the content region. The adapters' automatic mode answers exactly so.
 func TestHistoryRestoreScopedToContent(t *testing.T) {
 	srv := serve(t)
 	_, page := get(t, srv, "/docs/syntax", false)
-	if !strings.Contains(page, "hx-history-elt") {
-		t.Error("full page does not scope htmx history with hx-history-elt")
+	if !strings.Contains(page, historyElt) {
+		t.Error("full page does not scope htmx history with hx-history-elt on #content")
 	}
 	req, err := http.NewRequest(http.MethodGet, srv.URL+"/docs/syntax", nil)
 	if err != nil {
@@ -246,8 +277,12 @@ func TestHistoryRestoreScopedToContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "<html") {
-		t.Error("history-restore response contains a full document; it is swapped into #content")
+	restore := string(data)
+	if !strings.Contains(restore, "<html") || !strings.Contains(restore, historyElt) {
+		t.Error("history-restore response is not the full document carrying [hx-history-elt]; htmx 4 would swap in nothing")
+	}
+	if restore != page {
+		t.Error("history-restore response differs from the page a browser load gets")
 	}
 }
 
@@ -262,6 +297,12 @@ func TestLiveDemosServed(t *testing.T) {
 		"fragments":   "hx-get",
 		"events":      "hx-post",
 		"crud":        "Todos",
+		// The htmx 4 demos: each page is its own document on the
+		// 4.0.0 pin, checked by its own example tests; here the
+		// marker is the htmx 4 form the site advertises for it.
+		"htmx4-inheritance": `hx-include:inherited:append="#role"`,
+		"htmx4-status":      `hx-status:422="target:#errors"`,
+		"htmx4-query":       `hx-query="/search"`,
 	}
 	for _, e := range Examples {
 		if e.DemoPath == "" {
@@ -285,6 +326,27 @@ func TestLiveDemosServed(t *testing.T) {
 		if !strings.Contains(detail, `href="`+e.DemoPath+`"`) {
 			t.Errorf("example page %s does not link its live demo %s", e.Name, e.DemoPath)
 		}
+	}
+	// The htmx4-query demo is reached with QUERY, a method chi refuses
+	// unless registered (NewRouter does), so the request has to make
+	// it through the docs router to the demo's own mux.
+	queryReq, err := http.NewRequest("QUERY", srv.URL+"/search", strings.NewReader("q=json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	queryReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	queryReq.Header.Set("HX-Request", "true")
+	queryResp, err := srv.Client().Do(queryReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queryBody, err := io.ReadAll(queryResp.Body)
+	queryResp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if queryResp.StatusCode != http.StatusOK || !strings.Contains(string(queryBody), `id="pkg-encoding/json"`) {
+		t.Errorf("QUERY /search = %d %q, want the matching rows from the htmx4-query demo", queryResp.StatusCode, queryBody)
 	}
 	// The demo fallback must not swallow the docs' own 404s.
 	resp, _ := get(t, srv, "/todos/does/not/exist", false)

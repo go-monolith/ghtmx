@@ -48,25 +48,9 @@ func EmitDocViewed(w http.ResponseWriter, p DocViewedPayload) error {
 	return ghtmxruntime.AppendTrigger(w, "doc-viewed", p)
 }
 
-// EmitDocViewedAfterSettle appends event "doc-viewed" to the response's single HX-Trigger-After-Settle
-// header; multiple emissions in one response merge (FR-037). Call it
-// before writing the response status or body, from one goroutine.
-// Declared at site/layout.ghtmx.
-func EmitDocViewedAfterSettle(w http.ResponseWriter, p DocViewedPayload) error {
-	return ghtmxruntime.AppendTriggerAfterSettle(w, "doc-viewed", p)
-}
-
-// EmitDocViewedAfterSwap appends event "doc-viewed" to the response's single HX-Trigger-After-Swap
-// header; multiple emissions in one response merge (FR-037). Call it
-// before writing the response status or body, from one goroutine.
-// Declared at site/layout.ghtmx.
-func EmitDocViewedAfterSwap(w http.ResponseWriter, p DocViewedPayload) error {
-	return ghtmxruntime.AppendTriggerAfterSwap(w, "doc-viewed", p)
-}
-
 // HTMXScript renders the script tag for the configured htmx version
-// (2.0.10) with its subresource-integrity hash (FR-091): the served asset
+// (4.0.0) with its subresource-integrity hash (FR-091): the served asset
 // must be that exact published build or the browser refuses it (FR-052).
 func HTMXScript(opts ...ghtmx.ScriptOption) ghtmx.Component {
-	return ghtmx.HTMXScriptTag("2.0.10", opts...)
+	return ghtmx.HTMXScriptTag("4.0.0", opts...)
 }

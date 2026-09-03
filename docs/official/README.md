@@ -9,6 +9,15 @@ are embedded with `embed.FS`, so the compiled binary is the whole site.
 This directory is its own Go module so it can depend on chi and the chi
 adapter (the root module is gate-checked to stay framework-free).
 
+The site runs on htmx 4: `ghtmx.json` pins `4.0.0`, so `HTMXScript()`
+serves that build and the templates are validated against the htmx 4
+surface — the swap target, style, and URL push are declared once on
+`<body>` with `:inherited`, and the after-swap work is an
+`hx-on::after:settle` listener the compiler checks. The live demos are
+the example packages compiled in; each carries its own pin (the five
+original examples 2.0.10, the `htmx4-*` examples 4.0.0) and its own
+script tag, so a demo page and the site never share a document.
+
 ## Content copies
 
 Everything under `content/` is a committed copy of a repository

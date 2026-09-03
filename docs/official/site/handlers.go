@@ -13,8 +13,18 @@ import (
 	"github.com/go-monolith/ghtmx/examples/events"
 	"github.com/go-monolith/ghtmx/examples/fragments"
 	helloworld "github.com/go-monolith/ghtmx/examples/hello-world"
+	htmx4inheritance "github.com/go-monolith/ghtmx/examples/htmx4-inheritance"
+	htmx4query "github.com/go-monolith/ghtmx/examples/htmx4-query"
+	htmx4status "github.com/go-monolith/ghtmx/examples/htmx4-status"
 	hxbindings "github.com/go-monolith/ghtmx/examples/hx-bindings"
 )
+
+// chi answers 405 to any method it does not know before routing; the
+// htmx4-query demo is reached with QUERY, which net/http does not name
+// yet. Registration is process-wide, so it happens once, here.
+func init() {
+	chi.RegisterMethod("QUERY")
+}
 
 // NewRouter builds the site's chi router. Every route uses a named
 // package-level handler: route discovery binds the templates' hx-*
@@ -37,12 +47,18 @@ func NewRouter() http.Handler {
 	// Known divergence: ServeMux.Handler reports no pattern on a
 	// method mismatch, so those requests get this router's 404 where
 	// the standalone example would answer 405 + Allow.
+	// Each demo page carries its own example's htmx script tag — the
+	// five original examples pin 2.0.10, the htmx4-* examples 4.0.0 —
+	// so no document ever mixes generations.
 	demos := []*http.ServeMux{
 		crud.Routes(),
 		helloworld.Routes(),
 		hxbindings.Routes(),
 		fragments.Routes(),
 		events.Routes(),
+		htmx4inheritance.Routes(),
+		htmx4status.Routes(),
+		htmx4query.Routes(),
 	}
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		for _, mux := range demos {

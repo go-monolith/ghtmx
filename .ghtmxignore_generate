@@ -8,3 +8,10 @@ cmd/ghtmx/testproject/testdata
 # config, and central package; it is generated separately with
 # -path docs/official (see ci.yml ensure-generated).
 docs/official
+
+# The htmx 4 examples pin 4.0.0 in their own ghtmx.json and keep their
+# own central package; each is generated with its own -path (see
+# ci.yml ensure-generated), never from the 2.0.10 root pass.
+examples/htmx4-inheritance
+examples/htmx4-status
+examples/htmx4-query

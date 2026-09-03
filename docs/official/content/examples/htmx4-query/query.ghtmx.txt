@@ -1,0 +1,47 @@
+package htmx4query
+
+import "github.com/go-monolith/ghtmx/examples/htmx4-query/ghtmxgen"
+
+templ page(all []Package) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>htmx 4: QUERY and morph swaps</title>
+			<meta name="htmx-config" content='{"morphIgnore": ["data-htmx-powered", "open"]}'/>
+			@ghtmxgen.HTMXScript()
+			@styleSheet()
+		</head>
+		<body>
+			<main class="app">
+				<span class="badge">ghtmx example · htmx 4</span>
+				<h1>QUERY and morph swaps</h1>
+				<p class="tagline">Typing issues a <code>QUERY</code> request — safe like GET, parameters in the body like POST — bound to the <code>QUERY /search</code> route. The list is swapped with <code>innerMorph</code>: entries that survive a keystroke are updated in place, not recreated — only newcomers fade in, and the ones you expanded stay expanded.</p>
+				<input type="search" name="q" placeholder="Search the standard library…" autocomplete="off" hx-query={ Search } hx-trigger="input changed delay:300ms, search" hx-target="#results" hx-swap="innerMorph"/>
+				<div id="results">
+					@results(all)
+				</div>
+			</main>
+		</body>
+	</html>
+}
+
+// results is the list the QUERY response morphs into #results. Stable
+// ids let the morph match entries across responses.
+fragment results(pkgs []Package) {
+	if len(pkgs) == 0 {
+		<p class="muted">no packages match</p>
+	} else {
+		<ul class="results">
+			for _, p := range pkgs {
+				<li id={ "pkg-" + p.Path }>
+					<details>
+						<summary><code>{ p.Path }</code></summary>
+						<p>{ p.Doc }</p>
+					</details>
+				</li>
+			}
+		</ul>
+	}
+}

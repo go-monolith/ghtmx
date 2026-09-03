@@ -36,7 +36,7 @@ templ breadcrumbs(p PageView) {
 		<span>Docs</span>
 		if p.Category != "" {
 			<span class="crumb-sep">/</span>
-			<a href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ p.Category }</a>
+			<a href={ ghtmxgen.DocPage("syntax") } hx-get={ ghtmxgen.DocPage("syntax") }>{ p.Category }</a>
 		}
 		<span class="crumb-sep">/</span>
 		<span class="crumb-here">{ p.Title }</span>
@@ -71,7 +71,7 @@ fragment syntaxIndexBody(p PageView, sections []DocSection) {
 			<div class="example-grid">
 				for _, s := range sections {
 					<div class="example-card">
-						<h2><a href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ s.Title }</a></h2>
+						<h2><a href={ ghtmxgen.SyntaxSection(s.ID) } hx-get={ ghtmxgen.SyntaxSection(s.ID) }>{ s.Title }</a></h2>
 					</div>
 				}
 			</div>

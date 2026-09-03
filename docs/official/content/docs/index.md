@@ -24,7 +24,9 @@ JetBrains. Every `hx-*` attribute is checked against the htmx version
 the project pins — any 2.0.x release, or htmx 4.0.0 with its explicit
 inheritance, `hx-status`, and morph swaps — and a template that mixes
 generations is reported with the replacement to use; see
-[htmx versions](/docs/htmx-versions).
+[htmx versions](/docs/htmx-versions). This site runs on htmx 4, and the
+`htmx4-*` entries under [Examples](/examples) are complete htmx 4
+applications beside the htmx 2 ones.
 
 Start with [Getting started](/getting-started), then the
 [Syntax](/docs/syntax) specification. The

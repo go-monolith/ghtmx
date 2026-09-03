@@ -27,7 +27,9 @@ type RenderMode = nethttp.RenderMode
 
 const (
 	// ModeAuto selects from the request: htmx requests render
-	// standalone, everything else renders the full page.
+	// standalone, everything else — including an htmx history restore,
+	// which selects its [hx-history-elt] out of the page — renders the
+	// full page.
 	ModeAuto = nethttp.ModeAuto
 	// ModeFull always renders the full page.
 	ModeFull = nethttp.ModeFull

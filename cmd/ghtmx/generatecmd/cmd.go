@@ -290,7 +290,7 @@ func (cmd Generate) Run(ctx context.Context) (err error) {
 		WithGeneratedSuffix(cmd.Args.Config.GeneratedSuffix),
 		WithTemplateExtension(cmd.Args.Config.TemplateExtension),
 		cmd.attributeValidationOption(),
-		WithRouteBindings(table, modulePath, cmd.Args.Config.GeneratedPackage.Name, constructors),
+		WithRouteBindings(table, modRoot, modulePath, cmd.Args.Config.GeneratedPackage.Name, constructors),
 		WithCentralFile(cmd.centralFilePath(modRoot)),
 		WithSetAnalysis(setAnalysis),
 		WithBuildCache(buildCache),

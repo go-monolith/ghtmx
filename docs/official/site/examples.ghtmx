@@ -9,7 +9,7 @@ fragment examplesBody(list []Example) {
 		<div class="example-grid">
 			for _, e := range list {
 				<div class="example-card">
-					<h2><a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">{ e.Title }</a></h2>
+					<h2><a href={ ghtmxgen.ExampleDetail(e.Name) } hx-get={ ghtmxgen.ExampleDetail(e.Name) }>{ e.Title }</a></h2>
 					<p>{ e.Description }</p>
 					<p><a class="demo-link" href={ ghtmx.URL(e.DemoPath) } target="_blank" rel="noopener">Live demo ↗</a></p>
 				</div>
@@ -39,7 +39,7 @@ fragment exampleBody(e Example, files []SourceFile, readme string) {
 			<h3><code>{ f.Name }</code></h3>
 			<pre><code class={ sourceLanguage(f.Name) }>{ f.Source }</code></pre>
 		}
-		<p><a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex } hx-target="#content" hx-swap="innerHTML" hx-push-url="true">All examples</a></p>
+		<p><a href={ ghtmx.URL(ghtmxgen.ExamplesIndexPath) } hx-get={ ExamplesIndex }>All examples</a></p>
 	</article>
 }
 

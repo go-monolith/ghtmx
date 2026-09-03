@@ -173,14 +173,14 @@ func breadcrumbs(p PageView) ghtmx.Component {
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
-			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+			ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 14, "\">")
 			if ghtmx_7f3b9d1a_Err != nil {
 				return ghtmx_7f3b9d1a_Err
 			}
 			var ghtmx_7f3b9d1a_Var8 string
 			ghtmx_7f3b9d1a_Var8, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(p.Category)
 			if ghtmx_7f3b9d1a_Err != nil {
-				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 39, Col: 152}
+				return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 39, Col: 92}
 			}
 			_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var8))
 			if ghtmx_7f3b9d1a_Err != nil {
@@ -389,14 +389,14 @@ func ghtmxFragmentBody_syntaxIndexBody(ghtmx_7f3b9d1a_Input ghtmxruntime.Generat
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
-		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 30, "\" hx-target=\"#content\" hx-swap=\"innerHTML\" hx-push-url=\"true\">")
+		ghtmx_7f3b9d1a_Err = ghtmxruntime.WriteString(ghtmx_7f3b9d1a_Buffer, 30, "\">")
 		if ghtmx_7f3b9d1a_Err != nil {
 			return ghtmx_7f3b9d1a_Err
 		}
 		var ghtmx_7f3b9d1a_Var19 string
 		ghtmx_7f3b9d1a_Var19, ghtmx_7f3b9d1a_Err = ghtmx.JoinStringErrs(s.Title)
 		if ghtmx_7f3b9d1a_Err != nil {
-			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 74, Col: 160}
+			return ghtmx.Error{Err: ghtmx_7f3b9d1a_Err, FileName: `site/docs.ghtmx`, Line: 74, Col: 100}
 		}
 		_, ghtmx_7f3b9d1a_Err = ghtmx_7f3b9d1a_Buffer.WriteString(ghtmx.EscapeString(ghtmx_7f3b9d1a_Var19))
 		if ghtmx_7f3b9d1a_Err != nil {

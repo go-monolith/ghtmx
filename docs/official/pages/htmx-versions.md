@@ -14,7 +14,10 @@ runs cannot disagree.
 
 Set it in `ghtmx.json`, or per invocation with
 `ghtmx generate -htmx-version 4.0.0`. Without a pin the project is on
-the default, **2.0.10**.
+the default, **2.0.10**. ghtmx.dev itself is pinned to `4.0.0`: the
+page you are reading declares its swap target once on `<body>` with
+`hx-target:inherited`, and the `htmx4-*` entries under
+[Examples](/examples) are complete htmx 4 applications you can copy.
 
 ## Supported versions
 
@@ -72,7 +75,7 @@ column stays exactly as it was for projects on 2.0.x.
 | **Response headers** | `HX-Trigger`, `HX-Trigger-After-Settle`, `HX-Trigger-After-Swap`, … | the `After-*` pair is removed; the generated `Emit<Event>AfterSwap`/`AfterSettle` symbols disappear with it, `Emit<Event>` stays |
 | **Form data on `hx-delete`** | the enclosing form's values are sent | not sent (like `hx-get`); add `hx-include="closest form"` |
 | **Request timeout** | none | 60 s by default (`htmx.config.defaultTimeout`) |
-| **History** | cached in `localStorage` | re-fetched on back navigation; the `hx-history-cache` extension restores caching |
+| **History** | cached in `localStorage`; a cache miss refetches with `HX-History-Restore-Request` | always refetched on back navigation, selecting `[hx-history-elt]` out of the response — the adapters answer such a request with the full page, on either version; the `hx-history-cache` extension restores caching |
 | **Typed Go API** | `ghtmx.SwapInnerHTML` … `SwapFocusScroll` | plus `SwapInnerMorph`, `SwapOuterMorph`, `SwapOuterSync`, the aliases, `SwapShowTarget`, `SwapScrollTarget`, `SwapTarget`, `SwapStrip`, `SwapEmpty`, `SwapFocusScrollV4` |
 
 The rows the compiler cannot see — headers, form data, timeout,
@@ -115,6 +118,19 @@ moving a project; the rest is reported at build time.
    `hx-delete` relied on form values, and decide whether 4xx/5xx
    responses should swap (`hx-status:4xx="swap:none"` restores the htmx 2
    behaviour).
+
+5. Look at what the compiler cannot see: page scripts listening on the
+   htmx 2 event names (`htmx:afterSwap` → `htmx:after:swap`), and
+   history. Moving the listener into an `hx-on::after:swap` attribute
+   puts the name under the compiler's check. A history restore is a
+   full-page request now; the adapters' automatic mode already answers
+   it with the page, so a `hx-history-elt` region keeps working.
+
+The three `htmx4-*` examples in the repository show the new surface in
+working applications: explicit inheritance
+([`htmx4-inheritance`](/examples/htmx4-inheritance)), status routing and
+partials ([`htmx4-status`](/examples/htmx4-status)), and the `QUERY` verb
+with morph swaps ([`htmx4-query`](/examples/htmx4-query)).
 
 Pinning back to `2.0.10` reverses the checks: every htmx 4 construct
 reports `GHTMX-E0501` as introduced in 4.0.0, so a template cannot mix

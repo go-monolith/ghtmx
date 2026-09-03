@@ -52,6 +52,11 @@ func moduleRoot(t *testing.T) string {
 var ignoredPrefixes = []string{
 	"cmd/ghtmx/testproject/testdata",
 	"docs/official",
+	// The htmx 4 examples: own ghtmx.json (4.0.0 pin), own route
+	// table, own central package.
+	"examples/htmx4-inheritance",
+	"examples/htmx4-status",
+	"examples/htmx4-query",
 }
 
 // routeBoundTemplates carry hx- attributes bound to Go handlers, so
