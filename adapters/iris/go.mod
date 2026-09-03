@@ -3,7 +3,7 @@ module github.com/go-monolith/ghtmx/adapters/iris
 go 1.25.0
 
 require (
-	github.com/go-monolith/ghtmx v0.1.18
+	github.com/go-monolith/ghtmx v0.2.0
 	github.com/kataras/iris/v12 v12.2.11
 )
 
