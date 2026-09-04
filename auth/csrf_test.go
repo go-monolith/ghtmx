@@ -79,6 +79,13 @@ func TestCSRFMiddleware(t *testing.T) {
 			want: http.StatusOK,
 		},
 		{
+			// The exemption htmx 4's hx-query relies on, and the one
+			// issue #45 asks to be able to decline; the default keeps it.
+			name: "QUERY passes without a token",
+			req:  func() *http.Request { return sessionRequest(auth.MethodQuery, "/x", nil) },
+			want: http.StatusOK,
+		},
+		{
 			name: "POST without a token is rejected",
 			req:  func() *http.Request { return sessionRequest(http.MethodPost, "/x", nil) },
 			want: http.StatusForbidden,
@@ -312,5 +319,139 @@ func TestSafeMethod(t *testing.T) {
 		if got := auth.SafeMethod(method); got != want {
 			t.Errorf("SafeMethod(%s) = %v, want %v", method, got, want)
 		}
+	}
+}
+
+// TestDefaultSafeMethods pins the documented default and its
+// independence: the slice is fresh, so a caller that sorts or truncates
+// it cannot reach into the package's own safe-list.
+func TestDefaultSafeMethods(t *testing.T) {
+	want := []string{http.MethodGet, http.MethodHead, http.MethodOptions, auth.MethodQuery}
+	got := auth.DefaultSafeMethods()
+	if len(got) != len(want) {
+		t.Fatalf("DefaultSafeMethods() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("DefaultSafeMethods() = %v, want %v", got, want)
+		}
+	}
+	got[0] = "MUTATED"
+	if again := auth.DefaultSafeMethods(); again[0] != http.MethodGet {
+		t.Errorf("mutating the result changed the package default: %v", again)
+	}
+}
+
+// TestCSRFOptionsSafeMethodDefault: options built without
+// WithSafeMethods must decide exactly as the package-level SafeMethod
+// does — the nil map is "unconfigured", never "nothing is safe".
+func TestCSRFOptionsSafeMethodDefault(t *testing.T) {
+	o := auth.NewCSRFOptions(auth.WithOnReject(func(context.Context, auth.CSRFRejection) {}))
+	for _, m := range []string{
+		http.MethodGet, http.MethodHead, http.MethodOptions, auth.MethodQuery,
+		http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete,
+	} {
+		if got, want := o.SafeMethod(m), auth.SafeMethod(m); got != want {
+			t.Errorf("CSRFOptions.SafeMethod(%s) = %v, want the package default %v", m, got, want)
+		}
+	}
+}
+
+// TestCSRFWithSafeMethods: the opt-out issue #45 asks for. Each row is
+// a middleware built with its own safe-list, so the QUERY exemption
+// that arrived with htmx 4 can be declined by an application that never
+// pinned htmx 4.
+func TestCSRFWithSafeMethods(t *testing.T) {
+	cfg := sessionConfig(auth.ErrUnauthorized)
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	// The htmx 2 safe-list: everything the library exempted before
+	// v0.2.0, and nothing more.
+	htmx2 := []string{http.MethodGet, http.MethodHead, http.MethodOptions}
+
+	tests := []struct {
+		name    string
+		methods []string
+		request string
+		want    int
+	}{
+		{
+			name:    "QUERY is rejected once it leaves the safe-list",
+			methods: htmx2,
+			request: auth.MethodQuery,
+			want:    http.StatusForbidden,
+		},
+		{
+			name:    "GET still passes under the narrowed list",
+			methods: htmx2,
+			request: http.MethodGet,
+			want:    http.StatusOK,
+		},
+		{
+			name:    "POST is rejected under the narrowed list too",
+			methods: htmx2,
+			request: http.MethodPost,
+			want:    http.StatusForbidden,
+		},
+		{
+			// The list replaces the default rather than adding to it,
+			// so a caller can exempt a method the library never names.
+			name:    "a method the default never exempts can be added",
+			methods: []string{"REPORT"},
+			request: "REPORT",
+			want:    http.StatusOK,
+		},
+		{
+			name:    "replacing the list drops the defaults it omits",
+			methods: []string{"REPORT"},
+			request: http.MethodGet,
+			want:    http.StatusForbidden,
+		},
+		{
+			// The nil-versus-empty distinction: no arguments means
+			// nothing is safe, not "fall back to the default".
+			name:    "no arguments makes every method unsafe",
+			methods: []string{},
+			request: http.MethodGet,
+			want:    http.StatusForbidden,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chain := auth.Middleware(cfg)(auth.CSRF(auth.WithSafeMethods(tt.methods...))(ok))
+			rec := httptest.NewRecorder()
+			chain.ServeHTTP(rec, sessionRequest(tt.request, "/x", nil))
+			if got := rec.Result().StatusCode; got != tt.want {
+				t.Errorf("%s %s = %d, want %d", tt.request, "/x", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestCSRFWithSafeMethodsReportsRejections: a request refused because
+// the safe-list was narrowed is an ordinary CSRF rejection, so the
+// WithOnReject hook observes it like any other.
+func TestCSRFWithSafeMethodsReportsRejections(t *testing.T) {
+	cfg := sessionConfig(auth.ErrUnauthorized)
+	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	var got []auth.CSRFRejection
+	chain := auth.Middleware(cfg)(auth.CSRF(
+		auth.WithSafeMethods(http.MethodGet, http.MethodHead, http.MethodOptions),
+		auth.WithOnReject(func(_ context.Context, rej auth.CSRFRejection) { got = append(got, rej) }),
+	)(ok))
+
+	chain.ServeHTTP(httptest.NewRecorder(), sessionRequest(auth.MethodQuery, "/rows", nil))
+
+	if len(got) != 1 {
+		t.Fatalf("hook fired %d times, want 1", len(got))
+	}
+	if got[0].Method != auth.MethodQuery || got[0].Path != "/rows" {
+		t.Errorf("rejection = %+v, want QUERY /rows", got[0])
+	}
+	if !errors.Is(got[0].Err, auth.ErrCSRF) {
+		t.Errorf("rejection error = %v, want it to satisfy errors.Is(err, auth.ErrCSRF)", got[0].Err)
 	}
 }

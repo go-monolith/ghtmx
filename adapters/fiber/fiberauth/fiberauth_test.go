@@ -383,3 +383,34 @@ func TestNewPanicsOnInvalidConfig(t *testing.T) {
 	}()
 	fiberauth.New(auth.Config[string]{LoginURL: "/login"})
 }
+
+// TestCSRFSafeMethods: the safe-list an application chooses reaches the
+// glue, so the QUERY exemption htmx 4 brought with it can be declined
+// here exactly as it can behind the core middleware (issue #45). Fiber
+// v2 does not know QUERY out of the box, so the app declares it — the
+// shape an htmx 4 application on v2 has to use anyway.
+func TestCSRFSafeMethods(t *testing.T) {
+	methods := append(append([]string{}, fiberfw.DefaultMethods...), auth.MethodQuery)
+	app := func(opts ...auth.CSRFOption) *fiberfw.App {
+		a := fiberfw.New(fiberfw.Config{RequestMethods: methods})
+		a.Add(auth.MethodQuery, "/rows", fiberauth.CSRF(opts...), func(c *fiberfw.Ctx) error {
+			return c.SendString("reached")
+		})
+		return a
+	}
+
+	t.Run("QUERY passes with no options", func(t *testing.T) {
+		res := do(t, app(), httptest.NewRequest(auth.MethodQuery, "/rows", nil))
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("got %d, want 200 — QUERY is exempt by default", res.StatusCode)
+		}
+	})
+
+	t.Run("QUERY is rejected once the safe-list drops it", func(t *testing.T) {
+		htmx2 := auth.WithSafeMethods(http.MethodGet, http.MethodHead, http.MethodOptions)
+		res := do(t, app(htmx2), httptest.NewRequest(auth.MethodQuery, "/rows", nil))
+		if res.StatusCode != http.StatusForbidden {
+			t.Fatalf("got %d, want 403 — the narrowed list must reach the glue", res.StatusCode)
+		}
+	})
+}

@@ -275,3 +275,31 @@ func TestNewPanicsOnInvalidConfig(t *testing.T) {
 	}()
 	echoauth.New(auth.Config[string]{LoginURL: "/login"})
 }
+
+// TestCSRFSafeMethods: the safe-list an application chooses reaches the
+// glue, so the QUERY exemption htmx 4 brought with it can be declined
+// here exactly as it can behind the core middleware (issue #45).
+func TestCSRFSafeMethods(t *testing.T) {
+	app := func(opts ...auth.CSRFOption) *echofw.Echo {
+		e := echofw.New()
+		e.Add(auth.MethodQuery, "/rows",
+			func(c echofw.Context) error { return c.String(http.StatusOK, "reached") },
+			echoauth.CSRF(opts...))
+		return e
+	}
+
+	t.Run("QUERY passes with no options", func(t *testing.T) {
+		res := do(t, app(), httptest.NewRequest(auth.MethodQuery, "/rows", nil))
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("got %d, want 200 — QUERY is exempt by default", res.StatusCode)
+		}
+	})
+
+	t.Run("QUERY is rejected once the safe-list drops it", func(t *testing.T) {
+		htmx2 := auth.WithSafeMethods(http.MethodGet, http.MethodHead, http.MethodOptions)
+		res := do(t, app(htmx2), httptest.NewRequest(auth.MethodQuery, "/rows", nil))
+		if res.StatusCode != http.StatusForbidden {
+			t.Fatalf("got %d, want 403 — the narrowed list must reach the glue", res.StatusCode)
+		}
+	})
+}

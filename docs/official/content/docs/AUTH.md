@@ -305,6 +305,42 @@ stdlib's 32 MB default). A handler that later calls
 `ParseMultipartForm` with its own limit sees the cached parse. Prefer
 the header channel for htmx elements; it reads no body at all.
 
+### The safe-method list, and declining QUERY
+
+**v0.2.0 widened the safe-method list for every application, whatever
+htmx version it pins.** Before it, GET, HEAD, and OPTIONS were exempt;
+from it, QUERY is too. `auth.SafeMethod` is runtime code and cannot see
+the compile-time `htmxVersion` pin, so upgrading the module is enough
+to change the CSRF surface — no `hx-query` and no htmx 4 pin required.
+
+The precondition is narrow: some route has to answer QUERY at all.
+Nothing routes it by accident in net/http, gin, or echo, but Fiber v3
+carries QUERY in its `DefaultMethods`, so a route registered with
+`app.All(...)` — or a handler mounted as middleware — answers it. On
+v0.1.x such a request was refused for a missing token; from v0.2.0 it
+is exempt. If any handler of yours mutates state on QUERY, it must
+stop: QUERY is safe and idempotent by specification, and the work
+belongs on POST, PUT, PATCH, or DELETE.
+
+To decline the exemption instead, give the middleware its own
+safe-list. `auth.WithSafeMethods` replaces the default wholesale, and
+works identically for `auth.CSRF` and for every adapter's glue:
+
+```go
+// The pre-v0.2.0 safe-list: QUERY needs a token like any other method.
+htmx2 := auth.WithSafeMethods(
+    http.MethodGet, http.MethodHead, http.MethodOptions)
+
+mux.Handle("/", auth.Middleware(cfg)(auth.CSRF(htmx2)(app)))
+// ... or, behind an adapter:
+priv := app.Group("/", fiberv3auth.New(cfg), fiberv3auth.CSRF(htmx2))
+```
+
+`auth.DefaultSafeMethods()` returns the default list if you would
+rather extend it than replace it. The list is matched exactly, so pass
+methods in upper case; calling `auth.WithSafeMethods()` with no
+arguments makes every method unsafe, GET included.
+
 ## Testing your handlers
 
 Handler tests don't need to run the middleware — build the context
