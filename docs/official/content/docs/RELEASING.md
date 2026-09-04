@@ -49,7 +49,15 @@ pointing at a different commit fails the job rather than moving.
   satisfies the verify-never-stamp invariant.
 - **Consequence.** `.version` on `main` is only a dev placeholder; the
   value that ships is the one the workflow writes into the tag. Do not
-  read `main`'s `.version` as the released version.
+  read `main`'s `.version` as the released version. Keep it in the
+  `X.Y.Z-dev` shape so that it says so: a build from `main` — or from
+  a source checkout, or `go run ./cmd/ghtmx` — stamps every generated
+  file it writes with `// ghtmx: version: v<that value>`, and a bare
+  release number there reads as a real release in a downstream drift
+  report. The same branch protection that sends the changelog fold back
+  as a pull request also stops the automation from bumping this marker,
+  so it lags the released version until someone edits it; that lag is
+  expected, the missing `-dev` suffix would not be.
 - **First release.** Automation bumps from an existing tag and fails
   loudly if none exists. Cut the first one by hand with the procedure
   below.
