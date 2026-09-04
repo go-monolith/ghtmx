@@ -38,19 +38,22 @@ func New[ID any](cfg auth.Config[ID]) ginfw.HandlerFunc {
 	}
 }
 
-// CSRF returns the CSRF middleware. Install it after [New]: GET, HEAD,
-// and OPTIONS pass through; every other method must carry the session's
-// CSRF token in the ghtmx.DefaultCSRFHeaderName header or the
+// CSRF returns the CSRF middleware. Install it after [New]: the methods
+// auth.DefaultSafeMethods names — GET, HEAD, OPTIONS, and QUERY — pass
+// through; every other method must carry the session's CSRF token in
+// the ghtmx.DefaultCSRFHeaderName header or the
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
 //
-// The options are the core package's, so one auth.WithOnReject hook
-// works here and behind every other adapter unchanged.
+// The options are the core package's, so one auth.WithOnReject hook —
+// or one auth.WithSafeMethods list, which is how an application
+// declines the QUERY exemption — works here and behind every other
+// adapter unchanged.
 func CSRF(opts ...auth.CSRFOption) ginfw.HandlerFunc {
 	o := auth.NewCSRFOptions(opts...)
 	return func(c *ginfw.Context) {
-		if auth.SafeMethod(c.Request.Method) {
+		if o.SafeMethod(c.Request.Method) {
 			return
 		}
 		if err := auth.VerifyCSRF(c.Request); err != nil {

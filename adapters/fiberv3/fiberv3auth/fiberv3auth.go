@@ -64,19 +64,22 @@ func New[ID any](cfg auth.Config[ID]) fiberfw.Handler {
 	}
 }
 
-// CSRF returns the CSRF middleware. Install it after [New]: GET, HEAD,
-// and OPTIONS pass through; every other method must carry the session's
-// CSRF token in the ghtmx.DefaultCSRFHeaderName header or the
+// CSRF returns the CSRF middleware. Install it after [New]: the methods
+// auth.DefaultSafeMethods names — GET, HEAD, OPTIONS, and QUERY — pass
+// through; every other method must carry the session's CSRF token in
+// the ghtmx.DefaultCSRFHeaderName header or the
 // auth.DefaultCSRFFormField form field, or the request is rejected with
 // a 403. Without [New] ahead of it, every unsafe request is rejected —
 // the layer fails closed.
 //
-// The options are the core package's, so one auth.WithOnReject hook
-// works here and behind every other adapter unchanged.
+// The options are the core package's, so one auth.WithOnReject hook —
+// or one auth.WithSafeMethods list, which is how an application
+// declines the QUERY exemption — works here and behind every other
+// adapter unchanged.
 func CSRF(opts ...auth.CSRFOption) fiberfw.Handler {
 	o := auth.NewCSRFOptions(opts...)
 	return func(c fiberfw.Ctx) error {
-		if auth.SafeMethod(c.Method()) {
+		if o.SafeMethod(c.Method()) {
 			return c.Next()
 		}
 		if err := auth.VerifyCSRFToken(c.Context(), submittedCSRF(c)); err != nil {

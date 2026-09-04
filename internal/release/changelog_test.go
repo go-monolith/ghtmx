@@ -639,3 +639,124 @@ func TestChangelogGate(t *testing.T) {
 		})
 	}
 }
+
+// TestChangelogFoldLagGate covers the fold-lag rule (issue #46): every
+// release parks its assembled sections on a changelog/<tag> branch that
+// a human has to merge, so one unfolded release is expected lag and two
+// mean the fold pull requests are being dropped. The count is taken at
+// HEAD so a fold PR — whose own base is the lagging main — passes.
+func TestChangelogFoldLagGate(t *testing.T) {
+	// releasedSection is a CHANGELOG.md whose newest heading is v.
+	releasedSection := func(versions ...string) string {
+		out := "# Changelog\n\nAssembled, not edited.\n"
+		for _, v := range versions {
+			out += "\n## [" + v + "] - 2026-08-08\n\n### Added\n\n- Work for " + v + "\n"
+		}
+		return out
+	}
+
+	for _, tc := range []struct {
+		name    string
+		history func(t *testing.T, dir string)
+		pass    bool
+		message string
+	}{{
+		// The shape of a normal pull request opened the day after a
+		// release: the fold for that release is still open.
+		name: "one unfolded release is expected lag",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.1.1")
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+		},
+		pass: true, message: "one release behind",
+	}, {
+		// Exactly the state issue #46 reports on main.
+		name: "two unfolded releases fail",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+		},
+		pass: false, message: "2 releases have shipped since",
+	}, {
+		name: "the failure names the fold branch to merge",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			git(t, dir, "tag", "v0.1.3")
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+		},
+		pass: false, message: "gh pr create --base main --head changelog/v0.1.3",
+	}, {
+		// The deadlock this rule must not create: the fold PR's base is
+		// the lagging main, so a base-measured gate would fail the one
+		// pull request that fixes the lag.
+		name: "the fold pull request that fixes the lag passes",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			commit(t, dir, "CHANGELOG.md", releasedSection("0.1.2", "0.1.1", "0.1.0"), "#2 fold")
+		},
+		pass: true, message: "no releasing changes",
+	}, {
+		// Tags cut before the fragment system have no section and never
+		// will; the assembler skips them, so the gate must too.
+		name: "releases older than the newest section are not counted",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.0.8")
+			git(t, dir, "tag", "v0.0.9")
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+		},
+		pass: true, message: "no releasing changes",
+	}, {
+		// The false positive the base guard exists for: an ordinary
+		// branch cut before the outstanding fold merged carries a stale
+		// CHANGELOG.md at its head, but its base is current. The lag is
+		// the branch's, not the repository's, so the fold-lag rule must
+		// not claim the folds are being dropped.
+		name: "a stale branch whose base is current passes",
+		history: func(t *testing.T, dir string) {
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+			git(t, dir, "checkout", "-q", "main")
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			commit(t, dir, "CHANGELOG.md",
+				releasedSection("0.1.2", "0.1.1", "0.1.0"), "#3 fold")
+			git(t, dir, "checkout", "-q", "feature")
+		},
+		pass: true, message: "its base is current",
+	}, {
+		// A section for a version that has not shipped is the manual
+		// release-prep shape: nothing has been folded because nothing
+		// has been released.
+		name: "an unreleased newest section reports no lag",
+		history: func(t *testing.T, dir string) {
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			commit(t, dir, ".version", "0.2.0", "#2 bump")
+			commit(t, dir, "CHANGELOG.md", releasedSection("0.2.0", "0.1.0"), "#3 assemble")
+		},
+		pass: true, message: "manual release-prep PR assembles its own",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			git(t, dir, "init", "-q", "-b", "main")
+			commit(t, dir, "main.go", "package p\n", "root")
+			commit(t, dir, "CHANGELOG.md", releasedSection("0.1.0"), "#1 changelog")
+			git(t, dir, "tag", "v0.1.0")
+			git(t, dir, "checkout", "-q", "-b", "feature")
+			tc.history(t, dir)
+
+			log, code := gate(t, dir)
+			if tc.pass && code != 0 {
+				t.Errorf("gate exited %d, want 0\n%s", code, log)
+			}
+			if !tc.pass && code == 0 {
+				t.Errorf("gate passed, want failure\n%s", log)
+			}
+			if !strings.Contains(log, tc.message) {
+				t.Errorf("log must contain %q, got:\n%s", tc.message, log)
+			}
+		})
+	}
+}

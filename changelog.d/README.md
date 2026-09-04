@@ -74,6 +74,17 @@ branch-protected, so the same fold comes back to it as an automated
 `changelog/<tag>` pull request; merging that PR updates the changelog
 page on the docs site and deletes the fragments here.
 
+**Merge that pull request.** Until it lands, `main`'s `CHANGELOG.md`
+stays at the previous version — one release of lag is expected, and the
+next release's fold carries the earlier sections too. Two releases of
+lag is not expected, and `changelog-gate.sh` fails every pull request
+until the outstanding fold is merged: the automation cannot open the PR
+itself unless the repository setting *Allow GitHub Actions to create
+and approve pull requests* is on, so when it is off the branch is
+pushed and nothing else happens. Open it by hand —
+`gh pr create --base main --head changelog/<tag>` — and merge it when
+green; it is markdown- and docs-only and cuts no release.
+
 Fragments are concatenated in filename order, section by section. If
 two entries need a specific order relative to each other, put them in
 one fragment.

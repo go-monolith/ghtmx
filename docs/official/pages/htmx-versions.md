@@ -119,7 +119,15 @@ moving a project; the rest is reported at build time.
    responses should swap (`hx-status:4xx="swap:none"` restores the htmx 2
    behaviour).
 
-5. Look at what the compiler cannot see: page scripts listening on the
+5. If the application uses the `auth` package, note that its CSRF
+   safe-method list is **not** tied to the pin: from ghtmx v0.2.0
+   `auth.SafeMethod` exempts QUERY for every consumer, htmx 4 or not,
+   because the middleware is runtime code and the pin is a compile-time
+   setting. That is what `hx-query` needs. An application that never
+   moved to htmx 4 — or one that must keep QUERY behind the token —
+   declines it with `auth.WithSafeMethods`; `AUTH.md` has the detail.
+
+6. Look at what the compiler cannot see: page scripts listening on the
    htmx 2 event names (`htmx:afterSwap` → `htmx:after:swap`), and
    history. Moving the listener into an `hx-on::after:swap` attribute
    puts the name under the compiler's check. A history restore is a
