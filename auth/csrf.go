@@ -5,6 +5,7 @@ import (
 	"errors"
 	"mime"
 	"net/http"
+	"slices"
 
 	"github.com/go-monolith/ghtmx"
 )
@@ -170,11 +171,17 @@ func CSRF(opts ...CSRFOption) func(http.Handler) http.Handler {
 	}
 }
 
+// defaultSafeMethods is the package's safe-list, written once so
+// [DefaultSafeMethods] and [SafeMethod] cannot drift apart: an
+// application that extends the list starts from the same set the
+// middleware decides with.
+var defaultSafeMethods = []string{http.MethodGet, http.MethodHead, http.MethodOptions, MethodQuery}
+
 // DefaultSafeMethods returns the methods that need no CSRF token
 // unless [WithSafeMethods] says otherwise: GET, HEAD, OPTIONS, and
 // QUERY. The result is a fresh slice; mutating it changes nothing.
 func DefaultSafeMethods() []string {
-	return []string{http.MethodGet, http.MethodHead, http.MethodOptions, MethodQuery}
+	return slices.Clone(defaultSafeMethods)
 }
 
 // SafeMethod reports whether method needs no CSRF token: GET, HEAD,
@@ -189,11 +196,7 @@ func DefaultSafeMethods() []string {
 // QUERY became exempt here in v0.2.0 for every consumer, whatever htmx
 // version the project pins — see [WithSafeMethods] to decline it.
 func SafeMethod(method string) bool {
-	switch method {
-	case http.MethodGet, http.MethodHead, http.MethodOptions, MethodQuery:
-		return true
-	}
-	return false
+	return slices.Contains(defaultSafeMethods, method)
 }
 
 // MethodQuery is the HTTP QUERY method (safe, idempotent, with a body),

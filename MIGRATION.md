@@ -77,10 +77,12 @@ QUERY is safe and idempotent by specification and is what htmx 4's
 compile-time `htmxVersion` pin, so **the widened list applies whether or
 not the project pins htmx 4** — bumping the module is enough.
 
-It only matters if some route answers QUERY. Nothing routes it by
-accident in net/http, gin, or echo; Fiber v3 carries QUERY in its
-`DefaultMethods`, so an `app.All(...)` route or a handler mounted as
-middleware does.
+It only matters if some route answers QUERY, which is easier to hit
+than it sounds: an `http.ServeMux` pattern that names no method matches
+every method, so a plain `mux.Handle("/x", h)` reaches its handler on
+QUERY, and Fiber v3 carries QUERY in its `DefaultMethods`, so an
+`app.All(...)` route or a handler mounted as middleware does too. gin
+and echo route QUERY only where a route names it explicitly.
 
 - If a handler mutates state on QUERY, move that work to POST, PUT,
   PATCH, or DELETE. It must not mutate on a safe method regardless of

@@ -709,6 +709,23 @@ func TestChangelogFoldLagGate(t *testing.T) {
 		},
 		pass: true, message: "no releasing changes",
 	}, {
+		// The false positive the base guard exists for: an ordinary
+		// branch cut before the outstanding fold merged carries a stale
+		// CHANGELOG.md at its head, but its base is current. The lag is
+		// the branch's, not the repository's, so the fold-lag rule must
+		// not claim the folds are being dropped.
+		name: "a stale branch whose base is current passes",
+		history: func(t *testing.T, dir string) {
+			commit(t, dir, "README.md", "docs\n", "#2 docs")
+			git(t, dir, "checkout", "-q", "main")
+			git(t, dir, "tag", "v0.1.1")
+			git(t, dir, "tag", "v0.1.2")
+			commit(t, dir, "CHANGELOG.md",
+				releasedSection("0.1.2", "0.1.1", "0.1.0"), "#3 fold")
+			git(t, dir, "checkout", "-q", "feature")
+		},
+		pass: true, message: "its base is current",
+	}, {
 		// A section for a version that has not shipped is the manual
 		// release-prep shape: nothing has been folded because nothing
 		// has been released.

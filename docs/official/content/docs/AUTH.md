@@ -313,14 +313,18 @@ from it, QUERY is too. `auth.SafeMethod` is runtime code and cannot see
 the compile-time `htmxVersion` pin, so upgrading the module is enough
 to change the CSRF surface — no `hx-query` and no htmx 4 pin required.
 
-The precondition is narrow: some route has to answer QUERY at all.
-Nothing routes it by accident in net/http, gin, or echo, but Fiber v3
-carries QUERY in its `DefaultMethods`, so a route registered with
-`app.All(...)` — or a handler mounted as middleware — answers it. On
-v0.1.x such a request was refused for a missing token; from v0.2.0 it
-is exempt. If any handler of yours mutates state on QUERY, it must
-stop: QUERY is safe and idempotent by specification, and the work
-belongs on POST, PUT, PATCH, or DELETE.
+The precondition is that some route answers QUERY at all — which is
+easier to hit than it sounds. An `http.ServeMux` pattern that names no
+method matches *every* method, so a plain `mux.Handle("/x", h)` or
+`mux.HandleFunc("/x", h)` hands a QUERY request straight to its
+handler; only patterns written `"POST /x"` restrict it. Fiber v3 carries
+QUERY in its `DefaultMethods`, so a route registered with `app.All(...)`
+— or a handler mounted as middleware — answers it too. gin and echo
+route QUERY only where a route names it explicitly. On v0.1.x such a
+request was refused for a missing token; from v0.2.0 it is exempt. If
+any handler of yours mutates state on QUERY, it must stop: QUERY is
+safe and idempotent by specification, and the work belongs on POST,
+PUT, PATCH, or DELETE.
 
 To decline the exemption instead, give the middleware its own
 safe-list. `auth.WithSafeMethods` replaces the default wholesale, and
