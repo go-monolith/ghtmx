@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
 # Fails a pull request that changes code a release would ship without
-# adding a changelog fragment, and rejects hand-written CHANGELOG.md
+# adding a changelog fragment, rejects hand-written CHANGELOG.md
 # version sections — the mandatory-changelog rule (CLAUDE.md), enforced
-# rather than remembered.
+# rather than remembered — and fails once main has fallen two or more
+# releases behind because its fold pull requests were never merged.
 #
 # Reads $BASE and $HEAD (the pull request's base and head SHAs) and
 # runs against a full-history checkout with tags. Lives here rather
@@ -13,6 +14,61 @@ set -euo pipefail
 
 : "${BASE:?the pull request base SHA}"
 : "${HEAD:?the pull request head SHA}"
+
+# The fold-lag rule (issue #46). Every release assembles its sections
+# inside an off-main prep commit and pushes the same fold to a
+# changelog/<tag> branch, because branch protection stops CI writing to
+# main. Until someone merges that branch, main's CHANGELOG.md sits one
+# release behind — expected lag, not a bug (CLAUDE.md). Two releases
+# behind is not: it means the fold PRs are being dropped, and every
+# Migration: note since then is invisible to anyone reading the
+# changelog. That is exactly how main reached 0.1.18 while v0.2.0 was
+# out.
+#
+# Measured at HEAD, never at BASE. A fold PR's own base is the lagging
+# main; reading BASE would fail the very pull request that fixes the
+# lag, and nothing could ever merge.
+#
+# Tags older than the newest section are not counted: releases cut
+# before the fragment system have no section and never will (the
+# assembler skips them too).
+CHANGELOG_AT_HEAD=$(git show "${HEAD}:CHANGELOG.md" 2>/dev/null || true)
+NEWEST_SECTION=$(printf '%s\n' "${CHANGELOG_AT_HEAD}" \
+  | grep -m1 -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' \
+  | sed -E 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/' || true)
+if [ -n "${NEWEST_SECTION}" ]; then
+  # Strict vX.Y.Z only, newest first — the same filter release-plan.sh
+  # applies, so a prerelease sorting above its release cannot inflate
+  # the count.
+  UNFOLDED=""
+  SEEN_NEWEST=0
+  for tag in $(git tag --list 'v[0-9]*' --sort=-v:refname \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'); do
+    if [ "${tag}" = "v${NEWEST_SECTION}" ]; then
+      SEEN_NEWEST=1
+      break
+    fi
+    UNFOLDED="${UNFOLDED}${tag} "
+  done
+  # A newest section with no tag of its own is the manual release-prep
+  # shape (RELEASING.md): the version has not shipped yet, so there is
+  # nothing to have folded and no lag to report.
+  if [ "${SEEN_NEWEST}" -eq 1 ]; then
+    COUNT=$(printf '%s' "${UNFOLDED}" | wc -w | tr -d '[:space:]')
+    if [ "${COUNT}" -ge 2 ]; then
+      NEWEST_TAG=$(printf '%s' "${UNFOLDED}" | awk '{print $1}')
+      echo "::error::CHANGELOG.md stops at ${NEWEST_SECTION}, but ${COUNT} releases have shipped since: ${UNFOLDED}"
+      echo "::error::Their fold pull requests were never merged, so every Migration: note in them is invisible."
+      echo "::error::The newest fold branch carries all of them — open and merge it:"
+      echo "::error::  gh pr create --base main --head changelog/${NEWEST_TAG}"
+      echo "::error::(One unmerged fold is expected lag; two or more means the folds are being dropped. The automation cannot open the PR itself unless 'Allow GitHub Actions to create and approve pull requests' is enabled.)"
+      exit 1
+    fi
+    if [ "${COUNT}" -eq 1 ]; then
+      echo "changelog is one release behind (${UNFOLDED}) — expected lag while its fold PR is open"
+    fi
+  fi
+fi
 
 CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
 
