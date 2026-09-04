@@ -20,9 +20,10 @@ Documentation: [ghtmx.dev](https://ghtmx.dev) is the published site,
 built from `docs/official/` — itself a ghtmx application, serving these
 documents and every example, compiled natively or to wasm. The sources
 it renders are `SYNTAX.md` (the language), `DIAGNOSTICS.md` (every
-diagnostic), `CONFIG.md` (settings and flags), and the site-only pages
-under `docs/official/pages/` (the landing page, getting started, build
-targets). The Go API reference is on
+diagnostic), `CONFIG.md` (settings and flags), `AUTH.md` (sessions and
+CSRF), `MIGRATION.md` (upgrading), and the site-only pages under
+`docs/official/pages/` (the landing page, getting started, build
+targets, htmx versions). The Go API reference is on
 [pkg.go.dev](https://pkg.go.dev/github.com/go-monolith/ghtmx).
 
 ## Install
@@ -80,6 +81,37 @@ curl -fsSL https://raw.githubusercontent.com/go-monolith/ghtmx/main/scripts/inst
 
 Both paths yield the same single-version binary: `ghtmx version`
 prints the release tag.
+
+## Supported htmx versions
+
+A project pins one htmx version, and every `hx-*` attribute — names,
+values, combinations — is checked against that version's surface. The
+pin also decides which script `ghtmxgen.HTMXScript()` serves, so the
+markup the compiler checked and the htmx the browser runs cannot
+disagree.
+
+| Pin | Family | Notes |
+| --- | --- | --- |
+| `2.0.0` – `2.0.10` | htmx 2 | `2.0.10` is the **default**; `2.0.5` added the `inherit` keyword |
+| `4.0.0` | htmx 4 | explicit inheritance, `hx-status`, `hx-query`, morph swaps |
+
+**Without a `ghtmx.json` a project is on `2.0.10` — htmx 2.** Opting
+into htmx 4 is one key:
+
+```json
+{
+  "htmxVersion": "4.0.0"
+}
+```
+
+or `ghtmx generate -htmx-version 4.0.0` for a single invocation. htmx
+1.x is unsupported, 3.x never existed, and prereleases are rejected: a
+bad pin is `GHTMX-E0502`, and a construct outside the pinned surface is
+`GHTMX-E0501`.
+
+Moving an existing project between the two is mechanical and
+documented, diagnostic by diagnostic:
+[ghtmx.dev/docs/htmx-versions](https://ghtmx.dev/docs/htmx-versions).
 
 ## Editor support
 
@@ -204,6 +236,9 @@ shape, and the runtime API may land between minor versions. Every
 breaking change carries a `CHANGELOG.md` entry with a migration note —
 that discipline is enforced by a build gate. Pin a version and read
 the changelog before upgrading.
+
+`MIGRATION.md` is the upgrade index: what breaks between releases, the
+htmx 2 → 4 path, and where each version's migration notes live.
 
 ## License
 

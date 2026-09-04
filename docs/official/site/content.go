@@ -41,6 +41,7 @@ var Docs = []Doc{
 	{Slug: "build-targets", Title: "Build targets", File: "build-targets.md"},
 	{Slug: "htmx-versions", Title: "htmx versions", File: "htmx-versions.md"},
 	{Slug: "editors", Title: "Editor support", File: "editors.md"},
+	{Slug: "migration", Title: "Migration", File: "MIGRATION.md"},
 	{Slug: "conformance", Title: "templ conformance", File: "CONFORMANCE.md"},
 	{Slug: "baseline", Title: "Fork baseline", File: "TEMPL_SYNTAX_BASELINE.md"},
 	{Slug: "contributing", Title: "Contributing", File: "CONTRIBUTING.md"},
@@ -183,7 +184,7 @@ func docsBySlug(slugs ...string) []Doc {
 
 var (
 	ReferenceDocs = docsBySlug("diagnostics", "config", "auth", "build-targets", "htmx-versions", "editors")
-	ProjectDocs   = docsBySlug("overview", "conformance", "baseline", "contributing", "releasing", "changelog")
+	ProjectDocs   = docsBySlug("overview", "migration", "conformance", "baseline", "contributing", "releasing", "changelog")
 )
 
 // DocSection is one H2 slice of a sectioned document, served as its
